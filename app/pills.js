@@ -28,7 +28,8 @@ export function pickFive(selected, onToggle, opts = {}) {
 
   const hd = el('div', 'pickhd');
   hd.append(el('span', 't', opts.title || 'Pick five'));
-  hd.append(el('span', 'c' + (selected.length === max ? ' full' : ''), `${selected.length} of ${max}`));
+  // a count of "0 of 1" says nothing a single pick does not
+  if (max > 1) hd.append(el('span', 'c' + (selected.length === max ? ' full' : ''), `${selected.length} of ${max}`));
 
   const grid = el('div', 'pick');
   for (const id of ids) {

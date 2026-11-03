@@ -26,14 +26,14 @@ describe('adding overtime from bench mode', { skip }, () => {
   async function toLastStint() {
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
 
   test('only the last stint offers the button, in the Next box and not the footer', async () => {
     await startHawks();
     assert.equal(await coach.sees('Tied? Add overtime'), false, 'offered on the first stint');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     assert.equal(await coach.sees('Tied? Add overtime'), false, 'offered on the second stint');
     await toLastStint();
     assert.equal(await coach.sees('Tied? Add overtime'), true);
@@ -43,7 +43,7 @@ describe('adding overtime from bench mode', { skip }, () => {
   test('the sheet is titled Overtime and offers 2 minutes to a team that never had any', async () => {
     await startHawks();
     await toLastStint();
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
 
     assert.equal(await coach.text('#sheetOvertimeTitle'), 'Overtime');
     assert.equal(await coach.valueOf('Minutes'), '2');
@@ -53,7 +53,7 @@ describe('adding overtime from bench mode', { skip }, () => {
   test('a length of 0, 11, blank or 2.5 cannot be added; 1 and 10 can', async () => {
     await startHawks();
     await toLastStint();
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
 
     const disabled = {};
     for (const text of ['0', '11', '2.5', '1', '10']) {
@@ -90,12 +90,57 @@ describe('adding overtime from bench mode', { skip }, () => {
     assert.deepEqual(walked.slice(0, regulation.length), regulation);
   });
 
+  test('one tap on Tied? Add overtime adds the team\'s 2 minutes with the plan carrying on, and Undo gives the game back exactly (#564)', async () => {
+    await startHawks();
+    await toLastStint();
+    const regulation = await coach.floorEachStint();
+    const rows = async () => (await coach.controls()).filter(n => n !== 'Undo' && n !== 'Dismiss');
+    const before = await rows();
+
+    await coach.tap('Tied? Add overtime');
+
+    assert.equal(await coach.toast(), 'Overtime added, 2 min.');
+    assert.equal(await coach.text('#gmGame'), 'OT · 2:00 to 0:00');
+    assert.equal(await coach.sees('Add overtime'), false, 'no sheet to confirm');
+    assert.ok(await coach.sees('Undo'));
+
+    await coach.tap('Undo');
+
+    assert.equal(await coach.text('#gmGame'), 'Q4 · 4:00 to 0:00');
+    assert.deepEqual(await rows(), before);
+    assert.deepEqual(await coach.floorEachStint(), regulation);
+  });
+
+  test('one tap uses the length the team added last (#564)', async () => {
+    await startHawks();
+    await toLastStint();
+    await coach.addOvertime(5);
+    await toLastStint();
+    assert.equal(await coach.stint(), '9 of 9', 'five minutes at every 4 is one stint');
+
+    await coach.tap('Tied? Add overtime');
+
+    assert.equal(await coach.toast(), 'Overtime added, 5 min.');
+    assert.equal(await coach.text('#gmGame'), 'OT2 · 5:00 to 0:00');
+  });
+
+  test('Change sits beside the one-tap button, as tall as a thumb needs, and opens the sheet without adding anything (#564)', async () => {
+    await startHawks();
+    await toLastStint();
+    assert.ok(await coach.sees('Change overtime'));
+    const { height: h } = await coach.sizeOf('Change overtime');
+    assert.ok(h >= 48, `Change is ${h}px tall`);
+
+    await coach.tap('Change overtime');
+
+    assert.equal(await coach.text('#sheetOvertimeTitle'), 'Overtime');
+    assert.equal(await coach.valueOf('Minutes'), '2');
+    assert.equal(await coach.stint(), '8 of 8', 'nothing added yet');
+  });
+
   test('2 minutes of overtime at 4× a period is one overtime stint, not four (#404)', async () => {
-    await coach.onGameDay();
+    await coach.onGameDayWith({ granMode: 'perPeriod', granValue: 4 });
     await coach.tap('Hawks, 9:00 AM, planned');
-    await coach.tap('Sub interval, every 4 min');
-    await coach.tap('4× a period');
-    await coach.tap('Close');
     await coach.tap('Start game');
     await toLastStint();
     assert.equal(await coach.stint(), '16 of 16');
@@ -104,7 +149,7 @@ describe('adding overtime from bench mode', { skip }, () => {
 
     assert.equal(await coach.text('#gmGame'), 'OT · 2:00 to 0:00');
     assert.equal(await coach.stint(), '17 of 17', 'one overtime stint, not four');
-    assert.equal(await coach.sees('Next stint'), false, 'no further stint after it');
+    assert.equal(await coach.sees('Next'), false, 'no further stint after it');
     assert.ok(await coach.sees('Finish game'));
   });
 
@@ -147,7 +192,7 @@ describe('adding overtime from bench mode', { skip }, () => {
     await toLastStint();
     await coach.addOvertime(8);
     assert.equal(await coach.sees('Tied? Add overtime'), false, 'offered on the first overtime stint of two');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     assert.equal(await coach.sees('Tied? Add overtime'), true);
 
     await coach.addOvertime(4);
@@ -172,7 +217,7 @@ describe('adding overtime from bench mode', { skip }, () => {
   test('Escape closes the overtime sheet and leaves bench mode open', async () => {
     await startHawks();
     await toLastStint();
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
     assert.ok(await coach.sees('Add overtime'), 'the sheet should be open');
 
     await coach.press('Escape');
@@ -197,7 +242,7 @@ describe('adding overtime from bench mode', { skip }, () => {
     await toLastStint();
     await coach.addOvertime(7);
     await coach.tap('Undo');
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
 
     assert.equal(await coach.valueOf('Minutes'), '2');
   });

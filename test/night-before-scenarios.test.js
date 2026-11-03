@@ -50,7 +50,7 @@ describe('a game set up the night before', { skip }, () => {
   test('a game with its first stint played is filed as before, and today gets a new game', async () => {
     await sampleOnTheNight();
     await coach.tap('Start game');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Leave');
 
     await coach.comeBackAt(MORNING);

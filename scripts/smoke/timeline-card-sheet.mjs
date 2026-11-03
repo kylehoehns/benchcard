@@ -382,13 +382,13 @@ export async function timelineCardSheetPass(c, origin, rec) {
   const printed = await evalJSON(c, `JSON.stringify(window.__printed)`);
   rec.check(printed === 1, `P called window.print() ${printed} time(s) from the game screen, want 1`);
 
-  /* ---- item 7: Stint by stint is a grouped row >= 48px ---- */
+  /* ---- item 7: Sub by sub is a grouped row >= 48px ---- */
   const stint = await evalJSON(c, `(() => {
     const s = document.querySelector('#tabledetails > summary');
     const r = s.getBoundingClientRect();
     return JSON.stringify({ text: s.textContent.trim(), h: r.height });
   })()`);
-  rec.check(stint.text === 'Stint by stint', `#tabledetails' summary reads "${stint.text}", want "Stint by stint"`);
+  rec.check(stint.text === 'Sub by sub', `#tabledetails' summary reads "${stint.text}", want "Sub by sub"`);
   rec.check(stint.h >= 48, `#tabledetails' summary row measures ${Math.round(stint.h)}px tall, want at least 48px`);
 
   /* ---- item 6: the blocked panel -- the three fixes, and the disabled gate ---- */

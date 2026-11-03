@@ -101,12 +101,12 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       assert.ok(await coach.sees('Sits at most N in a row'), 'the sits chip is on screen');
       assert.ok(!(await coach.sees('Rest limit')), 'the old name is gone');
       await coach.tap('Sits at most N in a row');
-      assert.equal(await coach.text('#planKindBody .pgrp-f'), '2 stints in a row is 8 min.');
-      await coach.stepTo('stints', 3);
-      assert.equal(await coach.text('#planKindBody .pgrp-f'), '3 stints in a row is 12 min.');
-      await coach.stepTo('stints', 2);
+      assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
+      await coach.tap('Longer');
+      assert.equal(await coach.text('#planKindBody .pstep-val'), '12 min');
+      await coach.tap('Shorter');
       await coach.tap('Plays at most N in a row');
-      assert.equal(await coach.text('#planKindBody .pgrp-f'), '2 stints in a row is 8 min.');
+      assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
       await coach.tap('Sits at most N in a row');
       await coach.tap('Add rule');
       assert.ok(await coach.sees('Each player sits at most 2 stints in a row (8 min)'), 'the rule row is shown');
@@ -145,7 +145,7 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
          to share as much as it can, the plan splits them once. */
       await addRule(coach, 'Plays at least', ['Marcus Williams'], 20);
       await addRule(coach, 'Apart', ['Hana Kim', 'Nia Brooks']);
-      await coach.tap('Force Together pairs every stint');
+      await coach.tap('Force Together keeps each pair on the floor at the same time');
       await addRule(coach, 'Starting five', opening);
       await coach.tap('Closers');
       for (const p of closers) await coach.tap(p);

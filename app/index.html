@@ -590,6 +590,10 @@
       <p class="sentence noprint" id="sentenceEvens" hidden><button type="button" class="phrase" id="phraseEvens"></button></p>
       <!-- #572: the minute range, plain gray text (not a phrase): the tinted words above stay the only things to tap. -->
       <p class="sentence sentence-range noprint" id="sentenceRange" hidden></p>
+      <!-- #576: Who's here is the one choice a coach makes every game, so it
+           gets its own always-visible row. It opens the sheet "11 players"
+           does (`openWhoSheet`); it is not a second settings path. -->
+      <button type="button" class="here-row noprint" id="hereRow"><span id="hereRowText"></span><span class="prow-chev" aria-hidden="true">›</span></button>
 
       <!-- The three live sheets (#27). Static shells: each is painted once,
            when it opens (`openSheet`, trap.js), and updates itself in place
@@ -750,7 +754,7 @@
                unfolded (`#view-season`, below). -->
 
           <details class="dz noprint" id="tabledetails">
-            <summary>Stint by stint</summary>
+            <summary>Sub by sub</summary>
             <div class="dz-bd" id="plan"></div>
           </details>
         </div>
@@ -1412,13 +1416,13 @@
         </div>
       </div>
     </div>
-    <p class="pgrp-f">What a new game starts as. Change any game from its own screen.</p>
+    <p class="pgrp-f">What a new game starts as. Changing A game is also changes this day's games that haven't started.</p>
 
     <!-- Group C: who plays. `#maxSubsRead` is the live read-back written by
          `renderSettings` -- `SUBS_READ` in teams-view.js holds the five
-         sentences -- and is this group's one footnote, in place of a static
-         paragraph, since it answers the current choice rather than
-         describing the row. -->
+         sentences -- and is the footnote of "Players changing at once" alone,
+         in place of a static paragraph, since it answers the current choice
+         rather than describing the row (#567). -->
     <div class="pgrp">
       <div class="prow">
         <span class="prow-t">Players changing at once</span>
@@ -1430,13 +1434,10 @@
           <button class="press" type="button" data-subs="5">5</button>
         </div>
       </div>
-      <div class="prow">
-        <span class="prow-t">The odd minutes</span>
-        <div class="seg wide" id="tieBreakSeg" role="group" aria-label="Who gets the odd minutes">
-          <button class="press" type="button" data-tie="behind">Furthest behind</button>
-          <button class="press" type="button" data-tie="levels">Best players</button>
-        </div>
-      </div>
+    </div>
+    <p class="pgrp-f" id="maxSubsRead" aria-live="polite"></p>
+
+    <div class="pgrp">
       <div class="prow">
         <span class="prow-t">Everyone plays at least</span>
         <div class="minwrap">
@@ -1459,7 +1460,27 @@
         </div>
       </div>
     </div>
-    <p class="pgrp-f" id="maxSubsRead" aria-live="polite"></p>
+
+    <!-- #567: "Extra minutes go to" is a setting few coaches need, so it sits
+         behind a "Fine-tuning" row: a button with aria-expanded and a hidden
+         group beneath, closed by default (not a `<details>`, see #daySection
+         below). Bound in teams-view.js. -->
+    <div class="pgrp">
+      <button class="prow" id="fineTuneBtn" type="button" aria-expanded="false" aria-controls="fineTune">
+        <span class="prow-t">Fine-tuning</span>
+        <span class="prow-chev" aria-hidden="true">›</span>
+      </button>
+    </div>
+    <div class="pgrp" id="fineTune" hidden>
+      <div class="prow">
+        <span class="prow-t">Extra minutes go to</span>
+        <div class="seg wide" id="tieBreakSeg" role="group" aria-label="Who gets the extra minutes">
+          <button class="press" type="button" data-tie="behind">Kids behind on minutes</button>
+          <button class="press" type="button" data-tie="levels">Best players</button>
+        </div>
+      </div>
+    </div>
+    <p class="pgrp-f" id="fineTuneNote" hidden>When minutes can't split evenly, who gets the spare sub. Everyone still plays about the same.</p>
 
     <!-- #25: the team color picker. Same `.keyswrap`/`.keysbox` dialog shape as
          `#confirm` and `#help` below -- a close button in `.keys-hd`, trapped
@@ -1768,7 +1789,7 @@
       <button class="gm-nav gm-exit press" id="gmDone" aria-label="Leave"><span class="i gm-exit-i" data-icon="x" aria-hidden="true"></span><span class="gm-exit-t">Leave</span></button>
       <button class="gm-nav press" id="gmPrev" aria-label="Previous stint"><span class="i" data-icon="chevron-left"></span></button>
       <div class="gm-dots" id="gmDots" aria-hidden="true"></div>
-      <button class="gm-nav next press" id="gmNext2" aria-label="Next stint"><span class="i" data-icon="chevron-right"></span></button>
+      <button class="gm-nav next press" id="gmNext2" aria-label="Next"><span class="gm-nav-t">Next</span><span class="i" data-icon="chevron-right"></span></button>
       <!-- #135: the last stint's replacement for Next, on a game the coach
            has not finished yet. Hidden by default; renderGameMode shows it
            and hides #gmNext2 together. -->
@@ -1804,6 +1825,7 @@
         <button type="button" class="press" data-who="keep">Keep this five</button>
         <button type="button" class="press" data-who="strongest">Strongest five</button>
       </div>
+      <div class="pgrp-f" id="overtimeWhoNote"></div>
       <div class="bsheet-cta">
         <button class="btn primary press" id="overtimeGo" type="button">Add overtime</button>
       </div>
@@ -1912,12 +1934,12 @@
           together. It is the easiest to run from the bench and works well for
           the youngest kids, but minutes only come out even if the groups are
           even.</dd>
-        <dt>Rotation order</dt>
+        <dt>Order</dt>
         <dd>The players take turns on the floor in a list, a few at a time. It is
           the easiest plan to follow from the bench because you always know who goes
           in next. The app builds the list for you: the spots that play the most go
-          to your best players, or to the kids furthest behind, whichever you chose
-          for the odd minutes in Settings, and your rules are followed. Each kid's
+          to your best players, or to the kids behind on minutes, whichever you chose
+          for Extra minutes go to in Settings, and your rules are followed. Each kid's
           minutes show beside their name. Pick Mix the fives to spread your
           stronger players round the list instead, so every five has some of
           them. Move anyone and the list is yours. The
@@ -1941,7 +1963,8 @@
         <dd>Your best five open the game, so the lineups at the end are
           weaker.</dd>
         <dt>Finish strong</dt>
-        <dd>Best five saved for the end.</dd>
+        <dd>Best five saved for the end. Minutes stay even, so use Closers to give
+          your closers more time.</dd>
         <dt>Both ends</dt>
         <dd>Strong at the start and the end, weaker in the middle. Good for
           giving newer players real minutes in a game you expect to stay close
@@ -1958,8 +1981,8 @@
           playing time; “at most 12” holds somebody back.</dd>
         <dt>Starting five / Starts the last period</dt>
         <dd>Names who is on the floor at tip-off, or who is on for the first stint of
-          the last period. Overtime is not the last period. To keep a group on until
-          the end, use Closers.</dd>
+          the last period. It only picks who starts: minutes stay even. Overtime is
+          not the last period. To give kids more minutes at the end, use Closers.</dd>
         <dt>Together / Apart</dt>
         <dd>Two players who work well as a pair, or two who need separating. By
           default the plan pairs “together” players as often as it can and
@@ -2031,18 +2054,56 @@
         at a time.
         Tap whoever is coming off and pick how long the change lasts.</p>
       <dl class="help-dl">
-        <dt>This stint</dt>
+        <dt>For now</dt>
         <dd>A one-time swap. The rest of the plan changes to keep minutes
           even, so from here on follow bench mode, not the printed card.</dd>
-        <dt>Rest of game</dt>
+        <dt>Takes their minutes</dt>
         <dd>Every remaining stint goes to the player you name. This is how you say
           “Simone takes Rafael’s minutes”.</dd>
-        <dt>Sit for the rest</dt>
+        <dt>Sits the rest of the game</dt>
         <dd>For foul trouble, when you don't mind who goes in. It sits that
           player for the rest of the game and spreads the minutes across everyone
           still available, counting what each has already played. Nothing already
           played moves, and the round-arrow <b>Back to the printed plan</b> button
           at the top of bench mode puts the printed plan back.</dd>
+      </dl>
+
+      <!-- #564: overtime. The four facts are tested or cited: Sits at most
+           (test/bench-span.test.js, docs/design-decisions-sits-at-most.md),
+           Plays at most (test/rest-limit-replan.test.js), full periods (the
+           same doc) and minimums (test/overtime-minimums.test.js). -->
+      <h3 class="help-h">Overtime</h3>
+      <p class="help-p">When a game is tied, the <b>bench screen</b> shows
+        <b>Tied? Add overtime</b> near the end of the game. One tap adds it, with the minutes you
+        used last time (2 the first time) and <b>Next rotation</b>. Tap
+        <b>Change</b> next to it to pick the minutes or who plays. Undo takes
+        it back.</p>
+      <dl class="help-dl">
+        <dt>Next rotation</dt>
+        <dd>Your plan carries on. Whoever is due on next goes on.</dd>
+        <dt>Even out</dt>
+        <dd>The kids with the fewest minutes so far play.</dd>
+        <dt>Keep this five</dt>
+        <dd>The five on the floor now stay on.</dd>
+        <dt>Strongest five</dt>
+        <dd>Your strongest five play.</dd>
+      </dl>
+      <p class="help-p">What overtime counts toward:</p>
+      <dl class="help-dl">
+        <dt>Sits at most</dt>
+        <dd>Not counted. Overtime does not add to a kid's time on the bench,
+          and it does not reset it.</dd>
+        <dt>Plays at most</dt>
+        <dd>Counted. A kid who played a long stretch at the end of the game
+          keeps counting through overtime.</dd>
+        <dt>Full periods</dt>
+        <dd>Never. Overtime is not a full period, so it adds nothing to a
+          minimum counted in full periods.</dd>
+        <dt>Minimums</dt>
+        <dd>Counted. Overtime minutes count toward a minimum you set for a kid and
+          toward the league's, so a kid still short of one can be put on. The
+          league minimum is worked out from the regular game, so overtime never
+          raises it.</dd>
       </dl>
 
       <!-- #142: the explanations Settings' own rows lost when they moved to
@@ -2076,9 +2137,11 @@
         <dd>How many players go in at each sub. Fewer keeps the same kids
           together longer. More means shorter waits on the bench. Totals come
           out the same either way.</dd>
-        <dt>The odd minutes</dt>
-        <dd>When the minutes do not divide evenly, some kids play
-          one stint less. Choose who gets the extra time. Minimums, Plays at most limits
+        <dt>Extra minutes go to</dt>
+        <dd>Under Fine-tuning. When the minutes do not divide evenly, some kids play
+          one sub less. Choose who gets the spare one: the kids behind on minutes
+          (the season plus the earlier games today) or your best players. Everyone
+          still plays about the same. Minimums, Plays at most limits
           and minutes you set by hand still come first. Until you set levels
           on the Team page, both choices give the same result.</dd>
         <dt>Everyone plays at least</dt>

@@ -77,7 +77,7 @@ describe('a coach prints a card straight from the screen', { skip }, () => {
     await coach.onGameDay();
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.press('Escape');
     await coach.tap('Back to Smoke Test');
 
@@ -127,7 +127,7 @@ describe('a coach prints a card straight from the screen', { skip }, () => {
   async function finishHawks() {
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 7; i++) await coach.tap('Next');
     await coach.tap('Finish game');
   }
 

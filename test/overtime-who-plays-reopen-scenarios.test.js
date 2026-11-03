@@ -26,7 +26,7 @@ describe('each who-plays choice after a reopen and an Undo', { skip }, () => {
   async function toLastStint() {
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
 
@@ -39,7 +39,7 @@ describe('each who-plays choice after a reopen and an Undo', { skip }, () => {
       await startHawks();
       await toLastStint();
       await coach.addOvertime(8, who);
-      await coach.tap('Next stint');
+      await coach.tap('Next');
       const five = await coach.onFloor();
       await coach.tap('Leave');
       await coach.tap('Back to Smoke Test');

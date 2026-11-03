@@ -174,8 +174,11 @@ async function benchAt(c, origin, rec, cell, where) {
       if (name === 'bench mode') {
         if (cell.square) {
           for (const [n, b] of [['Leave', d.done], ['Back', d.prev], ['Next', d.next]]) {
-            if (b) rec.check(Math.abs(b.width - 52) <= 0.5 && Math.abs(b.height - 52) <= 0.5,
-              `${label}: ${n} is ${Math.round(b.width)}x${Math.round(b.height)}, want 52x52`);
+            // #573: Next carries the word "Next" on purpose, so it is 52 high and
+            // as wide as its word needs (the >= 48 floor below still holds).
+            const wide = n === 'Next';
+            if (b) rec.check((wide || Math.abs(b.width - 52) <= 0.5) && Math.abs(b.height - 52) <= 0.5,
+              `${label}: ${n} is ${Math.round(b.width)}x${Math.round(b.height)}, want ${wide ? '52 high' : '52x52'}`);
           }
         }
         const btns = { Leave: d.done, Back: d.prev, Next: d.next };

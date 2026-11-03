@@ -264,6 +264,9 @@ export async function controlSizePass(c, origin, rec) {
 
     // Item 3, part 2: the four Settings segs.
     await tap(c, `document.getElementById('settingsBtn').click()`);
+    // #567: #tieBreakSeg sits behind the Fine-tuning row, closed until tapped,
+    // so open it first or its seg is never measured.
+    await tap(c, `document.getElementById('fineTuneBtn').click()`);
     const settingsSegs = await segMetrics(c);
     segCount += settingsSegs.length;
     checkSegMetrics(rec, theme, settingsSegs);

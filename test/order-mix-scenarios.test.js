@@ -18,7 +18,7 @@ const BEST = ['Avery', 'Casey', 'Drew', 'Gray', 'Harper', 'Blake', 'Emery', 'Fin
 const MIX_BUILT = 'Built for you: your stronger players are spread out so every five has some. Move anyone and the list is yours. The first five start. Players who are out are skipped.';
 const ONLY_BUILT = 'Built for you: your best players get the spots that play the most. Move anyone and the list is yours. The first five start. Players who are out are skipped.';
 const ONLY_MINE = 'You set this list. The first five start. Players who are out are skipped.';
-const BEHIND = 'Built for you: the kids furthest behind get the spots that play the most. Move anyone and the list is yours. The first five start. Players who are out are skipped.';
+const BEHIND = 'Built for you: the kids behind on minutes get the spots that play the most. Move anyone and the list is yours. The first five start. Players who are out are skipped.';
 
 const fiveAt = (list, j) => Array.from({ length: 5 }, (_, t) => list[(j * 4 + t) % list.length]);
 const fivesOf = list => Array.from({ length: 8 }, (_, j) => fiveAt(list, j));
@@ -43,8 +43,8 @@ describe('Rotation order: mix the fives', { skip }, () => {
 
   test('1. the choice shows with Best players chosen; Mix the fives spreads the four, the minutes agree with the plan, and the footer says so', async () => {
     await pickOrder();
-    assert.ok(await coach.sees('Best players play the most'));
-    assert.equal(await coach.isPressed('Best players play the most'), true);
+    assert.ok(await coach.sees('Best players get the extra sub'));
+    assert.equal(await coach.isPressed('Best players get the extra sub'), true);
     assert.equal(await coach.isPressed('Mix the fives'), false);
     assert.deepEqual(await coach.orderList(), BEST);
 
@@ -55,7 +55,7 @@ describe('Rotation order: mix the fives', { skip }, () => {
     assert.deepEqual([...list].sort(), [...ROSTER].sort());
     assertSpread(list);
     assert.equal(await coach.isPressed('Mix the fives'), true);
-    assert.equal(await coach.isPressed('Best players play the most'), false);
+    assert.equal(await coach.isPressed('Best players get the extra sub'), false);
     assert.equal(await coach.focused(), 'Mix the fives');
     assert.deepEqual(await coach.orderMinutes(), minutesOnPaper(list));
     assert.equal(await coach.orderFooter(), MIX_BUILT);
@@ -64,7 +64,7 @@ describe('Rotation order: mix the fives', { skip }, () => {
     for (const [name, text] of Object.entries(minutesOnPaper(list))) assert.equal(`${minutes[name]} min`, text.replace(' min', '') + ' min', `${name} in the plan`);
 
     await coach.tap('Plan, rotation order');
-    await coach.tap('Best players play the most');
+    await coach.tap('Best players get the extra sub');
     assert.deepEqual(await coach.orderList(), BEST, 'tapping the other row is the way back');
     assert.equal(await coach.orderFooter(), ONLY_BUILT);
   });
@@ -119,10 +119,10 @@ describe('Rotation order: mix the fives', { skip }, () => {
     assert.equal(await coach.orderFooter(), 'Built for you: everyone is at the same level, so there is nothing to mix. Move anyone and the list is yours. The first five start. Players who are out are skipped.');
   });
 
-  test('5. under Furthest behind the first row reads Kids furthest behind play the most, and Mix still reads the levels', async () => {
+  test('5. under Furthest behind the first row reads Kids behind on minutes get the extra sub, and Mix still reads the levels', async () => {
     await pickOrder({ tieBreak: 'behind' });
-    assert.ok(await coach.sees('Kids furthest behind play the most'));
-    assert.equal(await coach.sees('Best players play the most'), false);
+    assert.ok(await coach.sees('Kids behind on minutes get the extra sub'));
+    assert.equal(await coach.sees('Best players get the extra sub'), false);
     assert.equal(await coach.orderFooter(), BEHIND);
 
     await coach.tap('Mix the fives');
@@ -144,7 +144,7 @@ describe('Rotation order: mix the fives', { skip }, () => {
     await coach.tap('Build it for me again');
 
     assert.deepEqual(await coach.orderList(), BEST);
-    assert.equal(await coach.isPressed('Best players play the most'), true);
+    assert.equal(await coach.isPressed('Best players get the extra sub'), true);
     assert.equal(await coach.isPressed('Mix the fives'), false);
     assert.equal(await coach.orderFooter(), ONLY_BUILT);
   });
@@ -161,7 +161,7 @@ describe('Rotation order: mix the fives', { skip }, () => {
     await coach.tap('Add game');
     await coach.tap('Plan, rotation order');
     // the new game starts like Hawks; put it back on Best players, so the copy has something to change
-    await coach.tap('Best players play the most');
+    await coach.tap('Best players get the extra sub');
     assert.equal(await coach.isPressed('Mix the fives'), false);
     await coach.tap('Copy from another game');
     await coach.tap('Copy');

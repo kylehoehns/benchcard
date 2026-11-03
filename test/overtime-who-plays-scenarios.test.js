@@ -26,7 +26,7 @@ describe('choosing who plays overtime', { skip }, () => {
   async function toLastStint() {
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
 
@@ -38,7 +38,7 @@ describe('choosing who plays overtime', { skip }, () => {
   test('the sheet asks who plays, with four options, Next rotation chosen each time it opens', async () => {
     await startHawks();
     await toLastStint();
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
 
     assert.equal(await coach.text('#overtimeWhoHd'), 'Who plays');
     const controls = await coach.controls();
@@ -48,20 +48,41 @@ describe('choosing who plays overtime', { skip }, () => {
     await coach.tap('Keep this five');
     assert.deepEqual(await Promise.all(WHO.map(n => coach.isPressed(n))), [false, false, true, false], 'one at a time');
     await coach.press('Escape');
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
     assert.deepEqual(await Promise.all(WHO.map(n => coach.isPressed(n))), [true, false, false, false], 'reset on open');
+  });
+
+  test('each choice shows one plain line saying what the kids on the floor will be (#564)', async () => {
+    await startHawks();
+    await toLastStint();
+    await coach.tap('Change overtime');
+    const lines = {
+      'Next rotation': 'Your plan carries on. Whoever is due on next goes on.',
+      'Even out': 'The kids with the fewest minutes so far play.',
+      'Keep this five': 'The five on the floor now stay on.',
+      'Strongest five': 'Your strongest five play.',
+    };
+    const seen = {};
+    for (const name of Object.keys(lines)) {
+      await coach.tap(name);
+      seen[name] = await coach.text('#overtimeWhoNote');
+    }
+    assert.deepEqual(seen, lines);
+    await coach.press('Escape');
+    await coach.tap('Change overtime');
+    assert.equal(await coach.text('#overtimeWhoNote'), lines['Next rotation'], 'reset with the sheet');
   });
 
   test('Strongest five puts the Level 5 on the floor for every overtime stint, and nothing shows a Level', async () => {
     await startHawks();
     await toLastStint();
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
     assert.doesNotMatch(await coach.text('#sheetOvertime'), /level|tier|go-to|developing/i);
     await coach.tap('Close');
     await coach.addOvertime(8, 'Strongest five');
 
     const first = await coach.onFloor();
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     const second = await coach.onFloor();
     assert.deepEqual([first, second].map(f => f.filter(n => n === 'Hana Kim')), [['Hana Kim'], ['Hana Kim']], 'the Level 5 plays both stints');
     assert.deepEqual([...first, ...second].filter(n => n === 'Nia Brooks'), [], 'the Level 1 plays neither');
@@ -82,7 +103,7 @@ describe('choosing who plays overtime', { skip }, () => {
     await coach.addOvertime(8, 'Keep this five');
 
     assert.deepEqual(sorted(await coach.onFloor()), sorted(kept));
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     assert.deepEqual(sorted(await coach.onFloor()), sorted(kept));
   });
 
@@ -113,13 +134,13 @@ describe('choosing who plays overtime', { skip }, () => {
       assert.ok((await coach.onFloor()).includes(bench), 'the coach can still swap by hand');
     };
     await swapOne();
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     assert.deepEqual(sorted(await coach.onFloor()), sorted(five), 'the re-plan leaves the second stint on the five');
 
     await swapOne();
     await coach.tap('Previous stint');
     await coach.tap('Back to the printed plan');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     assert.deepEqual(sorted(await coach.onFloor()), sorted(five), 'Reset sends it back to the stored five');
   });
 

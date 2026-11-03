@@ -32,7 +32,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
   async function stepToStint(n) {
     for (let i = 0; !(await coach.stint()).startsWith(`${n} of`); i++) {
       assert.ok(i < 20, `never reached stint ${n}`);
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
 
@@ -86,7 +86,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
     await coach.onGameDay();
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 7; i++) await coach.tap('Next');
     await coach.tap('Finish game');
     return shareFromCard();
   }

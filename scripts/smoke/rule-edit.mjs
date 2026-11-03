@@ -242,11 +242,11 @@ export async function ruleEditPass(c, origin, rec) {
   await evalIn(c, setGame(`s.game().constraints.maxConsecutive = 2;`));
   await openRow(c, 'stints in a row');
   const restOpen = await evalJSON(c, `JSON.stringify(document.querySelector('#planSub .pstep-val')?.textContent)`);
-  rec.check(restOpen === '2', `item 5: the "Stints in a row" stepper reads "${restOpen}", want "2"`);
+  rec.check(restOpen === '8 min', `item 5: the "In a row" stepper reads "${restOpen}", want "8 min" (2 subs of 4 min)`);
   await tap(c, `document.querySelector('#planSub .pstep-btn:last-of-type').click()`);
   const rest3 = await evalJSON(c, `(async () => JSON.stringify((await import('/state.js')).game().constraints.maxConsecutive))()`);
   rec.check(rest3 === 3, `item 5: maxConsecutive is ${rest3} after one + tap, want 3`);
-  notes.push('item 5: the "Stints in a row" stepper runs 1-4 and changing it stores the new value');
+  notes.push('item 5: the "In a row" stepper runs 1-4 and changing it stores the new value');
   await back(c);
   await evalIn(c, setGame(`s.game().constraints.maxConsecutive = 0;`));
 

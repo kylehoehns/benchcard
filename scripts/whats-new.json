@@ -1,4 +1,10 @@
 [
+  { "date": "2026-11-03", "text": "Overtime is now one tap. Near the end of the game, Tied? Add overtime adds it right away, with the same minutes as last time. Tap Change next to it to pick the minutes or who plays." },
+  { "date": "2026-11-03", "text": "In Settings, a change to A game now also updates that day’s games you haven’t started." },
+  { "date": "2026-11-03", "text": "When you swap a kid, the choices now read For now, Takes their minutes and Sits the rest of the game." },
+  { "date": "2026-11-03", "text": "The Next stint button on the bench now just says Next." },
+  { "date": "2026-11-03", "text": "The sub interval list now shows only the choices that fit your game’s length." },
+  { "date": "2026-11-03", "text": "Under the game’s sentence, a new Who’s here row opens the list of who came." },
   { "date": "2026-11-03", "text": "Swaps you make in a game now count when the next game of the day evens out. A kid who sat out part of game 1 gets that time back in game 2." },
   { "date": "2026-11-03", "text": "A game you already printed now says Changed since printed when its plan has moved. Print it again and the note goes away." },
   { "date": "2026-11-03", "text": "The note about uneven minutes now names every kid who gets a little more and a little less." },

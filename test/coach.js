@@ -330,11 +330,12 @@ export class Coach {
     await this.#tapObject(object.objectId, JSON.stringify(name));
   }
 
-  /** Bench mode, on the last stint: tap "Tied? Add overtime", set the sheet to
-      `minutes`, pick who plays it (the option's name, e.g. 'Keep this five';
-      left alone, the sheet's own pick) and add it. */
+  /** Bench mode, on the last stint: tap "Change overtime" (#564; "Tied? Add
+      overtime" itself now adds in one tap), set the sheet to `minutes`, pick
+      who plays it (the option's name, e.g. 'Keep this five'; left alone, the
+      sheet's own pick) and add it. */
   async addOvertime(minutes, who) {
-    await this.tap('Tied? Add overtime');
+    await this.tap('Change overtime');
     await this.fill('Minutes', String(minutes));
     if (who) await this.tap(who);
     await this.tap('Add overtime');
@@ -632,14 +633,32 @@ export class Coach {
       .map(r => r.querySelector('input').getAttribute('aria-label').replace(/^Target minutes for /, ''))`);
   }
 
-  /** Bench mode: who is on the floor in each stint from this one to the last (walks 'Next stint'). */
+  /** Bench mode: the minutes beside each floor row, top to bottom, as drawn ("0 / 16 min"). */
+  floorMinutes() {
+    return evalIn(this.c, `[...document.querySelectorAll('#gmFloor .gm-p .mn')].map(m => m.textContent.trim().replace(/\\s+/g, ' '))`);
+  }
+
+  /** Bench mode: how many bench rows are drawn whole inside the scrolling part of
+      the screen right now, with nothing scrolled (#573). */
+  benchRowsInView() {
+    return evalIn(this.c, `(() => {
+      const body = document.querySelector('.gm-body').getBoundingClientRect();
+      const top = Math.max(body.top, 0), bottom = Math.min(body.bottom, document.documentElement.clientHeight);
+      return [...document.querySelectorAll('#gmBench .gm-b')].filter(r => {
+        const b = r.getBoundingClientRect();
+        return b.top >= top - 0.5 && b.bottom <= bottom + 0.5;
+      }).length;
+    })()`);
+  }
+
+  /** Bench mode: who is on the floor in each stint from this one to the last (walks 'Next'). */
   async floorEachStint() {
     const floors = [];
     for (;;) {
       floors.push(await this.onFloor());
       const [at, of] = (await this.stint()).split(' of ').map(Number);
       if (at >= of) return floors;
-      await this.tap('Next stint');
+      await this.tap('Next');
     }
   }
 
@@ -649,12 +668,12 @@ export class Coach {
     return this.floorEachStint();
   }
 
-  /** Bench mode: step to stint `n` (1-based) with 'Previous stint' / 'Next stint'. */
+  /** Bench mode: step to stint `n` (1-based) with 'Previous stint' / 'Next'. */
   async goToStint(n) {
     for (;;) {
       const at = Number((await this.stint()).split(' of ')[0]);
       if (at === n) return;
-      await this.tap(at < n ? 'Next stint' : 'Previous stint');
+      await this.tap(at < n ? 'Next' : 'Previous stint');
     }
   }
 
@@ -711,6 +730,32 @@ export class Coach {
   /** The text in `sel` as it renders (innerText, so separate boxes keep a gap). */
   text(sel) {
     return evalIn(this.c, `(document.querySelector(${JSON.stringify(sel)})?.innerText || '').replace(/\\s+/g, ' ').trim()`);
+  }
+
+  /** The gray lines under the groups of rows on the screen or sheet a coach
+      is looking at, top to bottom. */
+  footnotes() {
+    return evalIn(this.c, `[...document.querySelectorAll('.pgrp-f')]
+      .filter(e => e.getClientRects().length).map(e => e.textContent.replace(/\\s+/g, ' ').trim())`);
+  }
+
+  /** The title of the Settings row just above the footnote `sel` -- the row
+      the footnote is about. */
+  settingsRowBefore(sel) {
+    return evalIn(this.c, `document.querySelector(${JSON.stringify(sel)}).previousElementSibling
+      ?.querySelector('.prow:last-child .prow-t')?.textContent ?? null`);
+  }
+
+  /** In How it works, the terms it defines, and what it says under `term` (or
+      null when it defines no such term). */
+  helpTerms() {
+    return evalIn(this.c, `[...document.querySelectorAll('#help dt')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`);
+  }
+  helpEntry(term) {
+    return evalIn(this.c, `(() => {
+      const dt = [...document.querySelectorAll('#help dt')].find(e => e.textContent.replace(/\\s+/g, ' ').trim() === ${JSON.stringify(term)});
+      return dt ? dt.nextElementSibling.textContent.replace(/\\s+/g, ' ').trim() : null;
+    })()`);
   }
 
   /** How many elements match `sel`. */
@@ -1103,6 +1148,17 @@ export class Coach {
     const [day] = team.days;
     day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...(typeof edits === 'function' ? edits(g) : edits) } : g));
     if (alone) day.games = day.games.slice(0, 1);
+    await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
+  }
+
+  /** Game day with the team reshaped by `shape(team)` before the app opens:
+      for a scenario that needs a started game, or a second day, beside the
+      Hawks and Ravens. */
+  async onGameDayShaped(shape) {
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    const record = structuredClone(gameDay()); // gameDay() shares RICH's games
+    shape(record.teams[0]);
     await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
   }
 

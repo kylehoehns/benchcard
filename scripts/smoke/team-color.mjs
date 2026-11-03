@@ -43,7 +43,7 @@ import { land, reset } from './page-state.mjs';
  * static markup, with no dialog opened. Three groups of the tinted/unchanged
  * elements do not exist in static markup at all, though, and are handled the
  * two ways the #59 review named:
- *   - `.gm-p.picked`, `#gamemode .seg button.on`, "Sit for the rest" and
+ *   - `.gm-p.picked`, `#gamemode .seg button.on`, "Sits the rest of the game" and
  *     `.gm-dot.now` are built by `renderGameMode()` only once bench mode is
  *     opened and a floor
  *     player picked -- the same navigation `overlay.mjs`'s "game mode, swap
@@ -178,7 +178,7 @@ const READ_COLORS = `(() => {
   });
 })()`;
 
-/* `.gm-p.picked`, `#gamemode .seg button.on`, "Sit for the rest" and
+/* `.gm-p.picked`, `#gamemode .seg button.on`, "Sits the rest of the game" and
  * `.gm-dot.now` only exist once bench mode is open with a floor player
  * picked -- the same navigation
  * `overlay.mjs`'s "game mode, swap picker" state drives (`$('#gmOpen').click();
@@ -219,7 +219,7 @@ const READ_GAME_MODE = `(() => {
   const $ = s => document.querySelector(s);
   const gp = $('#gamemode .gm-p.picked');
   const on = $('#gamemode .seg button.on');
-  const sit = [...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent.trim() === 'Sit for the rest');
+  const sit = [...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent.trim() === 'Sits the rest of the game');
   const dot = $('.gm-dot.now');
   return JSON.stringify({
     pickedShadowColor: gp ? (getComputedStyle(gp).boxShadow.match(/rgba?\\([^)]+\\)/) || [null])[0] : null,
@@ -285,23 +285,21 @@ export async function teamColorPass(c, origin, rec) {
   for (const [label, got, want] of tinted) {
     rec.check(got === want, `${label} is ${got} with Royal active, want ${want}`);
   }
-  // #147 item 3/8: "Sit for the rest" is a plain `.btn` now (a surface
+  // #147 item 3/8: "Sits the rest of the game" is a plain `.btn` now (a surface
   // fill), not `.btn.primary` and not filled with the tint or `--accent`
   // (C2: the one filled button on this screen is ›/Finish game) -- pinned
   // as NOT tint-filled, rather than to a literal background color, since
   // `.btn`'s own fill token is not this spec's to re-derive here. A `null`
   // (the button not found at all) must fail too, not pass by accident
   // (`null !== ROYAL_FILL` would otherwise read as "not tint-filled").
-  if (!rec.check(gm.sitBg != null, '"Sit for the rest" was not found in #gmBenchLab while reading its background')) {
+  if (!rec.check(gm.sitBg != null, '"Sits the rest of the game" was not found in #gmBenchLab while reading its background')) {
     /* not found: nothing to compare */
   } else {
-    rec.check(gm.sitBg !== ROYAL_FILL, `"Sit for the rest" background is ${gm.sitBg}, the same as the Royal tint -- it must not read tint-filled`);
+    rec.check(gm.sitBg !== ROYAL_FILL, `"Sits the rest of the game" background is ${gm.sitBg}, the same as the Royal tint -- it must not read tint-filled`);
   }
-  // item 5: Graphite's phrase carries an underline, every other color's
-  // does not (`--phrase-line` goes transparent) -- Royal is "every other
-  // color", so this is the one item-4 "tinted" entry proved by a state a
-  // literal cannot name (no-underline) rather than a value.
-  rec.check(r.phraseDecoration === TRANSPARENT, `.phrase has a visible underline (${r.phraseDecoration}) with Royal active, want none`);
+  // item 5 (#576): every phrase carries a 1px underline in its own color,
+  // so a tinted phrase still reads as tappable.
+  rec.check(r.phraseDecoration === r.phraseFg, `.phrase underline is ${r.phraseDecoration} with Royal active, want the phrase's own ${r.phraseFg}`);
 
   const accentInk = [
     ['.help-h', r.helpHFg], ['.teammenu-check', r.teamCheckFg],

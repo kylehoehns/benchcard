@@ -318,8 +318,10 @@ export async function sentenceSheetsPass(c, origin, rec) {
       marks: rows.map(r => r.querySelector('.prow-check')?.textContent),
     });
   })()`);
-  const WANT_ROWS = ['Every 2 min', 'Every 3 min', 'Every 4 min', 'Every 5 min', 'Every 6 min',
-    '2× a period', '3× a period', '4× a period', 'Only at breaks'];
+  // #575: the sheet hides choices that would plan the same game as another, so
+  // a 4 x 8 game lists these six (Every 6 min, 2x and 4x a period are gone).
+  const WANT_ROWS = ['Every 2 min', 'Every 3 min', 'Every 4 min', 'Every 5 min',
+    '3× a period', 'Only at breaks'];
   rec.check(JSON.stringify(interval.labels) === JSON.stringify(WANT_ROWS),
     `#sheetIntervalBody reads ${JSON.stringify(interval.labels)}, want ${JSON.stringify(WANT_ROWS)}`);
   const pressedAt = interval.pressed.map((p, i) => p === 'true' ? i : -1).filter(i => i >= 0);

@@ -51,15 +51,15 @@ test('nextAt: the "at" string', () => {
  * `inBefore`/`outBefore` are their projected minutes before it, read only to
  * decide whether the minutes clause is worth printing at all. */
 const SWAP_TOAST_CASES = [
-  ['This stint: minutes changed for both',
+  ['For now: minutes changed for both',
     'Casey', 'Ana', 'stint', 20, 12, 16, 16,
-    'Casey on for Ana this stint. Casey now ends at 20 min, Ana at 12.'],
-  ['Rest of game: minutes changed for both',
+    'Casey on for Ana for now. Casey now ends at 20 min, Ana at 12.'],
+  ['Takes their minutes: minutes changed for both',
     'Casey', 'Ana', 'rest', 32, 0, 16, 16,
     'Casey on for Ana for the rest of the game. Casey now ends at 32 min, Ana at 0.'],
   ['no change in minutes: the clause is dropped entirely',
     'Jordan', 'Sam', 'stint', 16, 16, 16, 16,
-    'Jordan on for Sam this stint.'],
+    'Jordan on for Sam for now.'],
   ['fractional minutes go through fmtMinutes',
     'Reese', 'Kira', 'rest', 20.5, 11.5, 16, 16,
     'Reese on for Kira for the rest of the game. Reese now ends at 20.5 min, Kira at 11.5.'],
@@ -73,5 +73,5 @@ test('swapToastText: names the minutes, or drops the clause when they do not cha
 
 test('swapToastText: a re-planned rest says so and drops the two-player minutes clause (#415)', () => {
   assert.equal(swapToastText('Devon', 'Ana', 'stint', 12, 8, 10, 10, true),
-    'Devon on for Ana this stint. The rest of the game was re-planned to keep minutes even.');
+    'Devon on for Ana for now. The rest of the game was re-planned to keep minutes even.');
 });

@@ -4,7 +4,7 @@
  *   item 1 -- the Next change box clears the floating foot at every stint,
  *     at three phone heights, and a "just on" tag never grows a floor row.
  *   item 3 -- the scope control is the shared `.seg` (no `.gm-scope` look
- *     left behind), and "Sit for the rest" is a plain `.btn` sibling after
+ *     left behind), and "Sits the rest of the game" is a plain `.btn` sibling after
  *     it, not a third segment.
  *   item 4 (closes #167) -- no sideways spill at 320px/32px text with a
  *     player picked, checked with a "just on" tagged floor row on screen
@@ -107,7 +107,7 @@ export async function benchDetailsPass(c, origin, rec) {
       const lab = document.getElementById('gmBenchLab');
       const kids = [...lab.children];
       const seg = lab.querySelector('.seg');
-      const sit = kids.find(k => k.textContent.trim() === 'Sit for the rest');
+      const sit = kids.find(k => k.textContent.trim() === 'Sits the rest of the game');
       const r = sit ? sit.getBoundingClientRect() : null;
       return JSON.stringify({
         hasSeg: !!seg,
@@ -126,16 +126,16 @@ export async function benchDetailsPass(c, origin, rec) {
     rec.check(scope.hasSeg, 'item 3: no .seg scope control in #gmBenchLab');
     rec.check(!scope.hasOldScope, 'item 3: .gm-scope is still present -- the old look was not dropped');
     rec.check(scope.onCount === 1, `item 3: ${scope.onCount} segmented buttons carry .on, want exactly 1`);
-    if (!scope.sitTag) rec.fail('item 3: no "Sit for the rest" control found');
+    if (!scope.sitTag) rec.fail('item 3: no "Sits the rest of the game" control found');
     else {
-      rec.check(scope.sitTag === 'BUTTON', `item 3: "Sit for the rest" is a <${scope.sitTag.toLowerCase()}>, want <button>`);
-      rec.check(!scope.sitInsideSeg, 'item 3: "Sit for the rest" is still inside the segmented control');
-      rec.check(scope.segIndex < 0 || scope.sitIndex < 0 || scope.sitIndex >= scope.segIndex, 'item 3: "Sit for the rest" comes before the segmented control, want after');
-      rec.check(scope.sitClasses.includes('btn'), `item 3: "Sit for the rest" classes are ${JSON.stringify(scope.sitClasses)}, want .btn`);
-      rec.check(!scope.sitClasses.includes('primary'), 'item 3: "Sit for the rest" is .btn.primary -- the one filled button here is Finish game');
-      rec.check(scope.sitText === 'Sit for the rest', `item 3: "Sit for the rest" reads ${JSON.stringify(scope.sitText)}`);
-      rec.check(scope.sitH >= 48, `item 3: "Sit for the rest" hit area is ${scope.sitH}px tall, want >=48`);
-      rec.check(scope.sitBg === surface, `item 3: "Sit for the rest" background is ${scope.sitBg}, want the plain surface fill ${surface} -- not tint or accent filled`);
+      rec.check(scope.sitTag === 'BUTTON', `item 3: "Sits the rest of the game" is a <${scope.sitTag.toLowerCase()}>, want <button>`);
+      rec.check(!scope.sitInsideSeg, 'item 3: "Sits the rest of the game" is still inside the segmented control');
+      rec.check(scope.segIndex < 0 || scope.sitIndex < 0 || scope.sitIndex >= scope.segIndex, 'item 3: "Sits the rest of the game" comes before the segmented control, want after');
+      rec.check(scope.sitClasses.includes('btn'), `item 3: "Sits the rest of the game" classes are ${JSON.stringify(scope.sitClasses)}, want .btn`);
+      rec.check(!scope.sitClasses.includes('primary'), 'item 3: "Sits the rest of the game" is .btn.primary -- the one filled button here is Finish game');
+      rec.check(scope.sitText === 'Sits the rest of the game', `item 3: "Sits the rest of the game" reads ${JSON.stringify(scope.sitText)}`);
+      rec.check(scope.sitH >= 48, `item 3: "Sits the rest of the game" hit area is ${scope.sitH}px tall, want >=48`);
+      rec.check(scope.sitBg === surface, `item 3: "Sits the rest of the game" background is ${scope.sitBg}, want the plain surface fill ${surface} -- not tint or accent filled`);
     }
 
     /* ---- item 4 (closes #167): no sideways spill at 320px/32px text with
@@ -172,7 +172,7 @@ export async function benchDetailsPass(c, origin, rec) {
     const boxes = JSON.parse(await evalIn(c, `(() => {
       const vw = document.documentElement.clientWidth;
       const seg = document.querySelector('#gmBenchLab .seg');
-      const sit = [...document.getElementById('gmBenchLab').children].find(k => k.textContent.trim() === 'Sit for the rest');
+      const sit = [...document.getElementById('gmBenchLab').children].find(k => k.textContent.trim() === 'Sits the rest of the game');
       const segR = seg?.getBoundingClientRect(), sitR = sit?.getBoundingClientRect();
       return JSON.stringify({
         vw,
@@ -180,7 +180,7 @@ export async function benchDetailsPass(c, origin, rec) {
         sit: sitR && { l: Math.round(sitR.left), r: Math.round(sitR.right) },
       });
     })()`));
-    for (const [label, box] of [['.seg', boxes.seg], ['Sit for the rest', boxes.sit]]) {
+    for (const [label, box] of [['.seg', boxes.seg], ['Sits the rest of the game', boxes.sit]]) {
       if (!box) { rec.fail(`item 4: ${label} not found while checking for spill`); continue; }
       rec.check(box.l >= -0.5 && box.r <= boxes.vw + 0.5, `item 4 (#167): ${label} spans ${box.l} to ${box.r} in a ${boxes.vw}px viewport`);
     }

@@ -33,7 +33,7 @@ import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
 // it is called from -- both the paint and the tap. No cycle: gamemode.js
 // does not import teams-view.js.
-import { resumeBarAt, passStatus } from './live.js';
+import { resumeBarAt, passStatus, gameStarted } from './live.js';
 /* #35 decision 8. Two pure predicates -- no DOM, no state, just `(view, wide)`
    -- so this is a value import, not the behavior injection `renderAll` and
    `setView` get above. render.js imports this file, so the graph does close
@@ -91,15 +91,14 @@ const teamLabel = (t, i) => ((t && t.name) || '').trim() || `Team ${i + 1}`;
    - 5 says "no ceiling" and deliberately NOT "no limit": `ON_FLOOR` is 5, so
      `subs > 5` is unreachable and the over-cost can never fire -- but the
      floor is still pulling, so a claim about BOTH bounds would be a lie. */
-const overTail = (w) =>
-  `, and goes higher only when holding to ${w} would cost somebody minutes. The plan says so when it does.`;
+const overTail = ' Goes higher only when it would cost a kid minutes, and the plan says so.';
 const SUBS_READ = [
   '',
-  `Aims for one change a break${overTail('one')}`,
-  `Aims for one or two changes a break${overTail('two')}`,
-  `Aims for one to three changes a break${overTail('three')}`,
-  `Aims for one to four changes a break${overTail('four')}`,
-  'Aims for at least one change a break, with no ceiling. Five is everyone on the floor, so there is nothing higher to ask for.',
+  `Aims for one kid changing at each break.${overTail}`,
+  `Aims for one or two kids changing at each break.${overTail}`,
+  `Aims for one to three kids changing at each break.${overTail}`,
+  `Aims for one to four kids changing at each break.${overTail}`,
+  'Aims for at least one kid changing at each break, with no ceiling. Five is everyone on the floor, so there is nothing higher to ask for.',
 ];
 
 export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
@@ -165,6 +164,14 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
 
   /* Same shape, same reasons: static buttons, delegated once, a full render
      because the stance re-solves every plan in the day. */
+  // #567: the Fine-tuning row opens and closes the group beneath it
+  on('#fineTuneBtn', 'onclick', () => {
+    const btn = $('#fineTuneBtn');
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    $('#fineTune').hidden = !open;
+    $('#fineTuneNote').hidden = !open;   // the note is its own hidden element, so a measure of what is painted skips it
+  });
   on('#tieBreakSeg', 'onclick', (e) => {
     const b = e.target.closest('button[data-tie]');
     const s = team()?.settings;
@@ -216,8 +223,8 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
   /* The game format. `onchange` for the same reason the floor is -- a half
      typed "2" on the way to "20" is not a stance -- and blank falls back to the
      default rather than to 0, because a game with no periods is not a game.
-     `edit('teamSetting')` repaints and saves, but nothing already planned moves:
-     newGame is the only reader and it has already run for every game in the day. */
+     A new game reads it only when there is no game to clone; the open day's
+     games that have not started take it at once (below). */
   const fmt = (sel, key, lo, hi) => on(sel, 'onchange', (e) => {
     const s = team()?.settings;
     if (!s) return;
@@ -226,7 +233,20 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
     const v = Number.isFinite(n) ? Math.round(Math.min(hi, Math.max(lo, n))) : DEFAULT_SETTINGS[key];
     if (v === s[key]) { e.target.value = String(v); return; }
     s[key] = v;
-    edit('teamSetting');
+    /* Only a value the coach typed and that is in range reaches the games: a
+       clamped "0" or "9" and a blank (back to the default) set the team's
+       setting, as before, but are not a format the coach chose for a game. */
+    const settled = Number.isFinite(n) && n >= lo && n <= hi && Math.round(n) === v;
+    /* #567: the games of the open day that have not started take the new
+       format too; a started game, a filed one and other days keep theirs.
+       Re-planned as a format edit does it. */
+    let moved = false;
+    for (const g of state.day?.games ?? []) {
+      if (!settled || gameStarted(g.live) || g[key] === v) continue;
+      g[key] = v;
+      moved = true;
+    }
+    edit(moved ? 'format' : 'teamSetting');
   });
   fmt('#setPeriods', 'periods', 1, 8);
   fmt('#setPerMins', 'periodMinutes', 1, 40);

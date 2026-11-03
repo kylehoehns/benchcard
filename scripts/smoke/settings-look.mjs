@@ -107,7 +107,7 @@ async function settingsControlsPass(c, ck, origin) {
   ck((await readState(c)).maxSubs === before.maxSubs, 'subs per break was not restored');
 
   /* B. Tie-break. */
-  for (const [v, label] of [['levels', 'Best players'], ['behind', 'Furthest behind']]) {
+  for (const [v, label] of [['levels', 'Best players'], ['behind', 'Kids behind on minutes']]) {
     await tap(c, `document.querySelector('#tieBreakSeg [data-tie="${v}"]').click()`);
     const r = await readState(c);
     ck(r.tieBreak === v, `tapping "${label}" left settings.tieBreak at "${r.tieBreak}", want "${v}"`);

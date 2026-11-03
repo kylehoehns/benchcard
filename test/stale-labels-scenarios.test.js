@@ -28,7 +28,7 @@ describe('labels that were stale (#420)', { skip }, () => {
     const before = await coach.text('#summary');
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
     await coach.addOvertime(2, 'Keep this five');
     await coach.tap('Leave');
@@ -73,8 +73,8 @@ describe('labels that were stale (#420)', { skip }, () => {
     await coach.onGameDayWith({}, 9);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, underway');
@@ -85,7 +85,7 @@ describe('labels that were stale (#420)', { skip }, () => {
     await coach.tap((await coach.controls()).find(n => n.startsWith('Resume')));
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
     await coach.tap('Finish game');
 
@@ -111,8 +111,8 @@ describe('labels that were stale (#420)', { skip }, () => {
     await coach.onGameDayWith({}, 9);
     await coach.tap('Ravens, 11:30 AM, planned');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Ravens, 11:30 AM, underway');

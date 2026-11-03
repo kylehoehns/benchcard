@@ -115,7 +115,7 @@ export const FEATURES = [
   { key: 'strategy:minutes', src: 'state.js STRATEGIES', term: ['by hand'] },
   { key: 'strategy:closers', src: 'state.js STRATEGIES', term: ['closers'] },
   { key: 'strategy:platoon', src: 'state.js STRATEGIES', term: ['platoon'] },
-  { key: 'strategy:order', src: 'state.js STRATEGIES', term: ['rotation order'] },
+  { key: 'strategy:order', src: 'state.js STRATEGIES', term: ['order'] },
 
   { key: 'shape:even', src: 'balance.js SHAPES',
     term: { '#help': ['steady'] }, text: ['every stint about as strong as every other'] },
@@ -150,9 +150,9 @@ export const FEATURES = [
    * internal key: two of the three have no key at all (one is a bare button),
    * and an extraction that looked for `['stint'|'rest', ...]` could not see a
    * fourth scope being added beside them. Found by mutation, not by reading. */
-  { key: 'bench:stint', ships: 'This stint', src: 'gamemode.js', term: ['this stint'], text: ['this stint'] },
-  { key: 'bench:rest', ships: 'Rest of game', src: 'gamemode.js', term: ['rest of game'], text: ['rest of game'] },
-  { key: 'bench:rebalance', ships: 'Sit for the rest', src: 'gamemode.js', term: ['sit for the rest'], text: ['sit for the rest'] },
+  { key: 'bench:stint', ships: 'For now', src: 'gamemode.js', term: ['for now'], text: ['for now'] },
+  { key: 'bench:rest', ships: 'Takes their minutes', src: 'gamemode.js', term: ['takes their minutes'], text: ['takes their minutes'] },
+  { key: 'bench:rebalance', ships: 'Sits the rest of the game', src: 'gamemode.js', term: ['sits the rest of the game'], text: ['sits the rest of the game'] },
 
   { key: 'season:carryover', src: 'rules.js useSeasonTargets', term: ['even out the season so far'], text: ['even out the season so far'] },
   { key: 'league:minimum', src: 'state.js leagueMinutes', text: ['everyone plays at least'] },

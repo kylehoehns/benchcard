@@ -270,30 +270,30 @@ export async function rotationUndoPass(c, origin, rec) {
   notes.push('item 3: the Plan sheet\'s strategy seg offers the same Undo, which restores strategy along with the rest');
   await evalIn(c, step(`document.getElementById('sheetPlanClose')?.click()`));
 
-  /* ---- item 5: "Sit for the rest" (an existing `undoable`) keeps its
+  /* ---- item 5: "Sits the rest of the game" (an existing `undoable`) keeps its
      own toast; it must not be replaced by a second one. `sitRest`
      (gamemode.js) only ever writes `live.overrides` for stints still
      ahead of `live.at` -- the base plan's own rotation never moves, so
      this also guards against a future change routing it through a real
      `render()` and showing a second, competing toast.
 
-     #136 items 2-4: the button reads "Sit for the rest" and the sit toast
+     #136 items 2-4: the button reads "Sits the rest of the game" and the sit toast
      reads "<name> sits for the rest. The others share those minutes.",
      still with Undo. ---- */
   await evalIn(c, step(`document.getElementById('abBench').click()`));
   await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
   const sitLabel = await evalIn(c, `JSON.stringify([...document.querySelectorAll('#gmBenchLab button')]
-    .find(b => b.textContent === 'Sit for the rest')?.textContent ?? null)`);
-  rec.check(JSON.parse(sitLabel) === 'Sit for the rest', `item 2: the bench-mode button reads ${sitLabel}, want "Sit for the rest"`);
-  await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
+    .find(b => b.textContent === 'Sits the rest of the game')?.textContent ?? null)`);
+  rec.check(JSON.parse(sitLabel) === 'Sits the rest of the game', `item 2: the bench-mode button reads ${sitLabel}, want "Sits the rest of the game"`);
+  await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sits the rest of the game')?.click()`));
   await wait(SETTLE_MS);
   const toasts5 = JSON.parse(await evalIn(c, `JSON.stringify([...document.querySelectorAll('.toast[data-undo]')]
     .map(t => ({ text: t.querySelector('.tmsg')?.textContent ?? null, hasUndo: !!t.querySelector('.tundo') })))`));
-  rec.check(toasts5.length === 1 && (toasts5[0].text || '').endsWith('sits for the rest. The others share those minutes.') && toasts5[0].hasUndo, `item 3: after "Sit for the rest" the live undo toast(s) read ${JSON.stringify(toasts5)}, `
+  rec.check(toasts5.length === 1 && (toasts5[0].text || '').endsWith('sits for the rest. The others share those minutes.') && toasts5[0].hasUndo, `item 3: after "Sits the rest of the game" the live undo toast(s) read ${JSON.stringify(toasts5)}, `
       + 'want exactly one, ending "sits for the rest. The others share those minutes." with Undo -- not replaced');
   await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
-  notes.push('item 5: "Sit for the rest" keeps its own Undo toast, not replaced by a second one');
-  notes.push('items 2, 3: the button reads "Sit for the rest" and its toast reads "<name> sits for the rest. The others share those minutes." with Undo');
+  notes.push('item 5: "Sits the rest of the game" keeps its own Undo toast, not replaced by a second one');
+  notes.push('items 2, 3: the button reads "Sits the rest of the game" and its toast reads "<name> sits for the rest. The others share those minutes." with Undo');
 
   /* ---- item 4, the "strategy" refusal: `resolveRest` (state.js) refuses
      before it ever looks at who is on the floor when `g.strategy` is
@@ -313,7 +313,7 @@ export async function rotationUndoPass(c, origin, rec) {
     const s = await import('/state.js');
     s.state.day.games[0].strategy = 'platoon';
   })()`);
-  await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
+  await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sits the rest of the game')?.click()`));
   await wait(SETTLE_MS);
   const flash4 = JSON.parse(await evalIn(c, `(() => {
     const t = document.querySelector('.toast:not([data-undo])');

@@ -394,26 +394,26 @@ export async function focusAnnouncePass(c, origin, rec) {
       const wantLead = roster.number ? `${roster.number}, ${roster.name}, ` : `${roster.name}, `;
       rec.check((rowInfo.label || '').startsWith(wantLead), `item 9: the row's label reads ${JSON.stringify(rowInfo.label)}, want it to start with ${JSON.stringify(wantLead)}`);
 
-      // item 8, continued: the scope buttons and "Sit for the rest".
+      // item 8, continued: the scope buttons and "Sits the rest of the game".
       const scopeInfo = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('#gmBenchLab button')].map(b => ({ text: b.textContent, scope: b.dataset.scope, pressed: b.getAttribute('aria-pressed') })))`);
       const stintBtn = scopeInfo.find(b => b.scope === 'stint');
       const restBtn = scopeInfo.find(b => b.scope === 'rest');
-      const sitBtn = scopeInfo.find(b => b.text === 'Sit for the rest');
-      rec.check(stintBtn && stintBtn.pressed === 'true', `item 8: "This stint" reads aria-pressed=${stintBtn?.pressed}, want "true" (the default scope)`);
-      rec.check(restBtn && restBtn.pressed === 'false', `item 8: "Rest of game" reads aria-pressed=${restBtn?.pressed}, want "false"`);
-      rec.check(!sitBtn || sitBtn.pressed === null, `item 8: "Sit for the rest" carries aria-pressed=${sitBtn?.pressed}, want none`);
+      const sitBtn = scopeInfo.find(b => b.text === 'Sits the rest of the game');
+      rec.check(stintBtn && stintBtn.pressed === 'true', `item 8: "For now" reads aria-pressed=${stintBtn?.pressed}, want "true" (the default scope)`);
+      rec.check(restBtn && restBtn.pressed === 'false', `item 8: "Takes their minutes" reads aria-pressed=${restBtn?.pressed}, want "false"`);
+      rec.check(!sitBtn || sitBtn.pressed === null, `item 8: "Sits the rest of the game" carries aria-pressed=${sitBtn?.pressed}, want none`);
       await tap(c, `[...document.querySelectorAll('#gmBenchLab button')].find(b => b.dataset.scope === 'rest').click()`);
       const afterRest = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('#gmBenchLab button')].map(b => ({ scope: b.dataset.scope, pressed: b.getAttribute('aria-pressed') })))`);
       const rest2 = afterRest.find(b => b.scope === 'rest'), stint2 = afterRest.find(b => b.scope === 'stint');
       if (rest2?.pressed !== 'true' || stint2?.pressed !== 'false') {
-        rec.fail(`item 8: after tapping "Rest of game" the two scope buttons read ${JSON.stringify(afterRest)}, want rest=true/stint=false`);
-      } else notes.push('item 8: the scope buttons carry aria-pressed matching which one is on, and "Sit for the rest" carries none');
+        rec.fail(`item 8: after tapping "Takes their minutes" the two scope buttons read ${JSON.stringify(afterRest)}, want rest=true/stint=false`);
+      } else notes.push('item 8: the scope buttons carry aria-pressed matching which one is on, and "Sits the rest of the game" carries none');
 
-      // item 6: "This stint"/"Rest of game" land focus on the button just
+      // item 6: "For now"/"Takes their minutes" land focus on the button just
       // pressed.
       bf = await focusInfo(c);
       const restFocused = await evalJSON(c, `JSON.stringify(document.activeElement === [...document.querySelectorAll('#gmBenchLab button')].find(b => b.dataset.scope === 'rest'))`);
-      if (rec.check(restFocused === true, 'item 6: tapping "Rest of game" did not leave focus on that same button')) notes.push('item 6: tapping a scope button lands focus on that same button');
+      if (rec.check(restFocused === true, 'item 6: tapping "Takes their minutes" did not leave focus on that same button')) notes.push('item 6: tapping a scope button lands focus on that same button');
     }
 
     // item 9's "no number" clause: take whichever player bench mode shows
@@ -536,18 +536,18 @@ export async function focusAnnouncePass(c, origin, rec) {
     if (rec.check(undoFirstFloorOk === true, `item 6: Undo on #gmReset's own toast left focus at ${JSON.stringify(bf)}, want the first floor row again`)) notes.push('item 6: Undo on a bench-mode toast also lands on the first floor row');
     await tap(c, `document.getElementById('gmClose').click()`);
 
-    // item 6, "Sit for the rest": success lands on whoever filled the seat;
+    // item 6, "Sits the rest of the game": success lands on whoever filled the seat;
     // refused (a 'platoon' strategy) lands back on the row that was picked --
     // the same scenario rotation-undo.mjs's item 4 drives.
     await evalIn(c, setGame(handSwapSeed()));
     await tap(c, `document.getElementById('abBench').click()`);
     const sitOutPid = await evalJSON(c, `JSON.stringify(document.querySelector('#gmFloor .gm-p')?.dataset.pid ?? null)`);
     await tap(c, `document.querySelector('#gmFloor [data-pid="${sitOutPid}"]').click()`);
-    await tap(c, `[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`);
+    await tap(c, `[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sits the rest of the game')?.click()`);
     // the focused element IS the floor row itself (`gmFocus` targets it
     // directly) -- reading its own `data-pid`, not an ancestor's.
     const gotPid = await evalJSON(c, `JSON.stringify(document.activeElement?.closest('#gmFloor') ? (document.activeElement.dataset.pid ?? null) : null)`);
-    if (rec.check(gotPid && gotPid !== sitOutPid, `item 6: after "Sit for the rest" succeeds, focus is on ${JSON.stringify(gotPid)}, want a NEW floor row (whoever filled the seat), not the one sat`)) notes.push('item 6: "Sit for the rest" succeeding lands focus on the player who filled the seat, not the one sat');
+    if (rec.check(gotPid && gotPid !== sitOutPid, `item 6: after "Sits the rest of the game" succeeds, focus is on ${JSON.stringify(gotPid)}, want a NEW floor row (whoever filled the seat), not the one sat`)) notes.push('item 6: "Sits the rest of the game" succeeding lands focus on the player who filled the seat, not the one sat');
     await tap(c, `document.getElementById('gmClose').click()`);
 
     await evalIn(c, setGame(handSwapSeed()));
@@ -555,10 +555,10 @@ export async function focusAnnouncePass(c, origin, rec) {
     const refuseOutPid = await evalJSON(c, `JSON.stringify(document.querySelector('#gmFloor .gm-p')?.dataset.pid ?? null)`);
     await tap(c, `document.querySelector('#gmFloor [data-pid="${refuseOutPid}"]').click()`);
     await evalIn(c, `(async () => { const s = await import('/state.js'); s.state.day.games[0].strategy = 'platoon'; })()`);
-    await tap(c, `[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`);
+    await tap(c, `[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sits the rest of the game')?.click()`);
     const refuseFocusOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('#gmFloor [data-pid="${refuseOutPid}"]'))`);
-    if (refuseFocusOk !== true) rec.fail(`item 6: a refused "Sit for the rest" left focus off the picked row (${JSON.stringify(await focusInfo(c))})`);
-    else notes.push('item 6: a refused "Sit for the rest" leaves focus on the row that was picked');
+    if (refuseFocusOk !== true) rec.fail(`item 6: a refused "Sits the rest of the game" left focus off the picked row (${JSON.stringify(await focusInfo(c))})`);
+    else notes.push('item 6: a refused "Sits the rest of the game" leaves focus on the row that was picked');
     await tap(c, `document.getElementById('gmClose').click()`);
     await land(c, origin);
 

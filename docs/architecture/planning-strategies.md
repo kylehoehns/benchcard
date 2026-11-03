@@ -8,9 +8,9 @@
   they have played (#489; see [design decisions](../design-decisions.md)).
 - **Closers** -- even minutes early, a group you pick finishes the game.
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
-- **Rotation order** -- the five on the floor is taken from a list of the players
+- **Order** -- the five on the floor is taken from a list of the players
   in turn, so the next players are always known. Until the game starts the app
-  builds the list from the odd minutes setting and the rules, or, when the coach
+  builds the list from the Extra minutes go to setting and the rules, or, when the coach
   picks Mix the fives, spreads the stronger players so every five has some; once
   the coach moves anyone, the list is theirs. A later game that day starts where an earlier
   coach-set game's turn stopped. The plan itself is read off the list with no
@@ -28,9 +28,9 @@ halves or periods instead.
 
 The league minimum and Everyone plays in are Settings, not rules on one player.
 A league minimum counted in full periods is pinned once, before the search, so
-each kid plays those whole periods; Platoon and Rotation order apply no pins, so
+each kid plays those whole periods; Platoon and Order apply no pins, so
 they ignore that unit. Everyone plays in adds a cost for each kid who misses a
-half or a period, and Platoon and Rotation order do not price it.
+half or a period, and Platoon and Order do not price it.
 The choices behind both are in [full periods and plays in](../design-decisions-plays-in.md).
 
 There is a third pair relation, `keepOnFloor` -- "One of two on".
@@ -51,11 +51,13 @@ to overtime keeps its regulation stints as they were played, and only the
 overtime stints are planned.
 
 Each overtime has its own **Who plays** choice, picked in the Overtime sheet
-and stored with that overtime (#369). Each overtime period keeps its own
-choice, so a first overtime and a second can differ:
+(opened with **Change** next to Add overtime) and stored with that overtime
+(#369). Each overtime period keeps its own choice, so a first overtime and a
+second can differ:
 
 - **Next rotation** -- the game's own strategy, as set out below. This is the
-  default each time the sheet opens.
+  default each time the sheet opens, and the choice the one-tap Add overtime
+  makes (#564).
 - **Even out** -- planned as Even whatever the game's strategy. The closing
   group and the units do not apply in that overtime.
 - **Keep this five** -- the five on the floor on the last regulation stint,
@@ -94,7 +96,7 @@ The game's own strategy, for Next rotation:
 - **Closers** -- the closing group is on the floor for the last overtime stint.
 - **Platoon** -- the unit order carries on. The first overtime stint sends out
   the next unit, counted by the stint's place in the whole game.
-- **Rotation order** -- the cycle carries on into the overtime stints, from
+- **Order** -- the cycle carries on into the overtime stints, from
   where regulation stopped.
 - **By hand** -- overtime is planned as Even around the minutes played. The
   per-player targets the coach saved are for regulation, so they are left as

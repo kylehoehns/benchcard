@@ -434,23 +434,21 @@ test('light + more contrast keeps info-over-bg at or above its current 6.60:1 (#
   assert.ok(r >= 6.6, `light + more contrast: --info on --info-soft (over --bg) is ${r}:1, needs >= 6.60:1`);
 });
 
-/* #151 item 2: `--phrase-line` (the sentence-style underline, app.css:2714)
- * is Graphite's own value here -- every non-Graphite team color sets it
- * `transparent` (tokens.css's own comment above the tint blocks says why),
- * and that non-text case is smoke-tested elsewhere
- * (scripts/smoke/team-color.mjs's own `--phrase-line: transparent`
- * assertion, which #151 leaves unchanged). Graphite's underline measured
- * 2.00:1 against `--bg` in light mode, under WCAG's 3:1 floor for a
- * non-text/decorative graphic like an underline; dark mode already cleared
- * it at 3.55:1. */
-test('the phrase underline clears 3:1 against --bg in light and dark, base and more-contrast', () => {
+/* #576: the sentence's phrases are underlined in their own color
+ * (`text-decoration-color: currentColor`, app.css's `.phrase`), so the
+ * underline's color is `--phrase`. It is a non-text graphic and is held to
+ * the control floor against `--bg` (3:1; 4.5:1 under more contrast) in every
+ * theme and every team color. (#151 item 2 held the old `--phrase-line`, a
+ * Graphite-only underline, to the same 3:1.) */
+test('the phrase underline (--phrase) clears the control floor against --bg in every theme and tint', () => {
   const bad = [];
-  for (const t of THEMES) {
-    const bg = colorOf(t.tokens, '--bg');
-    const line = effective(colorOf(t.tokens, '--phrase-line'), bg);
-    const r = contrast(line, bg);
-    if (r < 3 - 1e-9) bad.push(`${t.name}: --phrase-line on --bg is ${r.toFixed(2)}:1, needs >= 3:1`);
+  const cases = themeAndTintStates();
+  for (const s of cases) {
+    const bg = colorOf(s.tokens, '--bg');
+    const r = contrast(effective(colorOf(s.tokens, '--phrase'), bg), bg);
+    if (r < s.controlFloor - 1e-9) bad.push(`${s.name}: --phrase on --bg is ${r.toFixed(2)}:1, needs >= ${s.controlFloor}:1`);
   }
+  assert.equal(cases.length, THEMES.length + COLORS.length * 4, 'wrong number of cases measured');
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
 

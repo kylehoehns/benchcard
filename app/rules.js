@@ -18,7 +18,7 @@ import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
 import { fmtMinutes, fivesAreSet } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
-         ruleItems, runHint, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
+         ruleItems, runHint, runMinutesText, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
          EVEN_OUT_DAY_LABEL, dayIsToday, evensOutDay } from './state.js';
 import { pickFive } from './pills.js';
@@ -111,7 +111,7 @@ function renderPairsGroup(c) {
   if (!c.pairs.length) { wrap.hidden = true; return; }
   wrap.hidden = false;
   const box = el('div', 'pgrp');
-  box.append(switchRow('Force Together pairs every stint', c.hardPairs, false, v => {
+  box.append(switchRow('Force Together keeps each pair on the floor at the same time', c.hardPairs, false, v => {
     c.hardPairs = v; renderConstraints(); edit('pairs');
   }));
   wrap.append(box);
@@ -192,7 +192,7 @@ onPlanOpen(() => { const g = game(); if (g) renderCopyGroup(g); });
 
 const COPY_SWITCHES = [
   ['rules', 'Rules'],
-  ['plan', 'How it plans'],
+  ['plan', 'Strategy (Even, Closers…)'],
   ['format', 'Format and subs'],
   ['here', "Who's here"],
 ];
@@ -362,7 +362,7 @@ function openRuleDetail(item, idx, trigger) {
 
   if (!item.removable) {
     sub.append(el('p', 'pgrp-f', 'Your league minimum. Change it in Settings.'));
-    sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
+    if (game().strategy === 'minutes') sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
     pushPlanPane(trigger, { title: 'Rule' });
     return;
   }
@@ -376,7 +376,7 @@ function openRuleDetail(item, idx, trigger) {
 
   const controlsHost = el('div');
   sub.append(controlsHost);
-  if (item.kind === 'minimum') sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
+  if (item.kind === 'minimum' && game().strategy === 'minutes') sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
   // decision 4: shown only when a pair the coach just picked already
   // matches another rule of the same kind.
   const dupMsg = el('p', 'pgrp-f', 'You already have this rule.');
@@ -564,18 +564,27 @@ function kindControls(kind, draft, hooks = {}) {
       draft.ids = on ? [...(draft.ids || []), id] : (draft.ids || []).filter(x => x !== id);
       onPick();
     }, { max: 5, title: 'Pick up to five' }));
+    // #571: a kid who starts the last period does not play more for it
+    if (kind === 'lastq') body.append(el('p', 'pgrp-f', 'Only picks who starts it. To give kids more minutes at the end, use Closers.'));
   } else if (kind === 'rest' || kind === 'bench') {
     const grp = el('div', 'pgrp');
     const hint = el('p', 'pgrp-f');
     const paintHint = () => {
       const g = game();
       hint.textContent = [runHint(g, draft.n), kind === 'bench' ? benchPlatoonHint(g, draft.n) : ''].filter(Boolean).join(' ');
+      hint.hidden = !hint.textContent;
     };
     const top = kind === 'rest' ? restLimitMax(game()) : 4;
     // a limit above the top (the stepper starts at 2; a saved rule may be higher) is no limit at all, so show and save the top
     draft.n = Math.max(1, Math.min(draft.n ?? 2, top));
     paintHint();
-    grp.append(stepperRow(runRowLabel(game()), () => draft.n, v => { draft.n = v; }, 1, top, runNoun(game(), 2), () => { paintHint(); afterStep?.(); }));
+    const minutes = game().granMode !== 'breaksOnly';
+    // #574: minutes where the game has subs, the period's own name under Breaks only
+    grp.append(stepperRow(runRowLabel(game()), () => draft.n, v => { draft.n = v; }, 1, top,
+      minutes ? 'minutes' : runNoun(game(), 2), () => { paintHint(); afterStep?.(); },
+      minutes ? v => runMinutesText(game(), v) : undefined,
+      // a step is one substitution spot (4 minutes at 4 x 8), so no label promises one minute
+      minutes ? ['Shorter', 'Longer'] : undefined));
     body.append(grp, hint);
   }
   return body;

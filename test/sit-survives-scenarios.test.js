@@ -22,7 +22,7 @@ describe('a player sat for the rest stays sat', { skip }, () => {
       const showing = await coach.stint();
       if (showing.startsWith(`${n} of`)) return;
       assert.ok(i < 20, `never reached stint ${n}`);
-      await coach.tap(Number(showing.split(' ')[0]) < n ? 'Next stint' : 'Previous stint');
+      await coach.tap(Number(showing.split(' ')[0]) < n ? 'Next' : 'Previous stint');
     }
   }
 
@@ -35,7 +35,7 @@ describe('a player sat for the rest stays sat', { skip }, () => {
     await toStint(3);
     const eli = (await coach.onFloor())[1];
     await coach.tapPlayer(eli);
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
     assert.ok(!(await coach.onFloor()).includes(eli), 'the premise: the sit took');
     return eli;
   }
@@ -50,7 +50,7 @@ describe('a player sat for the rest stays sat', { skip }, () => {
       texts.push(await coach.text('#gmFloor'));
       const [at, of] = (await coach.stint()).split(' of ').map(Number);
       if (at >= of) return texts;
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
   const never = (floors, name, where) => assert.deepEqual(floors.filter(f => f.includes(name)), [],
@@ -71,14 +71,14 @@ describe('a player sat for the rest stays sat', { skip }, () => {
 
   test('1. a late arrival marked Here now does not put the sat player back', async () => {
     const eli = await satAtStint3();
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Here now, Theo Alvarez');
     never(await laterFloors(), eli, 'after the sit');
   });
 
   test('2. marking a late player here on Who\'s here does not put the sat player back', async () => {
     const eli = await satAtStint3();
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await viaWhosHere("Who's here, 9 players", 'Theo Alvarez');
     await resume();
     never(await laterFloors(), eli, 'after the sit');
@@ -103,7 +103,7 @@ describe('a player sat for the rest stays sat', { skip }, () => {
       await toStint(8);
       const sat = (await coach.onFloor()).includes('Hana Kim') ? 'Hana Kim' : (await coach.onFloor())[0];
       await coach.tapPlayer(sat);
-      await coach.tap('Sit for the rest');
+      await coach.tap('Sits the rest of the game');
       await coach.addOvertime(4, who);
       assert.ok(!(await coach.onFloor()).includes(sat), `${sat} is in the first overtime five`);
     });
@@ -137,7 +137,7 @@ describe('a player sat for the rest stays sat', { skip }, () => {
 
   test('7. Back to the printed plan puts the sat player back, and so does Undo on the sit', async () => {
     const eli = await satAtStint3();
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Here now, Theo Alvarez');
     assert.ok(await coach.sees('Back to the printed plan'), 'the way back is on screen');
     await coach.tap('Back to the printed plan');
@@ -154,10 +154,10 @@ describe('a player sat for the rest stays sat', { skip }, () => {
     await coach.onGameDayWith({}, 6);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     const sat = (await coach.onFloor())[1];
     await coach.tapPlayer(sat);
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
     const other = (await coach.onFloor())[0];
     await viaWhosHere("Who's here, 6 players", other);
     assert.equal(await coach.toast(), `Not enough players to keep ${sat.split(' ')[0]} sitting.`);

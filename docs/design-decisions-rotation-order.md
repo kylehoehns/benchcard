@@ -6,7 +6,7 @@ The same rule applies: a decision is kept with its alternative.
 The spec was #545. #547 changed who builds the list; see
 [The app builds the list](#the-app-builds-the-list-547). #557 added a choice of
 how the app builds it; see [Mix the fives](#mix-the-fives-557). The glossary
-entry is **Rotation order** in CONTEXT.md.
+entry is **Order** in CONTEXT.md (renamed from Rotation order in #574).
 
 ## The plan is a formula, not a search
 
@@ -90,7 +90,7 @@ The spec is [specs/547-order-builds-the-list.md](specs/547-order-builds-the-list
   carry it. Not done: the spec puts that out of scope.
 - **The app's list is built again on every plan until the game starts.** The
   build reads the roster, levels, who is here, the rules, the format, Players
-  changing at once, the odd minutes setting and the How to build the list choice
+  changing at once, the odd minutes setting (now Extra minutes go to) and the How to build the list choice
   (#557), as they are at that moment. So an
   added Apart rule, or a kid marked Out, moves the app's list. The coach's list
   never moves by itself. Once a stint is played, or the game is finished, the
@@ -150,7 +150,7 @@ The spec is [specs/547-order-builds-the-list.md](specs/547-order-builds-the-list
   Rejected: a coach who did not set the list has no other way to learn the app
   could not do better.
 - **Copying a game's plan copies whose list it is.** "Copy from another game",
-  with How it plans on, copies the list and the flag, and the How to build the
+  with the Strategy (Even, Closers…) switch (formerly How it plans) on, copies the list and the flag, and the How to build the
   list choice (#557). An app's list is built again for the new game, and a
   coach's list is copied as set. A game added
   without a copy drops both, and `addGame` writes its start. Alternative: always
@@ -191,8 +191,9 @@ It is the coach's choice of how the app builds its list. The default is the list
   "Build it for me again" works as before. Alternative: show it always. Rejected:
   a control that changes nothing is noise.
 - **Two rows, one chosen, under "How to build the list".** The first row reads
-  "Best players play the most" when the odd minutes setting is Best players, and
-  "Kids furthest behind play the most" when it is Furthest behind. That is what
+  "Best players get the extra sub" when the Extra minutes go to setting is Best players, and
+  "Kids behind on minutes get the extra sub" when it is Kids behind on minutes (#571; the
+  earlier wording was "Best players play the most" and "Kids furthest behind play the most"). That is what
   the default list does under each setting. The second row is "Mix the fives".
   A tap sets or clears the flag and rebuilds the list (`edit('orderBuild')`),
   and focus goes back to the row that was tapped. There is no Undo. The other
@@ -228,7 +229,7 @@ It is the coach's choice of how the app builds its list. The default is the list
   for step. Equal levels therefore never change a list.
 - **The interface.** `buildOrder({ ..., mix })`, where `mix` maps a kid's id to
   a level. `solveDay` passes it only when `g.orderMix` is set, and reads levels
-  with `tierOfPlayer`, whatever the odd minutes setting. The raw `p.tier` and the
+  with `tierOfPlayer`, whatever the Extra minutes go to setting (formerly the odd minutes setting). The raw `p.tier` and the
   levels-only `tiers` map are not read here. The memo key gains the map only when
   it is set, so a default game's key is unchanged.
 - **Same input, same list.** The Mix score has no random choice and no clock.
@@ -257,7 +258,7 @@ It is the coach's choice of how the app builds its list. The default is the list
 - **Order does not claim to even out the day.** The "evens out the day" line and
   the Across the day switch are off for a game on Order, with a note saying the
   order decides who plays. The switch's setting is kept underneath.
-- **Sit for the rest keeps the cycle going.** The four who stay are not forced
+- **Sit for the rest (now Sits the rest of the game) keeps the cycle going.** The four who stay are not forced
   into the next five: the order decides. `resolveRest` does not refuse Order.
 
 ## The list on screen

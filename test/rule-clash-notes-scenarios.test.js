@@ -50,7 +50,7 @@ describe('the notes under the plan name the rule that bound', { skip }, () => {
   });
 
   test('the page for a minimum says a locked By hand number below it loses', async () => {
-    await coach.onGameDayWith({ constraints: { minMinutes: { p0: 20 } } }, 10);
+    await coach.onGameDayWith({ strategy: 'minutes', constraints: { minMinutes: { p0: 20 } } }, 10);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap((await coach.controls()).find(n => /^Rules, /.test(n)));
     await coach.tap((await coach.controls()).find(n => /plays at least 20 min/.test(n)));
@@ -59,7 +59,7 @@ describe('the notes under the plan name the rule that bound', { skip }, () => {
   });
 
   test('the page for the league minimum says it too', async () => {
-    await coach.onGameDayWith({}, 10);
+    await coach.onGameDayWith({ strategy: 'minutes' }, 10);
     await coach.tap('Settings');
     await coach.fill('How much everyone plays at least', '16');
     await coach.tap('Back to Smoke Test');
@@ -76,7 +76,7 @@ describe('the notes under the plan name the rule that bound', { skip }, () => {
     await coach.tap('Start game');
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');

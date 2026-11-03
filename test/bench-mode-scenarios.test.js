@@ -66,7 +66,7 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
     await startHawks();
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 20, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
     await coach.tap('Finish game');
     const reach = await coach.everyControl();
@@ -81,10 +81,10 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
     await coach.tapPlayer('Devon Ellis');
 
     assert.equal(await coach.toast(),
-      'Devon on for Ana this stint. The rest of the game was re-planned to keep minutes even.');
+      'Devon on for Ana for now. The rest of the game was re-planned to keep minutes even.');
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 20, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
     const moved = await coach.text('#gmMoved');
     assert.notEqual(moved, '1 stint no longer matches your printed card.');
@@ -95,7 +95,7 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
     await startHawks();
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 20, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
     await coach.tap('Previous stint');
     // Second-to-last stint: Eli is on at 16 of 16 minutes, Hana is on the bench at 12 of 12.
@@ -104,7 +104,7 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
     await coach.tapPlayer('Eli Tran');
     await coach.tapPlayer('Hana Kim');
 
-    assert.equal(await coach.toast(), 'Hana on for Eli this stint. Hana now ends at 16 min, Eli at 12.');
+    assert.equal(await coach.toast(), 'Hana on for Eli for now. Hana now ends at 16 min, Eli at 12.');
   });
 
   test('a reload mid-game leaves nothing inert', async () => {

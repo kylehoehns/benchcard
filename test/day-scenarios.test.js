@@ -48,7 +48,7 @@ describe('a coach shapes the day', { skip }, () => {
     await coach.tap('Next');
     await coach.tap('Marcus Williams');
     await coach.tap('Next');
-    await coach.tap('Closers Even minutes early, then your closing group finishes the game.');
+    await coach.tap('Closers Even minutes early, then your closing group finishes the game and plays more than everyone else.');
     await coach.tap('Back');
     await coach.tap('Back');
     await coach.tap(await sameAsCard());

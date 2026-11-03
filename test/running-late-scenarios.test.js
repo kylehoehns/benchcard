@@ -71,7 +71,7 @@ describe('Running late and Out in bench mode', { skip }, () => {
     await coach.onGameDayWith(edits, 10);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 2; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 2; i++) await coach.tap('Next');
   }
   const has = async name => (await coach.controls()).includes(name);
 

@@ -1199,6 +1199,17 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
    would only make a dim gym worse. Bench rows keep the same look picked or
    not -- no tint on every row once a pick is live. */
 .gm.swapping .gm-floor .gm-p:not(.picked) { opacity: .4; }
+/* #573: a floor kid is picked and the coach is choosing who goes on, so the
+   bench is what matters. The Next change panel drops to its heading (the names
+   come back when the pick is made or dropped), the floor rows tighten to the
+   48px floor and the scroller loses some padding, so at 390 x 844 with five on
+   the bench at least four bench rows are whole. */
+.gm.swapping #gmNext .gm-next-cols, .gm.swapping #gmNext .gm-next-none, .gm.swapping #gmNext .gm-ot-row { display: none; }
+.gm.swapping .gm-body { padding-top: .6rem; }
+.gm.swapping .gm-floor { gap: .3rem; }
+.gm.swapping .gm-p { min-height: 48px; padding-top: .3rem; padding-bottom: .3rem; }
+.gm.swapping .gm-p .av { width: 2rem; height: 2rem; }
+.gm.swapping #gmBenchSec { margin-top: .6rem; }
 
 /* The scope toggle is the shared .seg -- no bespoke look survives here.
    "Sit for the rest" is a plain .btn sibling placed after the .seg, not a
@@ -1234,6 +1245,11 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
    needs resetting. */
 h3.gm-next-hd { margin-top: 0; }
 #gmNext .gm-ot { margin-top: .3rem; }
+/* #564: the one-tap button and the Change button beside it, on one line. The
+   one-tap button takes what is left; both keep the 48px floor. */
+.gm-ot-row { display: flex; align-items: flex-end; gap: .4rem; }
+.gm-ot-row .gm-ot { flex: 1 1 auto; width: auto; min-width: 0; }
+.gm-ot-change { flex: none; min-height: 48px; min-width: 48px; font-weight: 600; }
 .gm-next-none { font-size: var(--fs-secondary); color: var(--muted); }
 /* Two columns, Off and On, each a plain column of names -- no icons, no
    red/green (K2/K3): every color here is ink or muted. */
@@ -1285,6 +1301,11 @@ h3.gm-next-hd { margin-top: 0; }
    set); solid fill, surface-colored glyph. */
 .gm-nav.next { background: var(--tint); border-color: transparent; color: var(--tint-ink); }
 @media (hover: hover) { .gm-nav.next:hover { background: var(--tint-2); } }
+/* #573: the orange button says Next beside its arrow. A pill like Finish game
+   (an id rule beats the .gm-nav width pair, here and in the large-text block). */
+.gm-nav-t { white-space: nowrap; }
+#gmNext2 { width: auto; min-width: 3.2rem; padding: 0 1.1rem 0 1.3rem; display: flex; align-items: center; gap: .35rem;
+  font-size: var(--fs-secondary); font-weight: 600; white-space: nowrap; }
 /* Finish game reads a whole word, not an icon -- the same .gm-nav.next fill
    (K1) and 3.2rem/48px+ height, but its own width: text-wide rather than the
    fixed square every other .gm-nav button uses. font-size is --fs-secondary,
@@ -1323,6 +1344,17 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-foot .gm-exit { width: 52px; padding: 0; }
   .gm-exit .gm-exit-i { display: inline-flex; }
   .gm-exit .gm-exit-t { display: none; }
+  /* #573: Next keeps its word at large text (the issue's ask) but sheds the
+     arrow and most of its padding, so Leave, Back and Next still share a row. */
+  #gmNext2 { padding: 0 .6rem; min-width: 52px; justify-content: center; font-size: var(--fs-footnote); }
+  #gmNext2 .i { display: none; }
+  /* #564: the overtime row stays one line high: Change shrinks to a 48px
+     ghost control (an ellipsis; its aria-label names it) and the one-tap button's label may wrap inside its 48px+. */
+  .gm-ot-row { gap: .25rem; align-items: stretch; }
+  .gm-ot-row .gm-ot { padding: .2rem .5rem; line-height: 1.1; }
+  .gm-ot-change { padding: 0; width: 48px; min-width: 48px; position: relative; }
+  .gm-ot-change::before { content: '\2026'; font-size: var(--fs-secondary); }
+  .gm-ot-change-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 /* The dots jump between stints mid-game, so each one is a full-height target:
    the button is 44px tall and takes an equal share of the row, and the dot
@@ -1353,6 +1385,10 @@ h3.gm-next-hd { margin-top: 0; }
    truncated edge fades so the strip reads as "there is more this way" rather
    than as the whole game. Never dim the current stint. */
 .gm-dot.edge:not(.now)::before { opacity: .4; transform: scale(.75); }
+/* #573: Next is a worded pill now, so at large text the strip is narrower than
+   eight full dots. Each dot shrinks to its own cell instead of overlapping its
+   neighbors (with 2px of air), so the row still reads as separate dots. */
+.gm-dot::before { width: min(.55rem, calc(100% - 2px)); height: auto; aspect-ratio: 1; }
 
 .gm-cta { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center; margin-top: .85rem; }
 .gm-cta.recover-cta { margin-top: 1.4rem; }
@@ -2342,8 +2378,9 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .linkish:focus-visible { border-bottom-color: var(--accent-line); }
 @media (hover: hover) { .linkish:hover { border-bottom-color: var(--accent-line); } }
 
-/* --phrase/--phrase-line color the underline per team color (transparent for
-   every non-Graphite color, tokens.css), so one rule covers every color.
+/* --phrase colors the text and, through currentColor, a 1px underline (#576),
+   per team color, so one rule covers every color and the underline clears
+   the same 3:1 the text does (test/contrast.test.js).
    background/border/font reset the UA's button chrome so .phrase (a real
    <button> inside .sentence) reads as underlined text running inline, not a
    box. min-width covers "4 x 8", the one phrase whose padding still came in
@@ -2358,7 +2395,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    scripts/smoke-checks.js); a sentence check owns the 34px floor instead.
    min-width stays 48px for the line box's width only. */
 .phrase { color: var(--phrase); text-decoration: underline;
-  text-decoration-color: var(--phrase-line); text-decoration-thickness: 2px;
+  text-decoration-color: currentColor; text-decoration-thickness: 1px;
   background: none; border: 0; font: inherit; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: flex-start; text-align: left;
   min-height: 1.38em; min-width: 48px; padding: 0 .3em; margin: 0 -.3em; vertical-align: baseline; }
@@ -2386,6 +2423,12 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    the secondary step in rem, regular weight, and no tint (K1: the tint stays
    on the phrases). */
 .sentence-range { font-size: var(--fs-secondary); font-weight: 400; letter-spacing: normal; line-height: 1.4; }
+/* #576: the Who's here row under the sentence -- a plain 48px button, ink text
+   and a muted chevron, in the sentence's own weight so it reads as part of it. */
+.here-row { display: flex; align-items: center; gap: .4rem; min-height: 48px;
+  margin: -1rem 0 -1rem; padding: 0 .3em; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: var(--fs-secondary); font-weight: 600; color: var(--ink); text-align: left; }
+.here-row .prow-chev { line-height: 1; }
 
 /* ============================== the sheets ============================== */
 /* A dialog opened with showModal() promotes itself to the top layer, so none
@@ -3084,6 +3127,7 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    between them either way. */
 .prow-v { flex: 0 1 auto; min-width: 0; text-align: right; color: var(--muted); }
 .prow-chev { flex: none; color: var(--muted); }
+#fineTuneBtn[aria-expanded="true"] .prow-chev { transform: rotate(90deg); }
 /* The card options are native <select>s inside a .prow row (so a tap opens
    the phone's own picker), not a button that opens another sheet. Shares
    .prow-v's shape (right-aligned, muted, free to shrink) with the platform
@@ -3190,6 +3234,8 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    Sizing each button to its label (flex: 1 1 auto, spare room shared
    evenly) gives the long one about 26px to spare instead. */
 #seasonDefSeg button { flex: 1 1 auto; }
+/* #567: "Kids behind on minutes" is longer than "Best players"; each button is sized to its label so neither wraps. */
+#tieBreakSeg button { flex: 1 1 auto; }
 /* Two kids wearing one number: mark the number, quietly. The row is not
    the error -- the pair is -- so this tints rather than shouts, and the
    banner above the roster is what names them. It has to sit after
@@ -3299,6 +3345,11 @@ dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; displ
    tabular digits with room to spare. */
 .pstep-val { flex: none; width: 1.75rem; text-align: right;
   font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.pstep-val.wide { width: auto; white-space: nowrap; }
+/* #574: Add a rule shows two kinds with different values ("12" and "up to 9
+   min"); one fixed value column, wide enough for the longer, keeps the minus
+   and plus buttons where they were when the coach flips between kinds. */
+#planKindBody .pstep-val { width: 3.6rem; white-space: nowrap; }
 /* The pill is drawn 88x32 (5.5rem x 2rem) in --seg-track -- reusing the
    segmented control's own track token. overflow: visible lets its buttons
    (48x48 each, .pstep-btn below) spill past it on every side: 4px each
@@ -3877,6 +3928,16 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      at once, and three lines of it pushed the foot 11px off the screen */
   .gm-moved { padding: .15rem .5rem; line-height: 1.2; max-height: calc(2.4em + .3rem); }
   .gm-body { padding-top: .5rem; padding-bottom: .25rem; }
+  /* The swap picker's label row (heading text, the For now / Takes their
+     minutes seg, Sits the rest of the game) is wider than the screen on one
+     line at large text. Each piece may shrink to the row and wrap its own text
+     and the seg's buttons stack, so nothing spills or clips. */
+  /* #573: the " min" after the first row's minutes drops here, so "just on" still fits that row. */
+  .gm-p .mn .unit { display: none; }
+  .gm-lab.rowed > * { max-width: 100%; min-width: 0; }
+  .gm-lab.rowed .seg { display: flex; flex-wrap: wrap; width: 100%; }
+  .gm-lab.rowed .seg button { flex: 1 1 100%; white-space: normal; }
+  .gm-lab.rowed .btn { white-space: normal; line-height: 1.2; padding-top: .3rem; padding-bottom: .3rem; }
 
   /* `#gmClose`'s visible fill (`.i`, `#agClose .i, #frClose .i, .gm-x .i`
      above) is sized in rem (2.25rem) while the button's own hit box stays a
