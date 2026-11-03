@@ -1392,6 +1392,9 @@ h3.gm-next-hd { margin-top: 0; }
 
 .gm-cta { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center; margin-top: .85rem; }
 .gm-cta.recover-cta { margin-top: 1.4rem; }
+/* The issues box follows this row directly in Card view (the timeline between
+   them is hidden), and has no top margin of its own, so the button sat on it. */
+#cardPrintRow { margin-bottom: .85rem; }
 #cardPrintRow .btn { min-height: 48px; }
 /* The card sheet's own Print/Share pair should span the sheet's full width
    as two equal buttons (the prototype), not sit centered at content width.
