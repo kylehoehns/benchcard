@@ -570,6 +570,9 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         order: [...new Set(keep(g.order))],
         // #547: the app built this list and has not been moved; absent means the coach's
         ...(g.orderBuilt === true ? { orderBuilt: true } : {}),
+        // #569: the app filled in Platoon's groups, or Closers' five, and the coach has not changed them
+        ...(g.unitsBuilt === true ? { unitsBuilt: true } : {}),
+        ...(g.closersBuilt === true ? { closersBuilt: true } : {}),
         // #557: the app's list mixes the fives rather than giving the best players the most minutes
         ...(g.orderMix === true && g.orderBuilt === true ? { orderMix: true } : {}),
         // #572: the rotation stamp the coach last printed or shared; a non-empty string or absent

@@ -47,6 +47,7 @@ export function renderStrategy() {
      sentence, as a group footer under the segment that chose it. */
   $('#stratwhy').textContent = STRATEGIES[g.strategy] || '';
   const box = $('#stratbody'); box.textContent = '';
+  if (g.strategy !== 'closers') windowFor = null;
   if (g.strategy === 'minutes') box.append(minutesEditor(g));
   else if (g.strategy === 'closers') box.append(closersEditor(g));
   else if (g.strategy === 'platoon') box.append(platoonEditor(g));
@@ -268,14 +269,37 @@ export function refreshBudgetActuals() {
   if (msg?.classList.contains('exact')) msg.textContent = anyOff ? RULES_CHANGED_ROWS : AS_THEY_ARE;
 }
 
+/* Whether the kids here are not all at one level: more than one distinct level. Order's line and the two below read it. */
+const levelsDiffer = ids => new Set(ids.map(id => tierOfPlayer(byId(id)))).size > 1;
+
+/* #569: the coach's first change to a list the app filled in makes it theirs. */
+const mine = flag => { delete game()[flag]; };
+
+/* #569 decision 8: the closers' window is one line, and its chips stay behind
+   "Change when" for the rest of the visit, until the strategy changes. */
+let windowOpen = false;
+let windowFor = null;
+
 function closersEditor(g) {
   const c = g.constraints;
   const shape = stintShape(g);
+  const ids = availIds(g);
   const wrap = el('div', 'closers');
+
+  if (windowFor !== g.id + g.strategy) { windowFor = g.id + g.strategy; windowOpen = false; }
+  const shown = Math.min(c.closing.stints, shape.count);
+  if (!windowOpen) {
+    const when = el('button', 'prow', 'Change when');
+    when.type = 'button';
+    when.onclick = () => { windowOpen = true; renderStrategy(); };
+    const grp = el('div', 'pgrp');
+    grp.append(el('p', 'pgrp-f', `The closing group plays the last ${fmtMinutes(shown * shape.avg)} min.`), when);
+    wrap.append(grp);
+  }
 
   const hd = el('div', 'pickhd');
   hd.append(el('span', 't', 'Closing window'));
-  wrap.append(hd);
+  if (windowOpen) wrap.append(hd);
 
   const chips = el('div', 'chips');
   for (let n = 1; n <= Math.min(6, shape.count); n++) {
@@ -286,10 +310,11 @@ function closersEditor(g) {
     b.onclick = () => { c.closing.stints = n; renderStrategy(); edit('closers'); };
     chips.append(b);
   }
-  wrap.append(chips);
+  if (windowOpen) wrap.append(chips);
 
   wrap.append(pickFive(c.closing.players, (id, on) => {
     c.closing.players = on ? [...c.closing.players, id] : c.closing.players.filter(x => x !== id);
+    mine('closersBuilt');
     renderStrategy(); edit('closers');
   }, { title: 'Who closes' }));
   // Said at the picker as well as in the issues list: this is the control that
@@ -298,6 +323,11 @@ function closersEditor(g) {
   // the timeline is already asking for players.
   if (!c.closing.players.length && availIds(g).length) {
     wrap.append(el('p', 'budget-msg', 'Until you pick someone, this plans exactly like Even.'));
+  }
+  if (g.closersBuilt) {
+    wrap.append(el('p', 'pgrp-f', levelsDiffer(ids)
+      ? 'Built for you: your best players close. Change anyone and the group is yours.'
+      : 'Built for you. Change anyone and the group is yours.'));
   }
   return wrap;
 }
@@ -310,18 +340,19 @@ function platoonEditor(g) {
   c.units.forEach((unit, i) => {
     // The header sits on the sheet background above the card (decision 3),
     // so it is `grp`'s sibling, not its child.
-    const hdr = el('div', 'pgrp-h', `Unit ${i + 1}`);
+    const hdr = el('div', 'pgrp-h', `Group ${i + 1}`);
     const grp = el('div', 'pgrp');
     const taken = new Set(c.units.filter((_, j) => j !== i).flat());
     grp.append(pickFive(unit, (id, on) => {
       c.units[i] = on ? [...c.units[i], id] : c.units[i].filter(x => x !== id);
+      mine('unitsBuilt');
       renderStrategy(); edit('units');
     }, { title: 'On the floor', taken }));
     if (c.units.length > 1) {
       // A `.prow` whose whole visible text says which unit it removes --
       // decision 5. `×`-only names read as "times, button" with nothing to
       // say which one it deletes (test/button-names.test.js's original case).
-      const rm = el('button', 'prow prow-center prow-danger', `Remove unit ${i + 1}`);
+      const rm = el('button', 'prow prow-center prow-danger', `Remove group ${i + 1}`);
       rm.type = 'button';
       // #159: acts at once and offers Undo, the same shape as "Remove rule"
       // (rules.js's `removeRuleFlow`).
@@ -333,9 +364,14 @@ function platoonEditor(g) {
 
   const add = el('button', 'prow');
   add.type = 'button';
-  add.append(icon('plus', { size: '1rem', cls: 'prow-icon' }), el('span', 'prow-t', 'Add unit'));
-  add.onclick = () => { c.units.push([]); renderStrategy(); edit('unitCount'); };
+  add.append(icon('plus', { size: '1rem', cls: 'prow-icon' }), el('span', 'prow-t', 'Add group'));
+  add.onclick = () => { c.units.push([]); mine('unitsBuilt'); renderStrategy(); edit('unitCount'); };
   wrap.append(add);
+  if (g.unitsBuilt) {
+    wrap.append(el('p', 'pgrp-f', c.units.length > 1 && levelsDiffer(availIds(g))
+      ? 'Built for you: your stronger players are split so each group has some. Change anyone and the groups are yours.'
+      : 'Built for you in roster order. Change anyone and the groups are yours.'));
+  }
   return wrap;
 }
 
@@ -389,9 +425,9 @@ function orderEditor(g) {
     wrap.append(acts);
   }
   const who = tieBreakIsLevels() ? 'your best players' : 'the kids behind on minutes';
-  const levels = new Set(list.filter(id => !g.out.includes(id)).map(id => tierOfPlayer(byId(id))));
+  const differ = levelsDiffer(list.filter(id => !g.out.includes(id)));
   const built = g.orderMix
-    ? (levels.size > 1
+    ? (differ
       ? 'Built for you: your stronger players are spread out so every five has some. Move anyone and the list is yours.'
       : 'Built for you: everyone is at the same level, so there is nothing to mix. Move anyone and the list is yours.')
     : `Built for you: ${who} get the spots that play the most. Move anyone and the list is yours.`;
@@ -484,7 +520,7 @@ function moveInOrder(id, dir) {
 // returns, or it retires the toast this call just raised (same warning above
 // `showUndo` in rules.js).
 function removeUnitFlow(i) {
-  undoable(`Removed unit ${i + 1}.`,
-    () => { game().constraints.units.splice(i, 1); },
+  undoable(`Removed group ${i + 1}.`,
+    () => { const g = game(); g.constraints.units.splice(i, 1); delete g.unitsBuilt; },
     () => { renderStrategy(); edit('unitCount'); });
 }

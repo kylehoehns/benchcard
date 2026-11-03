@@ -148,6 +148,8 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       await coach.tap('Force Together keeps each pair on the floor at the same time');
       await addRule(coach, 'Starting five', opening);
       await coach.tap('Closers');
+      // #569: Closers comes with five picked; this coach clears them and picks their own
+      for (const p of (await coach.picked())[0]) await coach.tapPicked(0, p);
       for (const p of closers) await coach.tap(p);
       await coach.tap('Close');
       await coach.tap('Start game');

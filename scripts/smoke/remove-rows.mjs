@@ -4,7 +4,7 @@ import { resize } from './page-state.mjs';
 /* #141 (one control each), decision 1 and "What would settle it" item 2:
  * `#removeGame` and `#removeTeam` used to be `btn ghost danger sm`, a
  * different control from the `.prow-danger` row `#playerRemove`, "Remove
- * rule" and "Remove unit N" already were (the ticket's own survey). Neither
+ * rule" and "Remove group N" already were (the ticket's own survey). Neither
  * of those two, nor the class rename itself, has a browser seam anywhere
  * else: `test/one-control-each.test.js` proves the class from source, but
  * "48px tall", "full width" and "reads in `--err`" are computed facts only a

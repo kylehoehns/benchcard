@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, fillGroups, fillClosers, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -165,6 +165,9 @@ export function copySetup(to, from, { rules, plan, format, here }) {
     if (from.orderBuilt) to.orderBuilt = true; else delete to.orderBuilt;
     // #557: how the app builds the list is part of how the game plans, and lives only on a list the app built
     if (from.orderMix && from.orderBuilt) to.orderMix = true; else delete to.orderMix;
+    // #569: the same for the groups and closers the app filled in
+    if (from.unitsBuilt) to.unitsBuilt = true; else delete to.unitsBuilt;
+    if (from.closersBuilt) to.closersBuilt = true; else delete to.closersBuilt;
   }
   if (format) {
     to.periods = from.periods; to.periodMinutes = from.periodMinutes;
@@ -896,6 +899,7 @@ export function addGame(g, date) {
   day.games.push(g);
   reopenSorted(i, day.games, g);
   if (g.strategy === 'order' && !g.order?.length) startingOrder(g, day);
+  fillForStrategy(g);
   return i;
 }
 
@@ -1379,9 +1383,36 @@ export function moveInOrder(g, id, dir) {
    list it is). */
 export function chooseStrategy(g, key) {
   g.strategy = key;
+  fillForStrategy(g);
   if (key !== 'order' || g.order?.length) return;
   const day = team().days.find(d => d.games.some(x => x.id === g.id));
   startingOrder(g, day);
+}
+
+/* #569: Platoon with every group empty gets its groups, and Closers with nobody
+   picked gets its five and the last period as the window, both flagged as the
+   app's (`unitsBuilt`, `closersBuilt`) until the coach changes them. Run when
+   the strategy is picked and when a game is added, and at no other moment. Who
+   closes at one level is whoever is on the floor last in the plan the game has
+   now (the strategy it had before); the engine helpers say the rest. */
+function fillForStrategy(g) {
+  const c = g.constraints;
+  const ids = availIds(g);
+  const tierOf = id => tierOfPlayer(state.players.find(p => p.id === id));
+  if (g.strategy === 'platoon' && !(c.units || []).flat().length) {
+    const groups = fillGroups(ids, tierOf);
+    if (!groups.length) return;
+    c.units = groups;
+    g.unitsBuilt = true;
+  } else if (g.strategy === 'closers' && !c.closing?.players?.length) {
+    const p = planOf(g.id);
+    const last = p?.ok ? p.stints[benchSpan(p.stints) - 1]?.onFloor : null;
+    const players = fillClosers(ids, tierOf, last);
+    if (!players.length) return;
+    const stints = buildStints({ ...gameFormat(g), overtime: [] }, { mode: g.granMode, value: g.granValue });
+    c.closing = { stints: stints.length - lastPeriodStintIndex(stints, g.periods), players };
+    g.closersBuilt = true;
+  }
 }
 
 /* #537 #541: the stints a sit run is counted over -- `benchStints` less
@@ -1848,7 +1879,7 @@ export function blockedFix(issues, rosterSize) {
     if ((rosterSize ?? Infinity) < LINEUP_FLOOR) return { message: err.message, label: 'Add players', opener: 'add' };
     return { message: err.message, label: "Change who's here", opener: 'who' };
   }
-  if (err.code === 'UNITS_MISSING' || err.code === 'UNIT_WRONG_SIZE') return { message: err.message, label: 'Fill a unit', opener: 'strategy' };
+  if (err.code === 'UNITS_MISSING' || err.code === 'UNIT_WRONG_SIZE') return { message: err.message, label: 'Fill a group', opener: 'strategy' };
   if (err.code === 'CLOSERS_TOO_MANY' || err.code === 'CLOSERS_AVOID') return { message: err.message, label: 'Change the rules', opener: 'strategy' };
   return { message: err.message, label: 'Change the rules', opener: 'rules' };
 }

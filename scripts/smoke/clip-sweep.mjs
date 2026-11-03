@@ -116,7 +116,10 @@ export const CLOSERS_STATE = {
          window.__closers521 = { strategy: g.strategy, closing: JSON.parse(JSON.stringify(g.constraints.closing ?? null)) };
          [...document.querySelectorAll('#stratseg button')].find(b => b.dataset.strat === 'closers').click();
          g.constraints.closing.players = [];
+         delete g.closersBuilt;
          (await import('/render.js')).renderAll();
+         // #569: the window's chips wait behind "Change when"
+         [...document.querySelectorAll('#stratbody button')].find(b => b.textContent === 'Change when').click();
          await new Promise(r => setTimeout(r, 300));
          const box = document.getElementById('stratbody');
          if (!box.querySelector('.chips .chip') || !box.querySelector('.pick .plr') || !box.querySelector('.budget-msg')) {

@@ -9,8 +9,8 @@ const { blockedFix, BLOCKED_TITLE } = await import('../app/state.js');
    gets its own branch, each fed through `blockedFix` as the sole issue. */
 const CODES = [
   { code: 'NOT_ENOUGH_PLAYERS', desc: "opens Who's here", label: "Change who's here", opener: 'who' },
-  { code: 'UNITS_MISSING', desc: 'opens the strategy group to Fill a unit', label: 'Fill a unit', opener: 'strategy' },
-  { code: 'UNIT_WRONG_SIZE', desc: 'opens the strategy group to Fill a unit', label: 'Fill a unit', opener: 'strategy' },
+  { code: 'UNITS_MISSING', desc: 'opens the strategy group to Fill a group', label: 'Fill a group', opener: 'strategy' },
+  { code: 'UNIT_WRONG_SIZE', desc: 'opens the strategy group to Fill a group', label: 'Fill a group', opener: 'strategy' },
   { code: 'CLOSERS_TOO_MANY', desc: 'opens the strategy group to Change the rules', label: 'Change the rules', opener: 'strategy' },
   { code: 'CLOSERS_AVOID', desc: 'opens the strategy group to Change the rules', label: 'Change the rules', opener: 'strategy' },
   { code: 'MIN_EXCEEDS_GAME', desc: '(every other error) opens the rules group to Change the rules', label: 'Change the rules', opener: 'rules' },
@@ -29,7 +29,7 @@ for (const { code, desc, label, opener } of CODES) {
 test('blockedFix: the first error wins over a later, differently-mapped one', () => {
   const fix = blockedFix([
     { severity: 'error', code: 'NOT_ENOUGH_PLAYERS', message: 'Only 3 available; 5 are needed on the floor.' },
-    { severity: 'error', code: 'UNITS_MISSING', message: 'Platoon needs at least one unit of 5.' },
+    { severity: 'error', code: 'UNITS_MISSING', message: 'Platoon needs at least one group of 5.' },
   ]);
   assert.equal(fix.label, "Change who's here");
   assert.equal(fix.opener, 'who');
