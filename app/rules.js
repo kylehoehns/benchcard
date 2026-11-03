@@ -16,7 +16,7 @@
  */
 import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
-import { fmtMinutes } from './engine.js';
+import { fmtMinutes, fivesAreSet } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
          ruleItems, runHint, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
@@ -118,6 +118,11 @@ function renderPairsGroup(c) {
   wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximizes their shared floor time and reports it.'));
 }
 
+/* The one sentence each fives-set strategy gives for a switch that does not apply to it. */
+const fivesSetNote = strategy => (strategy === 'platoon'
+  ? 'Not used with fixed units. The fives you set decide who plays.'
+  : 'Not used with a rotation order. The order decides who plays.');
+
 function renderDayGroup(g) {
   const wrap = $('#planDay');
   if (!wrap) return;
@@ -125,15 +130,14 @@ function renderDayGroup(g) {
   wrap.append(el('div', 'pgrp-h', 'Across the day'));
   const box = el('div', 'pgrp');
   const first = state.activeGame === 0;
-  const byOrder = g.strategy === 'order';
-  box.append(switchRow(EVEN_OUT_DAY_LABEL, evensOutDay(g, state.activeGame), first || byOrder, v => {
+  box.append(switchRow(EVEN_OUT_DAY_LABEL, evensOutDay(g, state.activeGame), first || fivesAreSet(g.strategy), v => {
     g.useCarryover = v; renderConstraints(); edit('dayCarryover');
   }));
   wrap.append(box);
   // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
   const when = dayIsToday(state.day) ? 'today' : 'that day';
-  wrap.append(el('p', 'pgrp-f', byOrder
-    ? 'Not used with a rotation order. The order decides who plays.'
+  wrap.append(el('p', 'pgrp-f', fivesAreSet(g.strategy)
+    ? fivesSetNote(g.strategy)
     : first
       ? `This is the first game ${when}, so there's nothing to even out.`
       : `Players who got fewer minutes earlier ${when} get more here.`));
@@ -257,10 +261,8 @@ export function renderSeasonAdjust() {
   const say = t => host.append(el('p', 'pgrp-f', t));
 
   if (a.reason === 'strategy') {
-    return say(g.strategy === 'platoon'
-      ? 'Not used with fixed units. The fives you set decide who plays.'
-      : g.strategy === 'order' ? 'Not used with a rotation order. The order decides who plays.'
-        : 'Not used with hand-set minutes. The sliders above are already your targets.');
+    return say(fivesAreSet(g.strategy) ? fivesSetNote(g.strategy)
+      : 'Not used with hand-set minutes. The sliders above are already your targets.');
   }
   if (a.reason === 'nobody') return say('Nobody is available for this game yet.');
   if (a.reason === 'locked') return say('Every player is locked to a number, so there is nothing to even out.');
