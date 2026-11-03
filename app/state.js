@@ -899,7 +899,7 @@ export function addGame(g, date) {
   day.games.push(g);
   reopenSorted(i, day.games, g);
   if (g.strategy === 'order' && !g.order?.length) startingOrder(g, day);
-  fillForStrategy(g);
+  fillForStrategy(g, false);
   return i;
 }
 
@@ -1394,22 +1394,23 @@ export function chooseStrategy(g, key) {
    app's (`unitsBuilt`, `closersBuilt`) until the coach changes them. Run when
    the strategy is picked and when a game is added, and at no other moment. Who
    closes at one level is whoever is on the floor last in the plan the game has
-   now (the strategy it had before); the engine helpers say the rest. */
-function fillForStrategy(g) {
+   now (the strategy it had before) -- `readPlan` false for a game just added,
+   whose index in the day's plans is another game's; the engine helpers say the rest. */
+function fillForStrategy(g, readPlan = true) {
   const c = g.constraints;
   const ids = availIds(g);
-  const tierOf = id => tierOfPlayer(state.players.find(p => p.id === id));
+  const tierOf = id => tierOfPlayer(byId(id));
   if (g.strategy === 'platoon' && !(c.units || []).flat().length) {
     const groups = fillGroups(ids, tierOf);
     if (!groups.length) return;
     c.units = groups;
     g.unitsBuilt = true;
   } else if (g.strategy === 'closers' && !c.closing?.players?.length) {
-    const p = planOf(g.id);
+    const p = readPlan ? planOf(g.id) : null;
     const last = p?.ok ? p.stints[benchSpan(p.stints) - 1]?.onFloor : null;
     const players = fillClosers(ids, tierOf, last);
     if (!players.length) return;
-    const stints = buildStints({ ...gameFormat(g), overtime: [] }, { mode: g.granMode, value: g.granValue });
+    const stints = buildStints(gameFormat(g), { mode: g.granMode, value: g.granValue });
     c.closing = { stints: stints.length - lastPeriodStintIndex(stints, g.periods), players };
     g.closersBuilt = true;
   }

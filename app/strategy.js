@@ -13,7 +13,7 @@
  * wiring stays in app.js too -- picking a strategy is `edit('strategy')`,
  * not a repaint of this section.
  */
-import { fmtMinutes, deriveShortNames, isOvertimeStint } from './engine.js';
+import { fmtMinutes, deriveShortNames, isOvertimeStint, tiersDiffer } from './engine.js';
 import { gameStarted } from './live.js';
 import { icon } from './icons.js';
 import { $, el, moveButton } from './dom.js';
@@ -270,7 +270,7 @@ export function refreshBudgetActuals() {
 }
 
 /* Whether the kids here are not all at one level: more than one distinct level. Order's line and the two below read it. */
-const levelsDiffer = ids => new Set(ids.map(id => tierOfPlayer(byId(id)))).size > 1;
+const levelsDiffer = ids => tiersDiffer(ids, id => tierOfPlayer(byId(id)));
 
 /* #569: the coach's first change to a list the app filled in makes it theirs. */
 const mine = flag => { delete game()[flag]; };
@@ -280,21 +280,26 @@ const mine = flag => { delete game()[flag]; };
 let windowOpen = false;
 let windowFor = null;
 
+/* One wording for a window of `n` stints: the chip's label and the summary line read it. */
+const windowLabel = (n, shape) => `last ${fmtMinutes(n * shape.avg)} min`;
+
 function closersEditor(g) {
   const c = g.constraints;
   const shape = stintShape(g);
   const ids = availIds(g);
   const wrap = el('div', 'closers');
 
-  if (windowFor !== g.id + g.strategy) { windowFor = g.id + g.strategy; windowOpen = false; }
+  if (windowFor !== g.id) { windowFor = g.id; windowOpen = false; }
   const shown = Math.min(c.closing.stints, shape.count);
   if (!windowOpen) {
+    // The line sits under the card, not in it: `.pgrp-f`'s inset is built for under a card, where it
+    // lines up with the row's own text.
     const when = el('button', 'prow', 'Change when');
     when.type = 'button';
-    when.onclick = () => { windowOpen = true; renderStrategy(); };
+    when.onclick = () => { windowOpen = true; renderStrategy(); ($('#stratbody .chip.sel') || $('#stratbody .chip'))?.focus({ preventScroll: true }); };
     const grp = el('div', 'pgrp');
-    grp.append(el('p', 'pgrp-f', `The closing group plays the last ${fmtMinutes(shown * shape.avg)} min.`), when);
-    wrap.append(grp);
+    grp.append(when);
+    wrap.append(grp, el('p', 'pgrp-f', `The closing group plays the ${windowLabel(shown, shape)}.`));
   }
 
   const hd = el('div', 'pickhd');
@@ -303,8 +308,8 @@ function closersEditor(g) {
 
   const chips = el('div', 'chips');
   for (let n = 1; n <= Math.min(6, shape.count); n++) {
-    const on = Math.min(c.closing.stints, shape.count) === n;
-    const b = el('button', 'chip press' + (on ? ' sel' : ''), `last ${fmtMinutes(n * shape.avg)} min`);
+    const on = shown === n;
+    const b = el('button', 'chip press' + (on ? ' sel' : ''), windowLabel(n, shape));
     b.type = 'button';
     b.setAttribute('aria-pressed', String(on));
     b.onclick = () => { c.closing.stints = n; renderStrategy(); edit('closers'); };
@@ -368,7 +373,7 @@ function platoonEditor(g) {
   add.onclick = () => { c.units.push([]); mine('unitsBuilt'); renderStrategy(); edit('unitCount'); };
   wrap.append(add);
   if (g.unitsBuilt) {
-    wrap.append(el('p', 'pgrp-f', c.units.length > 1 && levelsDiffer(availIds(g))
+    wrap.append(el('p', 'pgrp-f', c.units.length > 1 && levelsDiffer(c.units.flat())
       ? 'Built for you: your stronger players are split so each group has some. Change anyone and the groups are yours.'
       : 'Built for you in roster order. Change anyone and the groups are yours.'));
   }

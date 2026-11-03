@@ -6,8 +6,12 @@
   each row says what it will really play. Once a game is underway, a kid who
   arrives or leaves re-plans the rest around their hand number less the minutes
   they have played (#489; see [design decisions](../design-decisions.md)).
-- **Closers** -- even minutes early, a group you pick finishes the game.
-- **Platoon** -- fixed fives alternating wholesale, no optimization.
+- **Closers** -- even minutes early, a group you pick finishes the game. Picking
+  Closers fills in five closers for the last period, and the coach can change
+  anyone ([design decisions](../design-decisions-filled-in.md), #569).
+- **Platoon** -- fixed fives alternating wholesale, no optimization. Picking
+  Platoon fills in groups of five from the kids here, and the coach can change
+  anyone ([design decisions](../design-decisions-filled-in.md), #569).
 - **Order** -- the five on the floor is taken from a list of the players
   in turn, so the next players are always known. Until the game starts the app
   builds the list from the Extra minutes go to setting and the rules, or, when the coach
@@ -59,7 +63,7 @@ second can differ:
   default each time the sheet opens, and the choice the one-tap Add overtime
   makes (#564).
 - **Even out** -- planned as Even whatever the game's strategy. The closing
-  group and the units do not apply in that overtime.
+  group and the groups do not apply in that overtime.
 - **Keep this five** -- the five on the floor on the last regulation stint,
   hand swaps included.
 - **Strongest five** -- the five highest-Level players still playing (at the
@@ -94,8 +98,8 @@ The game's own strategy, for Next rotation:
 - **Even** -- the player with the fewest minutes after regulation is on the
   floor first.
 - **Closers** -- the closing group is on the floor for the last overtime stint.
-- **Platoon** -- the unit order carries on. The first overtime stint sends out
-  the next unit, counted by the stint's place in the whole game.
+- **Platoon** -- the group order carries on. The first overtime stint sends out
+  the next group, counted by the stint's place in the whole game.
 - **Order** -- the cycle carries on into the overtime stints, from
   where regulation stopped.
 - **By hand** -- overtime is planned as Even around the minutes played. The

@@ -2873,7 +2873,7 @@ export const SIT_REFUSALS = {
 };
 
 /* Whether the kids are not all at one level. */
-const tiersDiffer = (ids, tierOf) => new Set(ids.map(tierOf)).size > 1;
+export const tiersDiffer = (ids, tierOf) => new Set(ids.map(tierOf)).size > 1;
 
 /* #569: Platoon's groups, filled for a coach who has picked nobody. Who is placed
    never depends on level: the first 5 x floor(n / 5) kids in roster order, the

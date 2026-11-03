@@ -365,7 +365,7 @@ text left open, and a future reader needs them to read the plan.
   A **hand-set target and a lock are untouchable by construction**: it writes a
   target only where there is not one already, so the By hand strategy gets
   nothing (those sliders *are* the coach's targets), Platoon gets nothing (the
-  units are exact), and a locked row is left out of the pinned set entirely
+  groups are exact), and a locked row is left out of the pinned set entirely
   rather than handed a target — a target would pin it at 1000/min, and a
   suggestion must not be promoted to a promise on its way past one.
   A single game corrects by **at most two stints either way** — the same clamp
@@ -664,7 +664,7 @@ text left open, and a future reader needs them to read the plan.
   offers the second lever only when lifting it would help. That governance is
   why `maxSubs` was exposed to the coach before this shipped, and it is what
   keeps `SUBS_EXCEEDED` at exactly its 11.3% baseline across the same 160
-  scenarios. Platoon is exempt for the `SUBS_EXCEEDED` reason: the units and
+  scenarios. Platoon is exempt for the `SUBS_EXCEEDED` reason: the groups and
   their order are the coach's.
 - **Fairness is scored against water-filled per-player targets**, not raw max-minus-min. A capped player otherwise anchors the minimum and blinds the optimizer to real imbalance among everyone else. `spreadUnconstrained` is the number that actually tells you if the rotation is fair.
 - **Local search needs more than one move type.** A single in-for-out swap shifts both players' minute totals, so once minutes are even it can never improve pairing or sit patterns without breaking balance. The minute-neutral exchange move (trade two players' places across two stints) is what makes pair constraints reachable. A hard pair needs a third, the paired move, because one swap cannot seat or bench both players at once: it moves the two as one.
@@ -737,6 +737,6 @@ text left open, and a future reader needs them to read the plan.
   (`run_worker_first`) so the redirect sees www before the asset layer does. The
   price is a Worker invocation per request; `docs/operations.md` § Deployment
   has the rest.
-- **Rotation order is its own strategy (#545).** The list is taken in turn,
-  with no search on the plan. The app builds the list until the game starts
-  (#547). [Rotation order, in full](design-decisions-rotation-order.md).
+- **Rotation order is its own strategy (#545)**, with no search on the
+  plan: [in full](design-decisions-rotation-order.md). **Platoon and Closers
+  start filled in (#569)**: [in full](design-decisions-filled-in.md).

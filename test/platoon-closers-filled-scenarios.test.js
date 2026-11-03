@@ -107,4 +107,79 @@ describe('Platoon and Closers start filled in', { skip }, () => {
     assert.ok((await coach.controls()).includes('Fill a group'));
     assert.ok(lacks(await coach.text('body'), /\bunits?\b/i));
   });
+  test('8. Platoon judged over the kids placed: only the kids left out differ in level, so the line says roster order', async () => {
+    const twelve = [...NAMES, 'Jules', 'Kit'];
+    await coach.onGameDayWithRoster(twelve, { periods: 4, periodMinutes: 8, granValue: 4, out: [], strategy: 'balanced', tiers: { p10: 1, p11: 1 } });
+    await openPlan();
+    await coach.tap('Platoon');
+    assert.deepEqual(await coach.picked(), [FIRST, NEXT]);
+    assert.match(await coach.text('#stratbody'), /Built for you in roster order\./);
+    assert.ok(lacks(await coach.text('#stratbody'), /stronger players are split/));
+  });
+
+  test('9. Closers with the game already at overtime: the window runs from the last period through the overtime', async () => {
+    await onEven({ overtime: [4] });
+    await coach.tap('Closers');
+    assert.match(await coach.text('#stratbody'), /The closing group plays the last 12 min\./);
+  });
+
+  test('10. tapping Change when keeps focus on the window, on the chosen chip', async () => {
+    await onEven();
+    await coach.tap('Closers');
+    await coach.tap('Change when');
+    assert.equal(await coach.focused(), 'last 8 min');
+  });
+
+  /* Add a game, copying a game that is on the strategy with nobody set. */
+  async function addGameLike(tip) {
+    await coach.tap('Add a game');
+    await coach.fill('Opponent', 'Owls');
+    if (tip) await coach.setTime('Tip-off', tip);
+    await coach.tap((await coach.controls()).find(n => n.startsWith('Same as')));
+  }
+  const planPhrase = async () => (await coach.controls()).find(n => /^Plan, /.test(n));
+  const GAME = { periods: 4, periodMinutes: 8, granValue: 4, out: [] };
+
+  test('11. Add a game on Platoon with no groups: the new game starts with them filled and says so', async () => {
+    await coach.onGameDayWithRoster(NAMES, { ...GAME, strategy: 'platoon' });
+    await addGameLike();
+    await coach.tap(await planPhrase());
+    assert.deepEqual(await coach.picked(), [FIRST, NEXT]);
+    assert.match(await coach.text('#stratbody'), /Built for you in roster order\./);
+  });
+
+  test('12. Add a game on Closers with nobody picked: the first five in roster order, the last period, and the line', async () => {
+    await coach.onGameDayWithRoster(NAMES, { ...GAME, strategy: 'closers', rules: { closing: { stints: 1, players: [] } } });
+    await addGameLike();
+    await coach.tap(await planPhrase());
+    assert.deepEqual((await coach.picked())[0], FIRST);
+    assert.match(await coach.text('#stratbody'), /The closing group plays the last 8 min\./);
+    assert.match(await coach.text('#stratbody'), /Built for you\. Change anyone and the group is yours\./);
+  });
+
+  test('13. Add a game on Closers that tips off before a planned game closes with the first five, not the other game\'s plan', async () => {
+    await coach.onGameDayWithRoster(NAMES, { ...GAME, strategy: 'closers', rules: { closing: { stints: 1, players: [] } } });
+    await addGameLike('8:00 AM');
+    await coach.tap(await planPhrase());
+    assert.deepEqual((await coach.picked())[0], FIRST);
+  });
+
+  test('14. Remove group says so, clears the Built for you line, and Add group does the same', async () => {
+    await onEven();
+    await coach.tap('Platoon');
+    await coach.tap('Remove group 2');
+    assert.equal(await coach.toast(), 'Removed group 2.');
+    assert.ok(lacks(await coach.text('#stratbody'), /Built for you/));
+    await coach.tap('Undo');
+    await coach.tap('Platoon');
+    await coach.tap('Add group');
+    assert.ok(lacks(await coach.text('#stratbody'), /Built for you/));
+  });
+
+  test('15. changing who closes clears the Built for you line', async () => {
+    await onEven();
+    await coach.tap('Closers');
+    await coach.tapPicked(0, 'Avery');
+    assert.ok(lacks(await coach.text('#stratbody'), /Built for you/));
+  });
 });

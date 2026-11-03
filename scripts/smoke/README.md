@@ -95,7 +95,7 @@ not counted: only the `.js` files `app/` serves are.
 | `sentence and sheets` | `scripts/smoke/sentence-sheets.mjs` | RICH |
 | `plan sheet` | `scripts/smoke/plan-sheet.mjs` | RICH |
 | `edit a rule in place` | `scripts/smoke/rule-edit.mjs` | RICH |
-| `remove a platoon unit, then Undo` | `scripts/smoke/platoon-undo.mjs` | RICH |
+| `remove a platoon group, then Undo` | `scripts/smoke/platoon-undo.mjs` | RICH |
 | `sheet spacing` | `scripts/smoke/sheet-spacing.mjs` | RICH |
 | `the list sheets share one background, one row, one check` | `scripts/smoke/sheet-family.mjs` | RICH |
 | `game screen: Timeline \| Card and the card sheet` | `scripts/smoke/timeline-card-sheet.mjs` | RICH |

@@ -60,7 +60,7 @@ coach empties a group. Nobody reads "Unit" anywhere.
    not say strong-vs-weak or mixed; mixed is the one that does not hand the
    lowest levels the bench.
 2. **Number of groups is `floor(n / 5)`** for n kids here: 1 group for 5–9,
-   2 for 10–14, 3 for 15+. The issue says "Group 1 and Group 2"; with 15 here
+   2 for 10–14, 3 for 15–19, and so on. The issue says "Group 1 and Group 2"; with 15 here
    a third full group keeps five kids from "will not play". Fewer than 5 here:
    nothing is filled (the plan already says there are not enough players).
 3. **Closers pre-fill:** levels differ → the five highest levels here,
@@ -70,8 +70,10 @@ coach empties a group. Nobody reads "Unit" anywhere.
    planned, or a blocked plan) → the first five here in roster order. Fewer
    than 5 here → nothing is filled.
 4. **Closers window:** when the closers are filled for the coach, the window
-   becomes the stints of the last regulation period (4 × 8 subbing every 4:
-   2 stints, "last 8 min"). A window the coach already chose with no closers
+   becomes the stints from the start of the last regulation period through the
+   end of the game, overtime included when the game already has it (4 × 8
+   subbing every 4: 2 stints, "last 8 min"; with a 4-minute overtime, 3 stints,
+   "last 12 min"). A window the coach already chose with no closers
    picked is replaced at the same time; nothing else about the window
    changes.
 5. **When it fills:** on picking Platoon (or adding a game on Platoon) when
@@ -96,11 +98,19 @@ coach empties a group. Nobody reads "Unit" anywhere.
      anyone and the group is yours."
    - Closers otherwise: "Built for you. Change anyone and the group is
      yours."
-   "Levels differ" is read at paint time over the kids here, as Order does.
+   "Levels differ" is read at paint time over the kids the fill used, the same
+   kids and the same rule as the fill: Platoon, the kids placed in the groups
+   (`c.units.flat()`, so kids left out do not count); Closers, the kids here.
+   Order's line reads it over its own list.
 8. **"Change when":** the Closers editor shows the window as one line, "The
    closing group plays the last N min.", then a `Change when` button. Tapping
-   it shows the chips (unchanged). It stays open for the rest of the visit
-   (a module flag in `strategy.js`, reset when the strategy changes).
+   it shows the chips (unchanged) and puts focus on the selected chip. It
+   stays open for the rest of the visit (a module flag in `strategy.js`, reset
+   when the game changes). The line sits under the card that holds the
+   `Change when` row, as a gray `.pgrp-f` line like the others (guidelines C6,
+   W3), so it reads as a normal line at 320px with 32px text and its text
+   starts where the row's text does. The line and the selected chip's label
+   come from one wording helper.
 9. **Group wording** (all coach copy):
    - `UNITS_MISSING`: "Platoon needs at least one group of 5. Pick the
      players for Group 1."

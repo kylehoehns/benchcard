@@ -452,7 +452,7 @@ width, and the smoke check `today and game controls ≥ 48px` sweeps them.
 
 **Destructive actions are undoable, not confirmed.** Removing a player,
 removing a game, starting a new day, clearing in-game changes, editing a game
-while it is underway, editing or removing a rule, removing a unit from the Platoon editor, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
+while it is underway, editing or removing a rule, removing a group from the Platoon editor, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
 at the wrong moment — before the coach can see what it did, and a game removal
 is only judgeable once the rest of the day has rebalanced. When a game is
 part-played, edits split into two paths (#134, #247):
@@ -546,10 +546,10 @@ Mobile specifics that came out of real use:
   Plan sheet opens at full height, so `timelineEmpty` reads the plan's issues:
   a rules-caused error (`RULE_ERRORS` — minimums, caps, pair/avoid conflicts,
   pinned fives) adds **Fix the rules** (opens the Plan sheet at the Rules group),
-  Platoon without a unit adds **Fill a unit** (opens it at the top), and an empty
+  Platoon without a group adds **Fill a group** (opens it at the top), and an empty
   roster gets the roster CTA. Both buttons go through `jumpToEditor()`, which
   opens the sheet before scrolling. Errors fixed elsewhere (not enough players,
-  closers, unit sizes) get no button, because their control is already on screen.
+  closers, group sizes) get no button, because their control is already on screen.
 - **The Sub interval is a list of rows, not a `<select>`.** A long list of
   options in a native picker fills a phone screen for a one-tap decision. One
   builder draws that list (`paintGranRows` in `game-setup.js`), for the game
