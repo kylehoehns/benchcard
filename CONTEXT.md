@@ -324,6 +324,15 @@ _In code_: `color`, `--tint`
 
 ## Across the day and season
 
+**Make up minutes from**:
+The one per-game choice of what a game evens out against: this game only,
+earlier today (**Evening out the day**) or the season so far (**Evening out
+the season**, and the day as well when the season moves nobody). Only Even and
+Closers use it. A new game takes the season so far when that was the team's
+last choice, else earlier today from a day's second game on.
+_Avoid_: even-out switches, carryover setting
+_In code_: `makeUpOf`, `setMakeUp`, `settings.makeUp`
+
 **Evening out the day**:
 Planning a later game against the minutes in the day's earlier games, so a
 player who played less earlier plays more now. Once a game has started, its
@@ -352,7 +361,7 @@ _In code_: `seasonShare`
 **Evening out the season**:
 Planning a game so players who are behind on the season play more.
 _Avoid_: season carryover, season targets
-_In code_: `useSeasonTargets`, `seasonDefault`
+_In code_: `useSeasonTargets`
 
 ## The card
 

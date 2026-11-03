@@ -110,7 +110,7 @@ describe('overtime minutes after the game', { skip }, () => {
 
     await coach.tap('Ravens, 11:30 AM, planned');
     await coach.tap('Plan, even minutes');
-    await coach.tap('Even out earlier games');
+    await coach.tap('Earlier today');
     await coach.tap('Close');
 
     const ravens = await coach.planMinutes();

@@ -27,7 +27,7 @@ import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
-         initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame,
+         initials, STRATEGIES, setMakeUp, newGameMakeUp, openGame, dayHeading, addGame, removeGame,
          hasGames, bestPlayersOffered } from './state.js';
 import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
@@ -46,9 +46,6 @@ import { openGameMode } from './gamemode.js';
 // #146 item 6: "Add a team" opens first run's own flow (no cycle --
 // onboarding.js does not import teams-view.js; see the note above `addTeam`).
 import { openAddTeam, showWelcomeDemo } from './onboarding.js';
-// One switch builder for the whole app (#32): the Plan sheet's "Even out
-// earlier games" row and step 3's are the same control.
-import { switchRow } from './rules.js';
 import { DEFAULT_SETTINGS, colorName, seasonDate, sanitizeSettings } from './storage.js';
 // The one close path and the one "ask before discarding" hook, shared with
 // every bottom sheet (#32 uses them from a full-screen dialog).
@@ -176,22 +173,6 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
     const s = team()?.settings;
     if (!b || !s || b.dataset.tie === s.tieBreak) return;
     s.tieBreak = b.dataset.tie;
-    edit('teamSetting');
-  });
-
-  /* The carryover default. Same delegated shape again, and `edit('teamSetting')`
-     for the same reason -- but NOT for the same effect: nothing already planned moves,
-     because `newGame` is the only reader and it has already run for every game
-     in the day. Every plan signature is unchanged, so the solve is a cache hit
-     and the render is really just the seg repainting itself and the record
-     being saved. */
-  on('#seasonDefSeg', 'onclick', (e) => {
-    const b = e.target.closest('button[data-sdef]');
-    const s = team()?.settings;
-    if (!b || !s) return;
-    const v = b.dataset.sdef === '1';
-    if (v === s.seasonDefault) return;
-    s.seasonDefault = v;
     edit('teamSetting');
   });
 
@@ -432,16 +413,6 @@ export function renderSettings() {
 
   paintFineTune();
   paintLeagueMin();
-
-  // the carryover default, marked exactly like the stance above it
-  const sd = $('#seasonDefSeg');
-  if (!sd) return;
-  const on = (team()?.settings?.seasonDefault ?? DEFAULT_SETTINGS.seasonDefault) === true;
-  for (const b of sd.querySelectorAll('button[data-sdef]')) {
-    const is = (b.dataset.sdef === '1') === on;
-    b.classList.toggle('on', is);
-    b.setAttribute('aria-pressed', String(is));
-  }
 
   /* #25: the row's read-back and the picker's current mark. `#teamColorSwatch`
      needs no write here -- it carries no `data-tint` of its own, so it reads
@@ -786,8 +757,10 @@ function freshDraft() {
   return d;
 }
 
-// Carryover is on only when the date already has a day (step 1's Date field).
-const carriesOver = date => team().days.some(d => d.date === date);
+/* How the draft makes up minutes, by the new-game rule (state.js): a date that
+   already has a day is a later game, one that would start a day is a first. */
+const startMakeUp = (g, date) =>
+  setMakeUp(g, newGameMakeUp(team().days.find(d => d.date === date)?.games.length ?? 0, state.settings));
 
 /* I1: resume rather than restart when `draft` survived the last close. It
    survives by default -- it is module state, and the close Chrome will not
@@ -844,11 +817,10 @@ function paintFlow() {
 function stepWho(wrap) {
   // #101 item 2: the Date field, above Opponent and Tip-off -- `min` is
   // today (`seasonDate`, never a second formatter), and changing it
-  // re-derives `useCarryover` the same way `newGame`'s own `n > 0` rule
-  // does: on, only when the target date already has a day (so already has
-  // a game), off for a date that would start a new day.
+  // re-derives how the game makes up minutes (#563) by `newGame`'s own rule,
+  // from the games the target date already has.
   const [dateField, dateInput] = flowField('input', 'Date', draft.date, null,
-    v => { draft.date = v; draft.useCarryover = carriesOver(v); }, 'date');
+    v => { draft.date = v; startMakeUp(draft, v); }, 'date');
   dateInput.min = seasonDate();
   const [opponent] = flowField('input', 'Opponent', draft.label, 'Panthers',
     v => { draft.label = v; });
@@ -868,7 +840,8 @@ function stepWho(wrap) {
   // dropped; what step 1 shows beside it (date, opponent, tip-off) is kept.
   card.onclick = () => {
     const { date, label, tipoff } = draft;
-    draft = Object.assign(freshDraft(), { date, label, tipoff, useCarryover: carriesOver(date) });
+    draft = Object.assign(freshDraft(), { date, label, tipoff });
+    startMakeUp(draft, date);
     commitFlow();
   };
   // Two flex children, so "Use it" sits beside the text (app.css).
@@ -975,17 +948,6 @@ function stepSplit(wrap, q) {
     group.append(b);
   }
   wrap.append(group);
-  /* The Plan sheet's own switch builder (rules.js), not a second one: this is
-     the same control, bound to the same field of the same game. #145 item 6:
-     in its own `.pgrp` (Reuse -- the group Team and Season already use, not
-     a second one), the way `stepGranularity` (onboarding.js) already wraps
-     its own steppers -- `.prow`'s `width: 100%` needs a container that is
-     itself already inset, or it overflows the one item 1 gives every direct
-     child of this wrapper. */
-  const pgrp = el('div', 'pgrp');
-  pgrp.append(switchRow(EVEN_OUT_DAY_LABEL, draft.useCarryover, false,
-    (v) => { draft.useCarryover = v; }));
-  wrap.append(pgrp);
 }
 
 function flowNext() {

@@ -192,10 +192,3 @@ test('exactly one module in app/ builds an input[switch]', () => {
     `${builders.length} module(s) build a switch (${builders.join(', ') || 'none'}); `
     + 'there must be exactly one, rules.js, and every other caller imports switchRow from it');
 });
-
-test('teams-view.js takes the switch from rules.js rather than rolling its own', () => {
-  const src = stripComments(readFileSync(new URL('teams-view.js', APP), 'utf8'));
-  assert.ok(src.length > 1000, 'read no teams-view.js source; this guard is measuring nothing');
-  assert.match(src, /import\s*\{[^}]*\bswitchRow\b[^}]*\}\s*from\s*'\.\/rules\.js'/,
-    "teams-view.js does not import switchRow from './rules.js'");
-});

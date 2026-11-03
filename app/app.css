@@ -3242,12 +3242,6 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    -- reuse the fix rather than a new row type. */
 #view-settings .pgrp .prow { flex-wrap: wrap; }
 #view-settings .pgrp .prow-t { flex-basis: auto; }
-/* "Fair on its own" / "Evening out the season" are longer than the other
-   .seg.wide rows' own labels. Equal halves left "Evening out the season"
-   3px to spare at 390px on macOS, and CI's wider Linux fonts wrapped it.
-   Sizing each button to its label (flex: 1 1 auto, spare room shared
-   evenly) gives the long one about 26px to spare instead. */
-#seasonDefSeg button { flex: 1 1 auto; }
 /* #567: "Kids behind on minutes" is longer than "Best players"; each button is sized to its label so neither wraps. */
 #tieBreakSeg button { flex: 1 1 auto; }
 /* Two kids wearing one number: mark the number, quietly. The row is not

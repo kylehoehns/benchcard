@@ -363,50 +363,43 @@ test('the per-player boundary warning is collapsed, because the league floor set
     'renderIssues must collapse the fan-out the league floor creates');
 });
 
-/* ---------------- the carryover default (slice 4) ----------------
+/* ---------------- the team's last make-up choice (#563) ----------------
    It is the first setting that is not a solver input: `newGame` is the only
    thing that reads it, at the moment a game is created. So the tests are
    about creation and about what it must NOT touch, not about minutes. */
 
 test('a new game opens on its own by default, which is what every older record means', () => {
   const t = setup();
-  assert.equal(t.settings.seasonDefault, false, 'absent means off');
+  assert.equal(t.settings.makeUp, 'day', 'absent means earlier today from a second game on');
+  assert.equal(S.newGame(0, null, t.settings).useSeasonTargets, false);
   assert.equal(S.newGame(1, t.days[0].games[0], t.settings).useSeasonTargets, false);
   assert.equal(S.newGame(1, t.days[0].games[0]).useSeasonTargets, false,
-    'no settings block at all is still off');
+    'no settings block at all is still not the season');
 });
 
-test('with the default on, a new game opens already evening out the season', () => {
+test('with the season so far as the last choice, a new game opens already on it', () => {
   const t = setup();
-  t.settings.seasonDefault = true;
+  t.settings.makeUp = 'season';
   assert.equal(S.newGame(1, t.days[0].games[0], t.settings).useSeasonTargets, true);
 });
 
-test('the default never reaches back into a game that already exists', () => {
+test('the last choice never reaches back into a game that already exists', () => {
   const t = setup();
   const g = t.days[0].games[0];
   assert.equal(g.useSeasonTargets, false);
-  t.settings.seasonDefault = true;
+  t.settings.makeUp = 'season';
   S.computeAll();
   assert.equal(g.useSeasonTargets, false,
     'a default is read at creation; a coach must not find this week’s plan rearranged');
 });
 
-test('flipping the default does not re-solve, because no card can move', () => {
+test('changing the last choice does not re-solve, because no card can move', () => {
   const t = setup();
   const before = JSON.stringify(S.plans[0].stints);
-  t.settings.seasonDefault = true;
+  t.settings.makeUp = 'season';
   S.computeAll();
   assert.equal(JSON.stringify(S.plans[0].stints), before,
-    'it must stay out of the plan signature: the per-game switch is already in it');
-});
-
-test('a junk carryover default is off rather than a stance the coach never took', () => {
-  const at = raw => sanitizeSettings(raw).seasonDefault;
-  assert.equal(at({ seasonDefault: true }), true);
-  for (const junk of [undefined, null, 1, 'true', 'yes', {}, []]) {
-    assert.equal(at({ seasonDefault: junk }), false, String(junk));
-  }
+    'it must stay out of the plan signature: the per-game flags are already in it');
 });
 
 /* ---------------- the game format default (slice 4) ----------------

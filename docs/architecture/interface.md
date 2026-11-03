@@ -29,7 +29,7 @@ are you playing?* (opponent and tip-off), *Who's here?* (one tile per roster
 player, three across, carrying the last game's answer, where tapping a tile
 toggles that player to Out against a running count), and *How should minutes
 split?* (the four strategies with the one-line descriptions `STRATEGIES` holds,
-over the *Even out earlier games* switch `rules.js` builds for the Plan sheet).
+with no switch: the Plan sheet owns *Make up minutes from*, #563).
 It is still one tap when nothing differs: step 1 carries a *Same as 9:00?* card
 whose summary line comes from `setupSummary` in `state.js`, which joins the
 same `sentenceParts` pieces a game pass reads. The card is the whole button —
@@ -173,9 +173,9 @@ and a dark value — and the `--tint*` tokens live in `tokens.css` alongside the
 `--accent` neutrals (#21).
 
 The second group holds the game format (**A game is**: periods and minutes
-per period) and **A new game starts**: whether each new game opens with the
-"Even out the season so far" switch on. Its footnote says these shape what a
-new game starts as, and that any game can be changed from its own screen.
+per period). The team default for *Make up minutes from* is not asked here
+(#563): a new game takes it from the last pick. The footnote says these
+shape what a new game starts as, and that any game can be changed from its own screen.
 Changing **A game is** also changes the open day's games that have not started.
 
 The third group holds **Players changing at once** (1–5, default 3, `maxSubs`),
@@ -448,7 +448,7 @@ in `state.js` does the copy, and the commit is one undoable edit (`copySetup`
 in `EDITS`). Opponent, tip-off, date, lineup balance and the carryover and
 overtime settings are never copied. `rules.js` builds the page.
 
-**The Plan sheet hides the switches a strategy ignores (#562).** Lineup balance is hidden under Platoon and Order (`renderBalance`, `balance.js`). Across the day is hidden under Platoon and Order (`renderDayGroup`, `rules.js`). Across the season is hidden under By hand, Platoon and Order as well as before any game is filed (`renderSeasonGroup`). Hidden, not disabled: hiding writes nothing, so a saved value comes back when the strategy changes. Under the strategy segment, `#stratskip` (painted by `paintSkipLine` in `strategy.js`) names the team settings the strategy skips, with a league-minimum clause when one is set. Its wording lives in `SKIPS` in `strategy.js`. Platoon and Order are read through `fivesAreSet` in `engine.js`, the same test the engine uses.
+**The Plan sheet hides the switches a strategy ignores (#562).** Lineup balance is hidden under Platoon and Order (`renderBalance`, `balance.js`). *Make up minutes from* is hidden under By hand, Platoon and Order, and when fewer than two choices are offered (`renderMakeUpGroup`, `rules.js`, #563). Hidden, not disabled: hiding writes nothing, so a saved value comes back when the strategy changes. Under the strategy segment, `#stratskip` (painted by `paintSkipLine` in `strategy.js`) names the team settings the strategy skips, with a league-minimum clause when one is set. Its wording lives in `SKIPS` in `strategy.js`. Platoon and Order are read through `fivesAreSet` in `engine.js`, the same test the engine uses.
 
 Touch minimums (48px) are gated `@media (pointer: coarse), screen and
 (max-width: 620px)`. The pointer half alone was a trap: it never fires in a

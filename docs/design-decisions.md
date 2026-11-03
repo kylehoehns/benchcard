@@ -358,10 +358,10 @@ text left open, and a future reader needs them to read the plan.
   time, paid for by the kids who turned up; attendance is not a debt. What the
   weighting leaves is the unfairness the app itself creates: the remainder
   minutes stint arithmetic has to drop on somebody, week after week.
-  It is **off by default, per game, and not inherited by a new game** — a coach
-  who has never finished a game never sees the switch at all. Nothing is
-  written to the record but the one boolean: the targets are re-derived on
-  every `computeAll`, so turning it off restores the previous plan exactly.
+  It is a choice on the **Make up minutes from** row
+  ([#563](design-decisions-make-up.md)), offered once a game is filed. Only the
+  flags are stored: targets are re-derived on every `computeAll`, so turning it
+  off restores the previous plan exactly.
   A **hand-set target and a lock are untouchable by construction**: it writes a
   target only where there is not one already, so the By hand strategy gets
   nothing (those sliders *are* the coach's targets), Platoon gets nothing (the

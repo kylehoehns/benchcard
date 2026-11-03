@@ -52,8 +52,8 @@ export async function sentenceSheetsPass(c, origin, rec) {
      Driven the way the ticket itself says to prove it: "turn Ravens'
      useCarryover on, open Ravens". The switch is real (rules.js, only once
      `state.activeGame > 0`), reached through Today -> the second game
-     pass -> the rules phrase, which now opens `#sheetPlan`'s "Across the
-     day" group (#28) rather than the retired `#consdetails` fold -- no
+     pass -> the rules phrase, which now opens `#sheetPlan`'s "Make up
+     minutes from" group (#28) rather than the retired `#consdetails` fold -- no
      direct state write. */
   await evalIn(c, step(`document.getElementById('backBtn').click()`));
   await settle(c);
@@ -61,7 +61,7 @@ export async function sentenceSheetsPass(c, origin, rec) {
   await settle(c);
   await evalIn(c, step(`document.getElementById('phraseRules').click()`));
   await settle(c);
-  await evalIn(c, step(`document.querySelector('#planDay input[switch]').click()`));
+  await evalIn(c, step(`[...document.querySelectorAll('#planDay .pgrp .prow')].find(b => b.querySelector('.prow-t').textContent === 'Earlier today').click()`));
   await settle(c);
   const s2 = await evalJSON(c, `(() => {
     const line = document.getElementById('sentenceEvens');
@@ -76,8 +76,8 @@ export async function sentenceSheetsPass(c, origin, rec) {
   const wantS2 = await evensOutWant(c, '09:00');
   rec.check(s2.text === wantS2, `the second line reads "${s2.text}", want "${wantS2}"`);
   // back to Hawks, useCarryover off, for every section below -- same
-  // switch, same path, then back to Hawks through Today.
-  await evalIn(c, step(`document.querySelector('#planDay input[switch]').click()`));
+  // row, same path, then back to Hawks through Today.
+  await evalIn(c, step(`[...document.querySelectorAll('#planDay .pgrp .prow')].find(b => b.querySelector('.prow-t').textContent === 'This game only').click()`));
   await settle(c);
   await evalIn(c, step(`document.getElementById('sheetPlanClose').click()`));
   await settle(c);

@@ -1,6 +1,7 @@
-/* Five labels that went stale (#420): the Plan sheet's status line, the team
- * name after a rename, the player count after Finish game, By hand's "as
- * they are" line, and "today" on a game that is not today. Driven through
+/* Four labels that went stale (#420): the Plan sheet's status line, the team
+ * name after a rename, the player count after Finish game and By hand's "as
+ * they are" line. ("today" on a game that is not today is now the Make up
+ * minutes from row, in make-up-scenarios.test.js.) Driven through
  * test/coach.js on RICH's game day (Hawks 9:00 AM, 11 players, the clock
  * pinned to Sat, Sep 12, 2026). Skipped where there is no Chrome. */
 
@@ -145,29 +146,5 @@ describe('labels that were stale (#420)', { skip }, () => {
 
     assert.match(await coach.text('.srow:nth-of-type(2) .act'), /^plays 8$/, 'no row says what it plays');
     assert.equal(await coach.text('#budgetMsg'), CHANGED);
-  });
-
-  test('Across the day says "today" on a day dated today and "that day" on a day a week ahead', async () => {
-    const note = () => coach.text('#planDay .pgrp-f');
-    await coach.onGameDay();
-    await coach.tap('Hawks, 9:00 AM, planned');
-    await coach.tap('Rules, no rules');
-    assert.equal(await note(), "This is the first game today, so there's nothing to even out.");
-    await coach.tap('Close');
-    await coach.tap('Back to Smoke Test');
-    await coach.tap('Ravens, 11:30 AM, planned');
-    await coach.tap('Rules, no rules');
-    assert.equal(await note(), 'Players who got fewer minutes earlier today get more here.');
-
-    await coach.comeBackAt({ y: 2026, m: 9, d: 5, h: 12 });
-    await coach.tap('Back to Smoke Test');
-    await coach.tap('Hawks, 9:00 AM, planned');
-    await coach.tap('Rules, no rules');
-    assert.equal(await note(), "This is the first game that day, so there's nothing to even out.");
-    await coach.tap('Close');
-    await coach.tap('Back to Smoke Test');
-    await coach.tap('Ravens, 11:30 AM, planned');
-    await coach.tap('Rules, no rules');
-    assert.equal(await note(), 'Players who got fewer minutes earlier that day get more here.');
   });
 });

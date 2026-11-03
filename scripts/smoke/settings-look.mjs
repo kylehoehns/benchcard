@@ -70,7 +70,7 @@ const READ_STATE = `(async () => {
   const on = id => [...document.querySelectorAll(id + ' button')].filter(b => b.classList.contains('on'))
     .map(b => b.textContent + ':' + b.getAttribute('aria-pressed'));
   return JSON.stringify({
-    maxSubs: t.maxSubs, tieBreak: t.tieBreak, minMinutes: t.minMinutes, seasonDefault: t.seasonDefault,
+    maxSubs: t.maxSubs, tieBreak: t.tieBreak, minMinutes: t.minMinutes,
     periods: t.periods, periodMinutes: t.periodMinutes, theme: s.state.ui.theme, teamName: s.state.teamName,
     game: { periods: g.periods, periodMinutes: g.periodMinutes, useCarryover: g.useCarryover, useSeasonTargets: g.useSeasonTargets },
     pressed: [...document.querySelectorAll('#view-settings .seg button')].filter(b => b.getAttribute('aria-pressed') === 'true')
@@ -112,15 +112,6 @@ async function settingsControlsPass(c, ck, origin) {
     const r = await readState(c);
     ck(r.tieBreak === v, `tapping "${label}" left settings.tieBreak at "${r.tieBreak}", want "${v}"`);
     await onlyOn(c, ck, 'tie-break', '#tieBreakSeg', label);
-  }
-
-  /* C. Season default: the team's default moves, the open game's own switch does not. */
-  for (const [v, want, label] of [['1', true, 'Evening out the season'], ['0', false, 'Fair on its own']]) {
-    await tap(c, `document.querySelector('#seasonDefSeg [data-sdef="${v}"]').click()`);
-    const r = await readState(c);
-    ck(r.seasonDefault === want, `tapping "${label}" left settings.seasonDefault at ${r.seasonDefault}, want ${want}`);
-    ck(JSON.stringify(r.game) === JSON.stringify(before.game), `the open game's own settings moved to ${JSON.stringify(r.game)}, want ${JSON.stringify(before.game)}`);
-    await onlyOn(c, ck, 'season-default', '#seasonDefSeg', label);
   }
 
   /* D. League floor (a number field commits on `change`, so typeIn fires that): each typed value, what took, and what the field then reads. */

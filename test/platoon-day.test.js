@@ -99,10 +99,10 @@ test('Even, By hand, Closers and Order plans are byte for byte as before #553', 
 });
 
 test('a later game on Platoon or Order does not even out the day; the other strategies do', () => {
-  for (const strategy of ['platoon', 'order']) {
+  for (const strategy of ['platoon', 'order', 'minutes']) {   // #581: By hand sets its own minutes too
     assert.equal(S.evensOutDay({ strategy, useCarryover: true }, 1), false, strategy);
   }
-  for (const strategy of ['balanced', 'closers', 'minutes']) {
+  for (const strategy of ['balanced', 'closers']) {
     assert.equal(S.evensOutDay({ strategy, useCarryover: true }, 1), true, strategy);
   }
 });

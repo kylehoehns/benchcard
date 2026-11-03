@@ -179,7 +179,7 @@ const sanitizeSeason = raw => {
  * what makes it idempotent and an old backup import for free.
  *
  * The block holds exactly the keys something reads: today `maxSubs`,
- * `tieBreak`, `minMinutes`, `seasonDefault`, `periods`, `periodMinutes`,
+ * `tieBreak`, `minMinutes`, `makeUp`, `periods`, `periodMinutes`,
  * `color` and `overtimeMinutes`. The record is a file a coach
  * can open, and a key nothing
  * honours is a claim the app does not keep. Each later slice adds its
@@ -213,13 +213,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
   /* #451: Everyone plays in each 'halves' or each 'periods', or 'off'. 'off' is
      what every record written before this key existed means. */
   playsIn: 'off',
-  /* Whether a NEW game opens with "Even out the season so far" already on.
-     false is what the app has always done, and false is what every record
-     written before this key existed means. It is read once, by `newGame`, at
-     the moment a game is created; it never reaches the solver and it never
-     changes a game that already exists. The per-game switch stays the
-     override, which is why this is a default and not a mode. */
-  seasonDefault: false,
+  /* #563: what the team last chose on the Plan sheet's "Make up minutes from"
+     row -- 'game', 'day' or 'season'. Read once, by `newGame`'s rule, at the
+     moment a game is created; it never reaches the solver and never changes a
+     game that already exists. 'day' is what every record written before this
+     key existed means (an old `seasonDefault: true` means 'season'). */
+  makeUp: 'day',
   /* #368: the length of the last overtime this team added, offered again on the
      next one. 2 is what a team that has never added any is offered. Whole
      minutes, 1-10: `validOvertime`'s rule, the same one a game's overtime
@@ -247,6 +246,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const TIE_BREAKS = Object.freeze(['behind', 'levels']);
+const MAKE_UPS = Object.freeze(['game', 'day', 'season']);
 
 /* The nine team colors, in the order the picker lists them and the order
    the contrast test walks. One list: the picker, sanitizeSettings and
@@ -285,10 +285,10 @@ export const sanitizeSettings = raw => {
     minUnit,
     // #451: strict, so an unreadable value is off, which is what every older record means
     playsIn: PLAYS_IN.includes(s.playsIn) ? s.playsIn : DEFAULT_SETTINGS.playsIn,
-    /* Strict `=== true`, not `!!`: every other truthy value in a hand-edited
-       or future record is a claim we cannot read, and the safe reading of an
-       unreadable claim is the behavior the app has always had. */
-    seasonDefault: s.seasonDefault === true,
+    /* #563: shape-driven, no version branch. A saved choice is kept; else the
+       old `seasonDefault: true` (strict, as it always was) means 'season'; else
+       'day'. `seasonDefault` is not written back, so a second pass is a no-op. */
+    makeUp: MAKE_UPS.includes(s.makeUp) ? s.makeUp : s.seasonDefault === true ? 'season' : DEFAULT_SETTINGS.makeUp,
     /* The team's game format. Strict for the reason the league minimum is:
        `Number(null)` and `Number('')` are both 0, and 0 periods is not a game
        -- clamping it to 1 would turn a junk entry into an instruction the
@@ -560,10 +560,10 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         granValue: num(g.granValue, 4, 1, 40),
         out,
         late,
-        useCarryover: !!g.useCarryover,
-        // v5 gained a season; B3 gained the switch that reads it back. Absent
-        // is off, which is what every record written before this shipped says,
-        // and what a coach who has never opened the season should see.
+        /* #563: the two flags are one choice. The fourth pair (day off, season
+           on) plans as the season so far, so it loads as both on. Absent is
+           off, which is what every record written before the switches says. */
+        useCarryover: !!(g.useCarryover || g.useSeasonTargets),
         useSeasonTargets: !!g.useSeasonTargets,
         strategy: STRATEGY_KEYS.includes(g.strategy) ? g.strategy : 'balanced',
         // #545: the rotation order, as ids; one entry per player, the rest is read as the roster order

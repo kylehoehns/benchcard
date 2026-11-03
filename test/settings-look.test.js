@@ -63,7 +63,6 @@ test('How it works has a Settings section holding each moved explanation', () =>
     'nothing to copy',
     'one sub less',
     'league has a rule',
-    'Even out the season so far',
     'nowhere else',
   ];
   for (const phrase of phrases) {

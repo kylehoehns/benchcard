@@ -68,8 +68,7 @@ export const EDITS = {
 
   // rules.js
   pairs: { keys: [...PLAN_ONLY] },                      // force-together pairs switch
-  dayCarryover: { keys: [...PLAN_ONLY] },                // even out earlier games today
-  seasonCarryover: { keys: ['constraints', ...PLAN_ONLY] }, // even out the season so far
+  makeUp: { keys: ['constraints', ...PLAN_ONLY], now: true }, // Make up minutes from: re-solves, and the team's last choice is saved with it
   rule: { keys: [...PLAN_ONLY] },                       // add or remove a rule
   copySetup: { keys: 'all', now: true },                // Copy from another game, and its Undo
 

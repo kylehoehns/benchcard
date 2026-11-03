@@ -51,7 +51,7 @@ async function sentenceMetrics(c) {
 // button's own weight and whether it is the selected one, so
 // `checkSegMetrics` can hold every seg (not just the welcome tabs) to the
 // prototype's 500/600 split without a second, welcome-only copy of the rule.
-const SEG_SELECTORS = ['#stratseg', '#maxSubsSeg', '#tieBreakSeg', '#seasonDefSeg', '#themeSeg'];
+const SEG_SELECTORS = ['#stratseg', '#maxSubsSeg', '#tieBreakSeg', '#themeSeg'];
 async function segMetrics(c) {
   const rows = await evalJSON(c, `JSON.stringify(${JSON.stringify(SEG_SELECTORS)}.map(sel => {
     const rect = ${RECT};
@@ -171,7 +171,7 @@ function checkSegWeight(rec, theme, label, b) {
 }
 
 // Item 3: one assertion loop for every seg `segMetrics` returns, so
-// `#stratseg` (the Plan sheet's own seg) and the four Settings segs are held
+// `#stratseg` (the Plan sheet's own seg) and the Settings segs are held
 // to the same 36/32/14 rule rather than the Plan seg's own rows only ever
 // contributing to `segCount`.
 function checkSegMetrics(rec, theme, segs) {
@@ -252,17 +252,15 @@ export async function controlSizePass(c, origin, rec) {
     welcomeCount += wt ? wt.btns.length : 0;
     checkWelcomeTabs(rec, theme, wt);
 
-    // Item 3, part 1 (#stratseg) and item 6, part 1 (the "Even out earlier
-    // games" switch), both inside the Plan sheet's level-1 pane.
+    // Item 3, part 1 (#stratseg), inside the Plan sheet's level-1 pane. The
+    // "Even out" switch that sat beside it became a choice row in #563.
     await tap(c, `document.getElementById('phraseStrategy').click()`);
     const planSegs = await segMetrics(c);
     segCount += planSegs.length;
     checkSegMetrics(rec, theme, planSegs);
-    const dayMetrics = await switchMetrics(c, '#planDay input[switch]');
-    checkSwitchRow(rec, theme, 'Plan sheet, Even out earlier games', dayMetrics);
     await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
-    // Item 3, part 2: the four Settings segs.
+    // Item 3, part 2: the Settings segs.
     await tap(c, `document.getElementById('settingsBtn').click()`);
     // #567: #tieBreakSeg sits behind the Fine-tuning row, closed until tapped,
     // so open it first or its seg is never measured.
