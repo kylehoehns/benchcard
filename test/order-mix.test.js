@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { buildOrder, BUILD_CAP } from '../app/engine.js';
+import { buildOrder, mixTieDivisor, BUILD_CAP } from '../app/engine.js';
 
 /* A seeded generator, so a failure repeats. */
 function rng(seed) {
@@ -215,6 +215,11 @@ test('copying how a game plans carries Mix, or clears it; a new game from anothe
   S.copySetup(c, plain, { rules: true, plan: false, format: true, here: true });
   assert.equal(c.orderMix, true, 'the plan switch off leaves the target\'s own choice alone');
 
+  const coachs = bareGame({ strategy: 'order', order: ['b', 'a'], orderMix: true });
+  const d = bareGame({});
+  S.copySetup(d, coachs, plan);
+  assert.equal('orderMix' in d, false, 'a list the coach set is not the app\'s, so there is no Mix to copy');
+
   assert.equal(S.newGame(1, mixed).orderMix, true);
   assert.equal('orderMix' in S.newGame(1, plain), false);
 });
@@ -249,3 +254,39 @@ test('copying how a game plans carries Mix, or clears it; a new game from anothe
     assert.ok(topIn(floors).some(n => n < 2), `stacked: ${topIn(floors)}`);
   });
 }
+
+/* ---- the tie-break must stay behind evenness for any stint lengths ----
+ * The preference is divided down so that its whole range is smaller than the
+ * smallest nonzero step in V. Whole-minute stints make that step 1/M; a
+ * period split three ways (16 minutes -> 5.333) makes it smaller. Here V is
+ * worked out from the spec's formula over many seeded level lists on the
+ * fractional game (a 16-minute half split three ways, then two
+ * short extra stints), the smallest gap between two different Vs is taken, and
+ * the most the preference can reach (5 seats x (n - 1) weight x M minutes)
+ * divided by the divisor must stay under it. */
+test('the preference stays smaller than any step in evenness, with unequal fractional stints (six of 5.333 and two of 2.5)', () => {
+  const lens = [...Array(6).fill(16 / 3), 2.5, 2.5], n = 7, c = 2, M = lens.reduce((a, b) => a + b, 0);
+  const r = rng(5573);
+  const vs = new Set();
+  for (let t = 0; t < 4000; t++) {
+    const level = Array.from({ length: n }, () => 1 + Math.floor(r() * 5));
+    const strength = lens.map((_, j) => Array.from({ length: 5 }, (_, k) => level[(j * c + k) % n]).reduce((a, b) => a + b, 0));
+    const mean = strength.reduce((a, v, j) => a + v * lens[j], 0) / M;
+    vs.add(Math.round(strength.reduce((a, v, j) => a + lens[j] * (v - mean) ** 2, 0) * 1e9));
+  }
+  const sorted = [...vs].sort((a, b) => a - b);
+  let gap = Infinity;
+  for (let i = 1; i < sorted.length; i++) gap = Math.min(gap, (sorted[i] - sorted[i - 1]) / 1e9);
+  assert.ok(gap > 0 && gap < Infinity);
+  const prefRange = 5 * (n - 1) * M;
+  assert.ok(prefRange / mixTieDivisor(n, lens) < gap, `pref reach ${prefRange / mixTieDivisor(n, lens)} vs smallest step ${gap}`);
+});
+
+test('a game with no minutes is not mixed: the same list and evaluations as Mix off, and no NaN', () => {
+  const ids = ['Avery', 'Blake', 'Casey', 'Drew', 'Emery', 'Finley', 'Gray'];
+  const stints = stintsOf([0, 0, 0, 0], 2);
+  const mix = Object.fromEntries(ids.map((id, i) => [id, 1 + (i % 3)]));
+  const priority = Object.fromEntries(ids.map((id, i) => [id, i]));
+  const base = { ids, stints, maxSubs: 2, priority, constraints: NONE, periods: 2 };
+  assert.deepEqual(buildOrder({ ...base, mix }), buildOrder(base));
+});

@@ -1427,18 +1427,34 @@ const quantizePriority = value => Math.round((Number(value) || 0) * 100);
    between lists that are equally even. The restarts then run whether or not a
    rule is broken. With `mix` absent, or every kid at one level, none of this
    runs and the list is the one above, evaluation for evaluation. */
+/* The divisor that keeps the preference behind evenness. Levels are whole
+   numbers and every stint is a multiple of a grain 1/d minutes (d found below),
+   so with T = M x d whole grains V = (T sum q v^2 - (sum q v)^2) / (d T): its
+   smallest nonzero step is 1/(d^2 M). The preference, a weight under n times
+   the 5 M seat-minutes, is at most 5 n M. Dividing by 5 n d^2 M^2 puts all of
+   it under one step. Whole-minute stints (d = 1) with n >= 5 need less than the
+   n^2 M^2 the default always used, so that stays the floor and those scores
+   are unchanged. */
+export function mixTieDivisor(n, minutes) {
+  const M = minutes.reduce((a, m) => a + m, 0);
+  let d = 1;
+  while (d < 720 && !minutes.every(m => Math.abs(m * d - Math.round(m * d)) < 1e-9)) d++;
+  return 1 + Math.max(n * n * M * M, 5 * n * d * d * M * M);
+}
 export const BUILD_CAP = 12000;
 export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c = {}, periods, cap = BUILD_CAP, mix }) {
   const n = ids.length;
   if (n < 2) return { order: [...ids], short: [], evals: 0 };
   const change = orderChanges(maxSubs);
   const idx = new Map(ids.map((id, i) => [id, i]));
-  const floor = stints.map((s, j) => { const row = Array(n).fill(false); for (const k of placesOn(n, change, j)) row[k] = true; return row; });
+  const seats = stints.map((s, j) => placesOn(n, change, j));
+  const floor = seats.map(places => { const row = Array(n).fill(false); for (const k of places) row[k] = true; return row; });
   const on = (k, j) => (floor[j][k] ? 1 : 0);
-  const levels = mix ? ids.map(id => Number(mix[id]) || DEFAULT_TIER) : null;
-  const mixing = !!levels && levels.some(v => v !== levels[0]);
-  const seats = mixing ? stints.map((s, j) => placesOn(n, change, j)) : null;
+  // the caller passes `tierOfPlayer` levels, so a kid with no entry is the only one defaulted
+  const levels = mix ? ids.map(id => (mix[id] === undefined ? DEFAULT_TIER : mix[id])) : null;
   const gameMinutes = stints.reduce((a, s) => a + s.minutes, 0);
+  // no minutes, no evenness to measure
+  const mixing = !!levels && gameMinutes > 0 && levels.some(v => v !== levels[0]);
   const mins = Array.from({ length: n }, (_, k) => stints.reduce((a, s, j) => a + on(k, j) * s.minutes, 0));
   // minutes spots k and l share, both on (`both`) or both off
   const share = (k, l, both) => stints.reduce((a, s, j) => a + (!!on(k, j) === both && !!on(l, j) === both ? s.minutes : 0), 0);
@@ -1481,60 +1497,81 @@ export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c
   }
 
   /* The score of a list, rule minutes first. `parts` is filled only when
-     asked, with what the list leaves unmet. */
+     asked, with what the list leaves unmet. Under Mix this runs thousands of
+     times, so it allocates nothing: the seats, minutes and strengths are flat
+     typed arrays, and `add` is made once. */
   const pos = Array(n).fill(0);
   let evals = 0;
+  const S = stints.length;
+  const seatAt = new Int16Array(mixing ? S * ON_FLOOR : 0);
+  const stintMin = Float64Array.from(stints, s => s.minutes);
+  const strength = new Float64Array(S);
+  if (mixing) for (let j = 0; j < S; j++) for (let t = 0; t < ON_FLOOR; t++) seatAt[j * ON_FLOOR + t] = seats[j][t];
+  const tieDivisor = mixTieDivisor(n, stintMin);
+  let rule = 0, ask = null;
+  const add = (amount, kind, a, b) => {
+    rule += amount;
+    if (ask && amount > 1e-9) ask.push({ kind, ids: b < 0 ? [ids[a]] : [ids[a], ids[b]] });
+  };
   const cost = (list, parts) => {
     for (let k = 0; k < n; k++) pos[list[k]] = k;
-    let rule = 0, pref = 0;
-    const add = (amount, kind, who) => {
-      rule += amount;
-      if (parts && amount > 1e-9) parts.push({ kind, ids: who.map(k => ids[k]) });
-    };
+    rule = 0; ask = parts || null;
+    let pref = 0;
     for (let k = 0; k < n; k++) {
       const kid = list[k];
-      add(Math.max(0, kidMin[kid] - mins[k]), 'minimum', [kid]);
-      add(Math.max(0, mins[k] - kidMax[kid]), 'cap', [kid]);
+      add(Math.max(0, kidMin[kid] - mins[k]), 'minimum', kid, -1);
+      add(Math.max(0, mins[k] - kidMax[kid]), 'cap', kid, -1);
       pref -= weight[kid] * mins[k];
     }
-    for (const [a, b] of avoids) add(together[pos[a]][pos[b]], 'apart', [a, b]);
-    for (const [a, b] of glued) add(mins[pos[a]] + mins[pos[b]] - 2 * together[pos[a]][pos[b]] - fewestApart, 'together', [a, b]);
-    for (const [a, b] of oneOf) add(bothOff[pos[a]][pos[b]], 'keepon', [a, b]);
-    if (lastAt >= 0) for (const kid of lastKids) add(on(pos[kid], lastAt) ? 0 : stints[lastAt].minutes, 'lastq', [kid]);
+    for (let i = 0; i < avoids.length; i++) { const a = avoids[i][0], b = avoids[i][1]; add(together[pos[a]][pos[b]], 'apart', a, b); }
+    for (let i = 0; i < glued.length; i++) { const a = glued[i][0], b = glued[i][1]; add(mins[pos[a]] + mins[pos[b]] - 2 * together[pos[a]][pos[b]] - fewestApart, 'together', a, b); }
+    for (let i = 0; i < oneOf.length; i++) { const a = oneOf[i][0], b = oneOf[i][1]; add(bothOff[pos[a]][pos[b]], 'keepon', a, b); }
+    if (lastAt >= 0) for (let i = 0; i < lastKids.length; i++) add(on(pos[lastKids[i]], lastAt) ? 0 : stints[lastAt].minutes, 'lastq', lastKids[i], -1);
     evals++;
     if (!mixing) return rule * 1e6 + pref;
     // V: minutes-weighted variance of the fives' strength, times the game's minutes
-    const strength = seats.map(places => places.reduce((a, k) => a + levels[list[k]], 0));
-    const mean = strength.reduce((a, v, j) => a + v * stints[j].minutes, 0) / gameMinutes;
-    const spread = strength.reduce((a, v, j) => a + stints[j].minutes * (v - mean) ** 2, 0);
-    return rule * 1e6 + spread + pref / (1 + n * n * gameMinutes * gameMinutes);
+    let weighted = 0;
+    for (let j = 0; j < S; j++) {
+      let sum = 0;
+      for (let t = 0; t < ON_FLOOR; t++) sum += levels[list[seatAt[j * ON_FLOOR + t]]];
+      strength[j] = sum;
+      weighted += sum * stintMin[j];
+    }
+    const mean = weighted / gameMinutes;
+    let spread = 0;
+    for (let j = 0; j < S; j++) spread += stintMin[j] * (strength[j] - mean) ** 2;
+    return rule * 1e6 + spread + pref / tieDivisor;
   };
 
   let score = cost(perm);
   const EPS = 1e-7;
-  const swapped = (i, j) => { const q = perm.slice(); q[i] = perm[j]; q[j] = perm[i]; return q; };
-  const turned = (i, j, k, flip) => {
-    const q = perm.slice();
-    [q[i], q[j], q[k]] = flip ? [perm[k], perm[i], perm[j]] : [perm[j], perm[k], perm[i]];
-    return q;
+  /* Moves are rows of (i, j, k, flip): a swap has k = -1, a three-way turn
+     the rest. Each is tried in one scratch list and copied only on a strict
+     gain, so a scan allocates nothing. */
+  const swaps = [], turns = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    swaps.push([i, j, -1, 0]);
+    for (let k = j + 1; k < n; k++) turns.push([i, j, k, 0], [i, j, k, 1]);
+  }
+  const cand = Array(n).fill(0), top = Array(n).fill(0);
+  const make = ([i, j, k, flip]) => {
+    for (let x = 0; x < n; x++) cand[x] = perm[x];
+    if (k < 0) { cand[i] = perm[j]; cand[j] = perm[i]; }
+    else if (flip) { cand[i] = perm[k]; cand[j] = perm[i]; cand[k] = perm[j]; }
+    else { cand[i] = perm[j]; cand[j] = perm[k]; cand[k] = perm[i]; }
   };
   /* The best of `moves` that beats the score now, or null. Scan order is
      fixed and only a strict gain counts. */
   const best = moves => {
-    let top = null, topScore = score - EPS;
-    for (const move of moves) {
+    let found = false, topScore = score - EPS;
+    for (let m = 0; m < moves.length; m++) {
       if (evals >= cap) break;
-      const q = move();
-      const s = cost(q);
-      if (s < topScore) { top = q; topScore = s; }
+      make(moves[m]);
+      const s = cost(cand);
+      if (s < topScore) { for (let x = 0; x < n; x++) top[x] = cand[x]; found = true; topScore = s; }
     }
-    return top && { list: top, score: topScore };
+    return found && { list: top.slice(), score: topScore };
   };
-  const swaps = [], turns = [];
-  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-    swaps.push(() => swapped(i, j));
-    for (let k = j + 1; k < n; k++) turns.push(() => turned(i, j, k, false), () => turned(i, j, k, true));
-  }
   const descend = () => {
     while (evals < cap) {
       const step = best(swaps) || best(turns);

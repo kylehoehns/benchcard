@@ -51,21 +51,30 @@ who gives up time for it.
 
 1. **Where the choice is stored:** `g.orderMix === true` on the game means
    Mix the fives; absent means Best players play the most. `sanitize` keeps it
-   only when exactly `true`. `copySetup`'s `plan` part copies it (or deletes
-   it), beside `orderBuilt`, so Copy from another game ("How it plans") and a
-   new game made from another (Same as) carry it. `newGame` keeps it (it is
-   not a property of one list, like `order`/`orderBuilt`, but of how the game
-   plans). The handoff does not carry it (a handed-off list is the coach's,
+   only when exactly `true` **and** `orderBuilt` is set. `orderMix` lives only
+   alongside `orderBuilt` (the coach moving a row clears both, so "Build it for
+   me again" gives the default list and never mixes unseen). `copySetup`'s
+   `plan` part copies it (or deletes it) only when the copied list is the
+   app's, so Copy from another game ("How it plans") and a new game made from
+   another (Same as) carry it for an app-built list and drop it for a coach's.
+   `newGame` keeps it where the new game's list is the app's (`startingOrder`
+   settles whose list that is, as for `orderBuilt`) and drops it where the
+   list continues a coach's. The handoff does not carry it (a handed-off list is the coach's,
    and the choice only matters for the app's list).
 2. **The score under Mix (the issue left the formula to the spec).** For each
    stint `j`, strength `s_j` = the sum of the levels of the five on. Mix cost
    `V = Σ_j m_j × (s_j − s̄)²`, where `m_j` is the stint's minutes and
    `s̄ = Σ_j m_j s_j / Σ_j m_j` (the minutes-weighted variance of the fives'
    strength, times the game's minutes). Under Mix:
-   `score = 1e6 × rule cost + V + pref / (1 + n² × M²)`, `M` = the game's
-   minutes, `pref` today's preference cost. The divided pref is always under
-   1/M in size, so it only chooses between lists whose fives are equally even
-   (with whole minutes, V moves in steps of 1/M): among those, the kids the
+   `score = 1e6 × rule cost + V + pref / D`, `M` = the game's minutes,
+   `pref` today's preference cost. `D = 1 + max(n² M², 5 n d² M²)`, where stint
+   lengths are multiples of 1/d minute (`d` the smallest whole number that
+   makes every stint whole, found up to 720). Levels are whole numbers, so V
+   moves in steps of at least `1/(d² M)` (1/M with whole minutes), and `|pref|`
+   is under `5 n M` (a weight under n times 5M seat-minutes), so the divided
+   pref is always under the smallest step in V. With whole minutes and n ≥ 5
+   that is the `n² M²` the first draft used, so those lists do not change. It
+   only chooses between lists whose fives are equally even: among those, the kids the
    odd minutes setting favors still get the longer spots. Why the variance
    and not the gap or the fewest top kids: the gap and the count only look at
    the worst five, so most swaps do not change them and the search has
@@ -101,7 +110,8 @@ who gives up time for it.
    - **"Mix the fives"**.
    Tapping a row sets or deletes `g.orderMix` and calls `edit('orderBuild')`
    (the plan rebuilds the list, then the Order body repaints after it); focus
-   goes back to the tapped row. No Undo: it is a choice like Lineup balance,
+   goes back to the tapped row (the edit redraws the section once; the tap
+   handler only puts focus back, inside the Mix group, found by its aria-label). No Undo: it is a choice like Lineup balance,
    and tapping the other row undoes it.
 7. **Footer under the list** (the existing `.pgrp-f`, one line, plain):
    - Mix, levels differ: "Built for you: your stronger players are spread
@@ -164,7 +174,7 @@ Change: `app/engine.js` (`buildOrder` only), `app/state.js` (`copySetup`,
 the `solveDay` build call and memo key), `app/storage.js` (keep `orderMix`),
 `app/strategy.js` (`orderEditor`: the choice group and footer),
 `app/index.html` (Help's Rotation order `<dd>`), `scripts/whats-new.json` →
-`app/whats-new.html`, `app/sitemap.xml`, `CONTEXT.md` (Rotation order entry),
+`app/whats-new.html`, `CONTEXT.md` (Rotation order entry),
 `docs/design-decisions-rotation-order.md`, tests (`test/order-build.test.js`
 or a new `test/order-mix.test.js`, a new Coach scenario file, `test/coach.js`
 verbs if needed).

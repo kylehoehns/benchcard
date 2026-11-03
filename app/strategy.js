@@ -400,11 +400,14 @@ function orderEditor(g) {
 }
 
 /* #557: how the app builds its list. Two rows, one chosen; a tap sets or clears
-   `g.orderMix`, the plan builds the list again and the editor is drawn after
-   it, with focus put back on the row that was tapped. No Undo: the other row
-   is the way back. */
+   `g.orderMix`, `edit('orderBuild')` has the plan build the list again and
+   draws this section at once, and focus is put back on the row that was
+   tapped. No Undo: the other row is the way back. */
+const MIX_GROUP = 'How to build the list';
 function mixChoice(g) {
   const box = el('div', 'pgrp');
+  box.setAttribute('role', 'group');
+  box.setAttribute('aria-label', MIX_GROUP);
   let tapped = 0;
   const choose = (mix, at) => () => {
     tapped = at;
@@ -412,15 +415,15 @@ function mixChoice(g) {
     if (mix) now.orderMix = true; else delete now.orderMix;
     edit('orderBuild');
   };
+  // the section is already redrawn by the edit; only focus is left to put back, inside this group
   const paint = () => {
-    renderStrategy();
-    document.querySelector('#stratbody .pgrp .prow[aria-pressed]')?.parentElement.children[tapped]?.focus({ preventScroll: true });
+    document.querySelector(`#stratbody [aria-label="${MIX_GROUP}"]`)?.children[tapped]?.focus({ preventScroll: true });
   };
   paintChoiceRows(box, [
     [tieBreakIsLevels() ? 'Best players play the most' : 'Kids furthest behind play the most', !g.orderMix, choose(false, 0)],
     ['Mix the fives', !!g.orderMix, choose(true, 1)],
   ], paint);
-  return [el('div', 'pgrp-h', 'How to build the list'), box];
+  return [el('div', 'pgrp-h', MIX_GROUP), box];
 }
 
 /* The refresh `undoable` runs on the tap and on Undo: the plan rebuilds the

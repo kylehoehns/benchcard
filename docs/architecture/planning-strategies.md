@@ -10,8 +10,9 @@
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
 - **Rotation order** -- the five on the floor is taken from a list of the players
   in turn, so the next players are always known. Until the game starts the app
-  builds the list from the odd minutes setting and the rules; once the coach
-  moves anyone, the list is theirs. A later game that day starts where an earlier
+  builds the list from the odd minutes setting and the rules, or, when the coach
+  picks Mix the fives, spreads the stronger players so every five has some; once
+  the coach moves anyone, the list is theirs. A later game that day starts where an earlier
   coach-set game's turn stopped. The plan itself is read off the list with no
   search, and only building the app's list searches. The rules warn rather than
   block, and the starting five rule is not used. See

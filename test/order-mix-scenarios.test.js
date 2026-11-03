@@ -137,6 +137,18 @@ describe('Rotation order: mix the fives', { skip }, () => {
     assert.ok(await coach.sees('Mix the fives'));
   });
 
+  test('8. after moving a row, Build it for me again builds the default list, not the mixed one', async () => {
+    await pickOrder();
+    await coach.tap('Mix the fives');
+    await coach.tap('Move Avery down');
+    await coach.tap('Build it for me again');
+
+    assert.deepEqual(await coach.orderList(), BEST);
+    assert.equal(await coach.isPressed('Best players play the most'), true);
+    assert.equal(await coach.isPressed('Mix the fives'), false);
+    assert.equal(await coach.orderFooter(), ONLY_BUILT);
+  });
+
   test('7. Copy from another game, with How it plans, carries Mix to the other game', async () => {
     await pickOrder();
     await coach.tap('Mix the fives');

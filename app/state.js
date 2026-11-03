@@ -139,8 +139,8 @@ export function copySetup(to, from, { rules, plan, format, here }) {
     if (from.order) to.order = [...from.order]; else delete to.order;
     // #547: whose list it is travels with it; an app-built one is built again for this game
     if (from.orderBuilt) to.orderBuilt = true; else delete to.orderBuilt;
-    // #557: how the app builds the list is part of how the game plans
-    if (from.orderMix) to.orderMix = true; else delete to.orderMix;
+    // #557: how the app builds the list is part of how the game plans, and lives only on a list the app built
+    if (from.orderMix && from.orderBuilt) to.orderMix = true; else delete to.orderMix;
   }
   if (format) {
     to.periods = from.periods; to.periodMinutes = from.periodMinutes;
@@ -196,6 +196,8 @@ export function newGame(n, from, settings) {
     copySetup(g, from, { rules: true, plan: true, format: true, here: true });
     delete g.order;
     delete g.orderBuilt;
+    // startingOrder decides whose list the new game has, and keeps Mix only on the app's
+    if (g.strategy !== 'order') delete g.orderMix;
   }
   return g;
 }
@@ -1312,6 +1314,7 @@ function startingOrder(g, day) {
   if (prev && !prev.orderBuilt) {
     g.order = orderAfter(prev);
     delete g.orderBuilt;
+    delete g.orderMix;
   } else {
     g.order = effectiveOrder(g);
     g.orderBuilt = true;
@@ -1342,6 +1345,7 @@ export function moveInOrder(g, id, dir) {
   [list[i], list[j]] = [list[j], list[i]];
   g.order = list;
   delete g.orderBuilt;
+  delete g.orderMix;   // Mix lives only on a list the app built
   return true;
 }
 
@@ -2360,8 +2364,8 @@ export function computeAll() {
      `tiers` is built once for the team and is non-null ONLY under 'levels' --
      it is both the composition input below and the flag `sayWhyTheyAreShort`
      reads to know which reason it is allowed to give. */
-  const tiers = tieBreakIsLevels()
-    ? Object.fromEntries(ps.map(p => [p.id, tierOfPlayer(p)])) : null;
+  const levelOf = new Map(ps.map(p => [p.id, tierOfPlayer(p)]));
+  const tiers = tieBreakIsLevels() ? Object.fromEntries(levelOf) : null;
 
   /* Each day solved on its own (#101 item 7): `cum` and the soFar-today
      ledger reset here, per day, so a deficit day 1's games already corrected
@@ -2469,7 +2473,7 @@ export function computeAll() {
            inputs give the same list, so an unchanged game keeps its array. */
         const stints = buildStints(gameFormat(g), { mode: g.granMode, value: g.granValue });
         /* #557: Mix reads the levels with `tierOfPlayer`, whatever the odd minutes setting. */
-        const mix = g.orderMix ? Object.fromEntries(inPlay.map(id => [id, tierOfPlayer(ps.find(x => x.id === id))])) : null;
+        const mix = g.orderMix ? Object.fromEntries(inPlay.map(id => [id, levelOf.get(id)])) : null;
         const key = JSON.stringify([inPlay, stints, maxSubs, prio, g.periods, ORDER_RULES.map(k => c[k]), ...(mix ? [mix] : [])]);
         let memo = orderMemo.get(g.id);
         if (memo?.key !== key) {
