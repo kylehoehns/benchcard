@@ -34,8 +34,8 @@ in its header.
   does. Holds. Add a rule's Minutes row (`pstepRow`, `app/rules.js`) is
   `label … value [−|+]` — a different builder and a different look.
 - **Wrapped rows.** `.prow` has `min-height: 48px; padding: 0 1rem`, so a
-  rule that wraps to two lines has no vertical padding (screenshot: "Brody,
-  Hayden S., Hayden W., Kade and Tate start the game" touches its divider).
+  rule that wraps to two lines has no vertical padding (screenshot: "Drew,
+  Jordan S., Jordan W., Blake and Harper start the game" touches its divider).
   Holds. Who's here rows (`.sheetrow-t`) ellipsize long names instead of
   wrapping.
 - **Last row and the status line.** Since #74 the body scrolls, and
