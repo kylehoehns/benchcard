@@ -600,22 +600,13 @@ function openPlayerSheet(p, trigger) {
 
 /* The footnote under the sheet's Level row. */
 function levelsNote() {
-  /* "never change anyone's minutes" used to be the middle clause, and it is
-     not true: everyone's SHARE is worked out without levels (budget.js never
-     sees them -- test/leak.test.js pins that), but when the stints do not
-     divide evenly the solver still has to pick who lands on the high side of
-     the rounding, and levels move that pick by a stint. Claim the part the
-     test actually guards.
-
-     The second clause has to follow the team's tie-break stance, or it is
-     false in a state the app can be in. Under the default the share really is
-     worked out without levels; under 'levels' the coach has asked them to
-     settle the odd stint, which is the one thing that moves. Everything else
-     about the sentence is true either way. */
-  const byLevel = (state.settings?.tieBreak ?? 'behind') === 'levels';
-  return `Levels stay with your team from game to game. ${byLevel
-    ? 'They shape who is on the floor together, and they decide who gets the extra minutes, as your Settings ask.'
-    : 'They shape who is on the floor together; everyone’s share of the minutes is worked out without them.'} In overtime they can pick the Strongest five. They are never printed and never shown in bench mode.`;
+  /* One spelling whatever the team's tie-break stance (#570): it lists every
+     place levels are read, so it is true in either state. "Never a lot more
+     minutes": everyone's share is worked out without levels (budget.js never
+     sees them -- test/leak.test.js pins that); at most they move who gets the
+     odd stint. The last sentence is pinned by test/leak.test.js and smoke's
+     team screen. */
+  return 'Levels mix strong and newer kids on the floor, decide who gets the few extra minutes if you choose that in Settings, help Order build its list, and pick the strongest five in overtime. They never give a kid a lot more minutes. They are never printed and never shown in bench mode.';
 }
 
 /* ---- the two ways to add (#31 items 5 and 6) -----------------------------

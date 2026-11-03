@@ -488,7 +488,7 @@ function mixChoice(g) {
     [tieBreakIsLevels() ? 'Best players get the extra sub' : 'Kids behind on minutes get the extra sub', !g.orderMix, choose(false, 0)],
     ['Mix the fives', !!g.orderMix, choose(true, 1)],
   ], paint);
-  return [el('div', 'pgrp-h', MIX_GROUP), box];
+  return [el('div', 'pgrp-h', MIX_GROUP), box, el('p', 'pgrp-f', 'Set in Settings > Fine-tuning > Extra minutes go to.')];
 }
 
 /* The refresh `undoable` runs on the tap and on Undo: the plan rebuilds the
