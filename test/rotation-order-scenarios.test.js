@@ -335,7 +335,7 @@ describe('Rotation order: where a later game starts', { skip }, () => {
     assert.deepEqual(await coach.orderList(), GAME_TWO_ORDER);
   });
 
-  test('16. a game on Order does not say it evens out the day, and its switch is off and unavailable', async () => {
+  test('16. a game on Order does not say it evens out the day, and its switch is not on screen', async () => {
     await coach.onGameDayWithRoster(ROSTER, { strategy: 'order' });
     await coach.tap('Add a game');
     await coach.fill('Opponent', 'Owls');
@@ -344,8 +344,8 @@ describe('Rotation order: where a later game starts', { skip }, () => {
     assert.equal(await coach.sees('Evening out the day, Evens out the 9:00 AM game.'), false, 'no Evens out line');
     assert.ok(lacks(await coach.text('body'), 'Evens out the'), 'the page says Order evens out the day');
     await coach.tap('Plan, rotation order');
-    assert.equal(await coach.isDisabled('Even out earlier games'), true);
-    assert.match(await coach.text('#planDay'), /Not used with a rotation order/);
+    assert.equal(await coach.sees('Even out earlier games'), false);
+    assert.equal(await coach.text('#planDay'), '');
   });
 });
 

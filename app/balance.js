@@ -25,7 +25,7 @@
  * ================================================================== */
 import { $, el, checkMark } from './dom.js';
 import { state, save, colorOf, game } from './state.js';
-import { DEFAULT_TIER } from './engine.js';
+import { DEFAULT_TIER, fivesAreSet } from './engine.js';
 import { tick } from './fx.js';
 import { icon } from './icons.js';
 import { pushPlanPane } from './game-setup.js';
@@ -112,8 +112,11 @@ export function renderBalance() {
   wrap.textContent = '';
 
   const g = game();
-  // #545: the order decides who plays and when, so there is no shape to choose
-  if (!g || g.strategy === 'order') return;
+  // #545: the order decides who plays and when, so there is no shape to choose.
+  // #562: Platoon's fives are fixed, so the shape does nothing there either.
+  // Hidden, not disabled; the saved shape is untouched.
+  wrap.hidden = !g || fivesAreSet(g.strategy);
+  if (wrap.hidden) return;
 
   const levelled = levelledCount();
   const current = SHAPES.some(s => s.v === g.balance) ? g.balance : 'even';
