@@ -17,12 +17,13 @@
 import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
 import { fmtMinutes } from './engine.js';
-import { state, game, byId, plans, seasonAdjust, availIds,
+import { state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
          ruleItems, runHint, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
          EVEN_OUT_DAY_LABEL, dayIsToday, evensOutDay } from './state.js';
 import { pickFive } from './pills.js';
-import { pushPlanPane, stepperRow } from './game-setup.js';
+import { pushPlanPane, stepperRow, paintChoiceRows, onPlanOpen } from './game-setup.js';
+import { gameStarted } from './live.js';
 import { popPane } from './trap.js';
 import { undoable, showUndo } from './toast.js';
 
@@ -70,6 +71,7 @@ export function renderConstraints(itemsIn) {
   renderPairsGroup(c);
   renderDayGroup(g);
   renderSeasonGroup(g);
+  renderCopyGroup(g);
   renderSeasonAdjust();
 }
 
@@ -159,6 +161,73 @@ function renderSeasonGroup(g) {
   const host = el('div', 'seasonadj');
   host.id = 'seasonadj';
   wrap.append(host);
+}
+
+/* #548: the last group, one row that opens Copy from another game. Only
+   before the game starts, and only when the team has another game to copy. */
+function renderCopyGroup(g) {
+  const wrap = $('#planCopy');
+  if (!wrap) return;
+  wrap.textContent = '';
+  const others = team().days.reduce((n, d) => n + d.games.length, 0) > 1;
+  wrap.hidden = gameStarted(g.live) || !others;
+  if (wrap.hidden) return;
+  const box = el('div', 'pgrp');
+  const row = el('button', 'prow');
+  row.type = 'button';
+  row.append(el('span', 'prow-t', 'Copy from another game'));
+  row.append(icon('chevron_right', { size: '.8rem', cls: 'prow-chev' }));
+  row.onclick = () => openCopyPage(row);
+  box.append(row);
+  wrap.append(box);
+}
+
+onPlanOpen(() => { const g = game(); if (g) renderCopyGroup(g); });
+
+/* ---------------- level 2: Copy from another game ----------------------- */
+
+const COPY_SWITCHES = [
+  ['rules', 'Rules'],
+  ['plan', 'How it plans'],
+  ['format', 'Format and subs'],
+  ['here', "Who's here"],
+];
+
+function openCopyPage(trigger) {
+  const sources = copySources();
+  if (!sources.length) return;
+  const pick = { row: 0 };
+  const parts = { rules: true, plan: true, format: true, here: false };
+  const sub = $('#planSub');
+  sub.textContent = '';
+  const list = el('div', 'pgrp');
+  const paintList = () => paintChoiceRows(list, sources.map((s, i) =>
+    [s.title, pick.row === i, () => { pick.row = i; }, s.line]), paintList);
+  paintList();
+  sub.append(el('div', 'pgrp-h', 'Copy from'), list);
+
+  const switches = el('div', 'pgrp');
+  for (const [key, label] of COPY_SWITCHES) {
+    switches.append(switchRow(label, parts[key], false, v => { parts[key] = v; syncCopyBtn(); }));
+  }
+  sub.append(el('div', 'pgrp-h', 'Copy'), switches);
+  sub.append(el('p', 'pgrp-f', 'Only this game changes. Its opponent, tip-off and date stay.'));
+
+  const btn = $('#planCopyBtn');
+  const syncCopyBtn = () => { btn.disabled = !Object.values(parts).some(Boolean); };
+  btn.onclick = () => commitCopy(sources[pick.row], parts);
+  pushPlanPane(trigger, { title: 'Copy from another game', showCopy: true });
+  syncCopyBtn();
+}
+
+function commitCopy(source, parts) {
+  const g = game();
+  undoable(`Copied from ${source.title}.`, () => copySetup(g, source.game, parts), isUndo => {
+    renderConstraints();
+    edit('copySetup');
+    // Only on the way OUT, as Remove rule does: an Undo repaints level 1 in place
+    if (!isUndo) popPane($('#sheetPlan'));
+  });
 }
 
 /* What the adjustment did, and why, in the numbers the solver was handed.

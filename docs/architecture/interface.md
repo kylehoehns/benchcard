@@ -31,14 +31,18 @@ toggles that player to Out against a running count), and *How should minutes
 split?* (the four strategies with the one-line descriptions `STRATEGIES` holds,
 over the *Even out earlier games* switch `rules.js` builds for the Plan sheet).
 It is still one tap when nothing differs: step 1 carries a *Same as 9:00?* card
-whose summary line comes from the same `sentenceParts` a game pass reads. The
-card is the whole button — tapping anywhere on it commits the draft — with
-*Add game* as right-aligned ink text. `newGame(len, lastGame(), settings)`
-builds the draft when the flow opens (`freshDraft()`). **Plan it** commits that
-draft. The card commits a fresh `freshDraft()` instead, carrying over only step
-1's date, opponent and tip-off, so edits made on steps 2 and 3 are dropped and
-the card adds the game its label names (#428). Walking all three steps unchanged
-still lands on the same game as the card.
+whose summary line comes from `setupSummary` in `state.js`, which joins the
+same `sentenceParts` pieces a game pass reads. The card is the whole button —
+tapping anywhere on it commits the draft — with *Add game* as right-aligned
+ink text. `newGame(len, lastGame(), settings)` builds the draft when the flow
+opens (`freshDraft()`). `newGame` copies the last game's setup with
+`copySetup`, the routine behind the Plan sheet's *Copy from another game*
+(below), with all four parts on. It then drops the copied order, because
+`addGame` continues the day's order (#545). **Plan it** commits that
+draft. The card commits a fresh `freshDraft()` instead, carrying over only
+step 1's date, opponent and tip-off, so edits made on steps 2 and 3 are
+dropped and the card adds the game its label names (#428). Walking all three
+steps unchanged still lands on the same game as the card.
 When the team has no games (#126), there is no last game to copy: the draft is
 `newGame(0, null, settings)` dated today, and no *Same as …?* card is offered.
 The draft stays detached until one of them is pressed — a half-answered game is
@@ -408,15 +412,29 @@ of the page. Below 1100px the two columns dissolve into a single flex list
 explicit `order`. The sentence sits above that list at every width, and since
 #27 it stands in for the Squad and Game format blocks the list used to open
 with. The rotation reads first (#69), directly after the sentence, where a coach
-opens the phone to see the plan; the day heading starts the *This game* section, then the Plan sheet (#28, which holds the
-strategy, rules, lineup balance and evening out), and then *This game* (date, opponent,
-day name, tip-off, remove); card head, card and the bench button slot in after the
+opens the phone to see the plan; the day heading starts the *This game*
+section, then the Plan sheet (#28, which holds the strategy, rules, lineup
+balance, evening out and, before the game starts, Copy from another game),
+and then *This game* (date, opponent, day name, tip-off, remove); card head, card and the bench button slot in after the
 timeline, and Stint-by-stint and Card options fall below. The Plan sheet
 replaced the Plan, Rules and Lineup balance folds that used to read at positions
 3, 11 and 4 — putting the strategy, constraints and evening-out controls in one
 place, opened at full height. The flex `gap` is zeroed there — the blocks already
 carry margins, and a gap double-counts every seam. The rule is `@media screen`,
 so the print path, which flattens everything through `.print-path`, is untouched.
+
+**Copy from another game (#548).** The Plan sheet's last group is one row,
+*Copy from another game*. It is hidden once the game has a stint played or
+finished, and when the team has no other game. It opens a level-2 page listing
+every other game on the team: this day's first, then other days newest first.
+Filed season games are not listed, because they hold no rules, strategy, sub
+interval or attendance. Four switches choose the parts. *Rules*, *How it
+plans* (the strategy, the order and the strategy's own settings) and *Format
+and subs* start on; *Who's here* starts off. A **Copy** button in the header
+stays disabled while all four are off. `copySetup(to, from, parts)`
+in `state.js` does the copy, and the commit is one undoable edit (`copySetup`
+in `EDITS`). Opponent, tip-off, date, lineup balance and the carryover and
+overtime settings are never copied. `rules.js` builds the page.
 
 Touch minimums (48px) are gated `@media (pointer: coarse), screen and
 (max-width: 620px)`. The pointer half alone was a trap: it never fires in a

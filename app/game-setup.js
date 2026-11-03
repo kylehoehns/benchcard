@@ -128,6 +128,7 @@ function resetPlanChrome() {
   const back = $('#planBack'); if (back) back.hidden = true;
   const close = $('#sheetPlanClose'); if (close) close.hidden = false;
   const add = $('#planAddRuleBtn'); if (add) { add.hidden = true; add.disabled = true; }
+  const copy = $('#planCopyBtn'); if (copy) { copy.hidden = true; copy.disabled = true; }
 }
 
 /* The shared half of pushing a level-2 page (decision 16): the header chrome
@@ -137,11 +138,12 @@ function resetPlanChrome() {
    page's own body (a rule's detail, Add a rule, Lineup balance) is the
    caller's -- built into `#planSub` before this runs, since `pushPane` moves
    focus to its first focusable node. */
-export function pushPlanPane(trigger, { title, showAddRule = false } = {}) {
+export function pushPlanPane(trigger, { title, showAddRule = false, showCopy = false } = {}) {
   set('#sheetPlanTitle', 'textContent', title);
   const back = $('#planBack'); if (back) back.hidden = false;
-  const close = $('#sheetPlanClose'); if (close) close.hidden = showAddRule;
+  const close = $('#sheetPlanClose'); if (close) close.hidden = showAddRule || showCopy;
   const add = $('#planAddRuleBtn'); if (add) add.hidden = !showAddRule;
+  const copy = $('#planCopyBtn'); if (copy) copy.hidden = !showCopy;
   pushPane($('#sheetPlan'), trigger, resetPlanChrome);
 }
 
@@ -151,9 +153,17 @@ const PLAN_SECTION_HEADER = {
   evens: '#planDay',
 };
 
+/* A section that depends on the game's live state (rules.js's Copy from
+   another game row, hidden once the game starts) registers here to be painted
+   fresh on every open: `constraints` repaints only on a full render, and
+   starting a game is not one. */
+const planOpenHooks = [];
+export const onPlanOpen = fn => { planOpenHooks.push(fn); };
+
 export function openPlanSheet(section, trigger) {
   const dialog = $('#sheetPlan');
   if (!dialog) return;
+  planOpenHooks.forEach(fn => fn());
   // Always level 1: pop any open sub pane without its pop animation or undo
   // toast -- this is a fresh open, not a coach tapping back.
   const main = $('#planMain'), sub = $('#planSub');
@@ -377,18 +387,29 @@ function paintFormatBody() {
 const capitalize = colorName;
 
 /* One single-choice group: `.prow` + `aria-pressed` + `checkMark()`, for
-   `rows` of `[label, on, choose]`. A tap runs `choose`, has the caller
+   `rows` of `[label, on, choose, sub]` (a `sub` is a second line under the
+   label, read with it). A tap runs `choose`, has the caller
    `repaint` the group, and puts focus back on the row at the same position.
    First run's Game day rows (#431, onboarding.js) use it too. */
 export function paintChoiceRows(box, rows, repaint) {
   box.textContent = '';
   rows.forEach(([label, on_, choose], idx) => {
+    const sub = rows[idx][3];
     // #143: `.prow`, the same row Format/Plan/Settings/Team use.
-    const b = el('button', 'prow');
+    const b = el('button', 'prow' + (sub ? ' prow-shape' : ''));
     b.type = 'button';
     b.setAttribute('aria-pressed', String(on_));
-    b.setAttribute('aria-label', label);
-    b.append(el('span', 'prow-t', label));
+    b.setAttribute('aria-label', sub ? `${label}, ${sub}` : label);
+    if (sub) {
+      const txt = el('div', 'prow-shape-t');
+      /* A long second line wraps at 32px text. A narrow no-break space keeps
+         each "·" on the end of its line, not the start of the next; a full
+         one is 3px too wide for "Saturday ·" in a 320px row. "4 × 8" stays
+         whole. */
+      const shown = sub.replace(/ ·/g, '\u202f·').replace(/ × /g, '\u00a0×\u00a0');
+      txt.append(el('span', 'prow-t', label), el('span', 'prow-sub', shown));
+      b.append(txt);
+    } else b.append(el('span', 'prow-t', label));
     // The chosen row carries `.prow-check` (balance.js's own chosen-row
     // mark) instead of a filled `.sel` bar; unchosen rows carry no mark.
     if (on_) b.append(checkMark());

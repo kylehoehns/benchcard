@@ -67,6 +67,7 @@ export const EDITS = {
   dayCarryover: { keys: [...PLAN_ONLY] },                // even out earlier games today
   seasonCarryover: { keys: ['constraints', ...PLAN_ONLY] }, // even out the season so far
   rule: { keys: [...PLAN_ONLY] },                       // add or remove a rule
+  copySetup: { keys: 'all', now: true },                // Copy from another game, and its Undo
 
   // roster-view.js
   reorder: { keys: ['constraints', ...AFTER_EDIT] },    // move a player (arrows or drag)

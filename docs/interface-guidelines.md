@@ -151,9 +151,10 @@ gave backup and restore its own heading, last, and moved Settings onto
 Team's grouped rows.*
 
 **S2. No settings anywhere else.** The Team screen is the roster. The Plan sheet
-holds only choices about this game: strategy, rules, lineup balance, and evening
-out earlier games. A setting that belongs to the team is never also editable from
-a game. *Benchcard: decided 2026-09-14.*
+holds only choices about this game: strategy, rules, lineup balance, evening
+out earlier games, and copying another game's setup onto this one (#548). A
+setting that belongs to the team is never also editable from a game.
+*Benchcard: decided 2026-09-14.*
 
 **S3. Appearance is first in the Benchcard section: Automatic, Light, Dark.**
 Automatic is the default and follows the phone, including a switch at sunset
