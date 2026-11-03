@@ -139,6 +139,8 @@ export function copySetup(to, from, { rules, plan, format, here }) {
     if (from.order) to.order = [...from.order]; else delete to.order;
     // #547: whose list it is travels with it; an app-built one is built again for this game
     if (from.orderBuilt) to.orderBuilt = true; else delete to.orderBuilt;
+    // #557: how the app builds the list is part of how the game plans
+    if (from.orderMix) to.orderMix = true; else delete to.orderMix;
   }
   if (format) {
     to.periods = from.periods; to.periodMinutes = from.periodMinutes;
@@ -818,7 +820,7 @@ export const noRoster = () => !state.players.length;
 /* ---- the record-changing operations live in team-ops.js (no DOM, no
    import-time side effects, so a test can run them); these bind them to the
    active team and re-export the rest under their old names ---- */
-export { emptyConstraints, setAvailable };
+export { emptyConstraints, setAvailable, tierOfPlayer };
 export const removePlayer = id => removeFrom(team(), id);
 export const removeActiveTeam = () => removeTeam(state, state.activeTeam, () => newTeam(''));
 
@@ -2466,10 +2468,12 @@ export function computeAll() {
         /* The search runs only when what it reads has changed: the same
            inputs give the same list, so an unchanged game keeps its array. */
         const stints = buildStints(gameFormat(g), { mode: g.granMode, value: g.granValue });
-        const key = JSON.stringify([inPlay, stints, maxSubs, prio, g.periods, ORDER_RULES.map(k => c[k])]);
+        /* #557: Mix reads the levels with `tierOfPlayer`, whatever the odd minutes setting. */
+        const mix = g.orderMix ? Object.fromEntries(inPlay.map(id => [id, tierOfPlayer(ps.find(x => x.id === id))])) : null;
+        const key = JSON.stringify([inPlay, stints, maxSubs, prio, g.periods, ORDER_RULES.map(k => c[k]), ...(mix ? [mix] : [])]);
         let memo = orderMemo.get(g.id);
         if (memo?.key !== key) {
-          memo = { key, built: buildOrder({ ids: inPlay, stints, maxSubs, priority: prio, constraints: c, periods: g.periods }) };
+          memo = { key, built: buildOrder({ ids: inPlay, stints, maxSubs, priority: prio, constraints: c, periods: g.periods, mix }) };
           orderMemo.set(g.id, memo);
         }
         const list = [...memo.built.order, ...ids.filter(id => out.has(id))];

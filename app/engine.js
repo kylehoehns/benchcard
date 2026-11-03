@@ -1417,15 +1417,28 @@ const quantizePriority = value => Math.round((Number(value) || 0) * 100);
    minutes. Search: best swap until none improves, then every three-way turn
    once, with a fixed cap on scores worked out -- never a clock -- so the same
    input always gives the same list. Returns `{ order, short }`, `short` being
-   the rules the final list breaks as `{ kind, ids }`. */
+   the rules the final list breaks as `{ kind, ids }`.
+
+   #557: `mix` is a map of kid id -> level, passed only when the coach chose
+   Mix the fives. When the levels differ, the score becomes 1e6 x rules + V +
+   pref / (1 + n^2 M^2): V is the minutes-weighted variance of the fives'
+   strength (a five's strength is the sum of its kids' levels) times the game's
+   minutes M, so the fives are made even first and the preference only chooses
+   between lists that are equally even. The restarts then run whether or not a
+   rule is broken. With `mix` absent, or every kid at one level, none of this
+   runs and the list is the one above, evaluation for evaluation. */
 export const BUILD_CAP = 12000;
-export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c = {}, periods, cap = BUILD_CAP }) {
+export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c = {}, periods, cap = BUILD_CAP, mix }) {
   const n = ids.length;
   if (n < 2) return { order: [...ids], short: [], evals: 0 };
   const change = orderChanges(maxSubs);
   const idx = new Map(ids.map((id, i) => [id, i]));
   const floor = stints.map((s, j) => { const row = Array(n).fill(false); for (const k of placesOn(n, change, j)) row[k] = true; return row; });
   const on = (k, j) => (floor[j][k] ? 1 : 0);
+  const levels = mix ? ids.map(id => Number(mix[id]) || DEFAULT_TIER) : null;
+  const mixing = !!levels && levels.some(v => v !== levels[0]);
+  const seats = mixing ? stints.map((s, j) => placesOn(n, change, j)) : null;
+  const gameMinutes = stints.reduce((a, s) => a + s.minutes, 0);
   const mins = Array.from({ length: n }, (_, k) => stints.reduce((a, s, j) => a + on(k, j) * s.minutes, 0));
   // minutes spots k and l share, both on (`both`) or both off
   const share = (k, l, both) => stints.reduce((a, s, j) => a + (!!on(k, j) === both && !!on(l, j) === both ? s.minutes : 0), 0);
@@ -1489,7 +1502,12 @@ export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c
     for (const [a, b] of oneOf) add(bothOff[pos[a]][pos[b]], 'keepon', [a, b]);
     if (lastAt >= 0) for (const kid of lastKids) add(on(pos[kid], lastAt) ? 0 : stints[lastAt].minutes, 'lastq', [kid]);
     evals++;
-    return rule * 1e6 + pref;
+    if (!mixing) return rule * 1e6 + pref;
+    // V: minutes-weighted variance of the fives' strength, times the game's minutes
+    const strength = seats.map(places => places.reduce((a, k) => a + levels[list[k]], 0));
+    const mean = strength.reduce((a, v, j) => a + v * stints[j].minutes, 0) / gameMinutes;
+    const spread = strength.reduce((a, v, j) => a + stints[j].minutes * (v - mean) ** 2, 0);
+    return rule * 1e6 + spread + pref / (1 + n * n * gameMinutes * gameMinutes);
   };
 
   let score = cost(perm);
@@ -1531,9 +1549,9 @@ export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c
      the list turned round by one place, then two, and so on -- the same
      seeds in the same order every time -- and keep the best. Only while a
      rule is broken and the cap allows, so a list that meets every rule is
-     never looked at twice. */
+     never looked at twice. Under Mix they run regardless (#557). */
   let winner = perm, winnerScore = score;
-  for (let turn = 1; turn < n && winnerScore >= 1e6 - EPS && evals < cap; turn++) {
+  for (let turn = 1; turn < n && (mixing || winnerScore >= 1e6 - EPS) && evals < cap; turn++) {
     perm = winner.map((_, k) => winner[(k + turn) % n]);
     score = cost(perm);
     descend();

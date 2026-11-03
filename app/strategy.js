@@ -19,8 +19,9 @@ import { icon } from './icons.js';
 import { $, el, moveButton } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
+import { paintChoiceRows } from './game-setup.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels, tierOfPlayer } from './state.js';
 
 let edit = () => {};
 
@@ -355,6 +356,7 @@ const minutesLine = (g, id, mins) => (mins && !g.out.includes(id) && id in mins 
 function orderEditor(g) {
   const list = effectiveOrder(g);
   const wrap = el('div');
+  if (g.orderBuilt && !gameStarted(g.live)) wrap.append(...mixChoice(g));
   const grp = el('div', 'pgrp');
   const mins = minutesOfOrder(g);
   list.forEach((id, i) => {
@@ -387,10 +389,38 @@ function orderEditor(g) {
     wrap.append(acts);
   }
   const who = tieBreakIsLevels() ? 'your best players' : 'the kids furthest behind';
-  wrap.append(el('p', 'pgrp-f', `${g.orderBuilt
-    ? `Built for you: ${who} get the spots that play the most. Move anyone and the list is yours.`
-    : 'You set this list.'} The first five start. Players who are out are skipped.`));
+  const levels = new Set(list.filter(id => !g.out.includes(id)).map(id => tierOfPlayer(byId(id))));
+  const built = g.orderMix
+    ? (levels.size > 1
+      ? 'Built for you: your stronger players are spread out so every five has some. Move anyone and the list is yours.'
+      : 'Built for you: everyone is at the same level, so there is nothing to mix. Move anyone and the list is yours.')
+    : `Built for you: ${who} get the spots that play the most. Move anyone and the list is yours.`;
+  wrap.append(el('p', 'pgrp-f', `${g.orderBuilt ? built : 'You set this list.'} The first five start. Players who are out are skipped.`));
   return wrap;
+}
+
+/* #557: how the app builds its list. Two rows, one chosen; a tap sets or clears
+   `g.orderMix`, the plan builds the list again and the editor is drawn after
+   it, with focus put back on the row that was tapped. No Undo: the other row
+   is the way back. */
+function mixChoice(g) {
+  const box = el('div', 'pgrp');
+  let tapped = 0;
+  const choose = (mix, at) => () => {
+    tapped = at;
+    const now = game();
+    if (mix) now.orderMix = true; else delete now.orderMix;
+    edit('orderBuild');
+  };
+  const paint = () => {
+    renderStrategy();
+    document.querySelector('#stratbody .pgrp .prow[aria-pressed]')?.parentElement.children[tapped]?.focus({ preventScroll: true });
+  };
+  paintChoiceRows(box, [
+    [tieBreakIsLevels() ? 'Best players play the most' : 'Kids furthest behind play the most', !g.orderMix, choose(false, 0)],
+    ['Mix the fives', !!g.orderMix, choose(true, 1)],
+  ], paint);
+  return [el('div', 'pgrp-h', 'How to build the list'), box];
 }
 
 /* The refresh `undoable` runs on the tap and on Undo: the plan rebuilds the
