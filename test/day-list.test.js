@@ -540,3 +540,19 @@ test('carryUnplayedDay: not while bench mode is open, and not before onboarding'
     assert.equal(S.team().days[0].date, '2026-10-30');
   });
 });
+
+test('filing the only day leaves a new game on Rotation order with a list the app builds', () => {
+  const TODAY = new Date(2026, 8, 28);
+  const game = S.newGame(0, null, FORMAT);
+  game.strategy = 'order';
+  game.order = ['f', 'e', 'd', 'c', 'b', 'a'];
+  withDays(SIX, [{ name: '', date: '2026-09-27', games: [game] }], FORMAT, () => {
+    S.computeAll();
+    startEveryGame();
+    S.fileIfPast(TODAY);
+
+    const fresh = S.team().days[0].games[0];
+    assert.equal(fresh.strategy, 'order');
+    assert.equal(fresh.orderBuilt, true, 'the new game\'s list is the app\'s, not the coach\'s old one');
+  });
+});

@@ -8,10 +8,13 @@
   they have played (#489; see [design decisions](../design-decisions.md)).
 - **Closers** -- even minutes early, a group you pick finishes the game.
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
-- **Rotation order** -- the coach lists the players, and the five on the floor
-  is taken from that list in turn, so the next players are always known. A
-  later game that day starts where the earlier one's turn stopped. No search;
-  the rules warn rather than block, and the starting five rule is not used. See
+- **Rotation order** -- the five on the floor is taken from a list of the players
+  in turn, so the next players are always known. Until the game starts the app
+  builds the list from the odd minutes setting and the rules; once the coach
+  moves anyone, the list is theirs. A later game that day starts where an earlier
+  coach-set game's turn stopped. The plan itself is read off the list with no
+  search, and only building the app's list searches. The rules warn rather than
+  block, and the starting five rule is not used. See
   [design decisions](../design-decisions-rotation-order.md).
 
 Plus rules that compose with any of them: min/cap minutes, Together and

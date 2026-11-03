@@ -49,7 +49,7 @@ phone in your hand while play is live.
 | **By hand** | per-player targets on sliders, with locks |
 | **Closers** | even minutes early, a group you pick finishes the game |
 | **Platoon** | fixed fives alternating wholesale |
-| **Rotation order** | you list the players, and they take turns on the floor in that order |
+| **Rotation order** | the app builds the list of players for you, or you set it, and they take turns on the floor in that order |
 
 **Hand off a game to an assistant with a link or QR code.** Share the game and
 its roster through a link — the plan travels in the part of the URL after

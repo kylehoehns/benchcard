@@ -60,6 +60,7 @@ export const EDITS = {
   closers: { keys: [...PLAN_ONLY] },                    // closing window, who closes
   units: { keys: [...PLAN_ONLY] },                      // who is in a platoon unit
   order: { keys: [...PLAN_ONLY] },                      // move a player up or down the rotation order
+  orderBuild: { keys: [...AFTER_EDIT], now: true },     // "Build it for me again": the plan builds the list, so the list repaints after it
   unitCount: { keys: [...AFTER_EDIT] },                 // add/remove a platoon unit
 
   // rules.js

@@ -21,7 +21,7 @@ import { renderCards } from './card.js';
 import { renderTimeline, applyGameView } from './timeline.js';
 import { renderBalance } from './balance.js';
 import { renderConstraints, renderSeasonAdjust } from './rules.js';
-import { renderStrategy, refreshBudgetActuals } from './strategy.js';
+import { renderStrategy, refreshBudgetActuals, refreshOrderList } from './strategy.js';
 import { renderRoster, renderTeamSub, renderLevels, resetEditMode } from './roster-view.js';
 import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
 import { renderSetup, renderSentence, refreshSheetStatus } from './game-setup.js';
@@ -65,8 +65,9 @@ const SECTIONS = {
   sentence:    () => renderSentence(),
   strategy:    () => renderStrategy(),
   // in-place only: writes what the plan actually gives onto the budget rows
-  // without rebuilding a slider the coach may have hold of
-  budget:      () => refreshBudgetActuals(),
+  // without rebuilding a slider the coach may have hold of. The order list's
+  // minutes ride along (#547), drawn again only if the app rebuilt the list.
+  budget:      () => { refreshBudgetActuals(); refreshOrderList(); },
   balance:     () => renderBalance(),
   /* in-place only: the one meter on screen is the one in the open player
      sheet, and rebuilding the sheet to change it would take the control out

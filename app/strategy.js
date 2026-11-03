@@ -14,12 +14,13 @@
  * not a repaint of this section.
  */
 import { fmtMinutes, deriveShortNames, isOvertimeStint } from './engine.js';
+import { gameStarted } from './live.js';
 import { icon } from './icons.js';
 import { $, el, moveButton } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, moveInOrder as moveInOrderOf } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels } from './state.js';
 
 let edit = () => {};
 
@@ -341,17 +342,32 @@ function platoonEditor(g) {
    is the name and two 48px buttons (I3: a visible way to move, no drag), so
    it is the one list in the app with two controls in a row (C6). A move acts at
    once, and focus stays on the button that was pressed -- or on its partner
-   when the row has reached an end and that button is off. */
+   when the row has reached an end and that button is off.
+
+   #547: under the name, each kid's minutes this game from the open plan (a
+   kid who is out shows their mark instead), the list says whose it is, and a
+   list the coach set can be built again until the game starts. */
+const minutesOfOrder = g => {
+  const p = plans[state.activeGame];
+  return p?.ok ? effectiveMinutes(g, p) : null;
+};
+const minutesLine = (g, id, mins) => (mins && !g.out.includes(id) && id in mins ? `${fmtMinutes(mins[id])} min` : '');
 function orderEditor(g) {
   const list = effectiveOrder(g);
   const wrap = el('div');
   const grp = el('div', 'pgrp');
+  const mins = minutesOfOrder(g);
   list.forEach((id, i) => {
     const name = byId(id).name;
     const row = el('div', 'prow orow');
+    row.dataset.id = id;
     const who = el('div', 'ord-who');
     who.append(el('span', 'prow-t', name));
     if (g.out.includes(id)) who.append(el('span', 'ord-mark', (g.late || []).includes(id) ? 'Running late' : 'Out'));
+    else {
+      const min = minutesLine(g, id, mins);
+      if (min) who.append(el('span', 'ord-min', min));
+    }
     const body = el('div', 'ord-body');
     body.append(el('span', 'ord-n', String(i + 1)), who);
     const btns = el('div', 'ord-btns');
@@ -361,8 +377,57 @@ function orderEditor(g) {
     row.append(body, btns);
     grp.append(row);
   });
-  wrap.append(grp, el('p', 'pgrp-f', 'The first five start. Players who are out are skipped.'));
+  wrap.append(grp);
+  if (!g.orderBuilt && !gameStarted(g.live)) {
+    const again = el('button', 'prow', 'Build it for me again');
+    again.type = 'button';
+    again.onclick = buildAgain;
+    const acts = el('div', 'pgrp');
+    acts.append(again);
+    wrap.append(acts);
+  }
+  const who = tieBreakIsLevels() ? 'your best players' : 'the kids furthest behind';
+  wrap.append(el('p', 'pgrp-f', `${g.orderBuilt
+    ? `Built for you: ${who} get the spots that play the most. Move anyone and the list is yours.`
+    : 'You set this list.'} The first five start. Players who are out are skipped.`));
   return wrap;
+}
+
+/* The refresh `undoable` runs on the tap and on Undo: the plan rebuilds the
+   list, so the edit kind repaints this section after it, then focus goes to
+   the first row's Move down. */
+function focusFirstDown() {
+  const first = document.querySelector('#stratbody .orow .obtn:last-child');
+  if (first) first.focus();
+}
+function buildAgain() {
+  undoable('Built the list for you.', () => buildOrderAgain(game()), () => { edit('orderBuild'); focusFirstDown(); });
+}
+
+/* After every plan (the `budget` painter): the app may have rebuilt the list
+   under an open sheet. If the rows on screen no longer follow the list, the
+   editor is drawn again, with focus kept on the same button when it is still
+   there; otherwise the minutes are rewritten in place. */
+export function refreshOrderList() {
+  const g = game();
+  const rows = [...document.querySelectorAll('#stratbody .orow')];
+  if (!g || g.strategy !== 'order' || !rows.length) return;
+  const list = effectiveOrder(g);
+  if (rows.length !== list.length || list.some((id, i) => rows[i].dataset.id !== id)) {
+    const had = document.activeElement?.closest('#stratbody') ? document.activeElement.getAttribute('aria-label') : null;
+    renderStrategy();
+    if (had) [...document.querySelectorAll('#stratbody .obtn')].find(b => b.getAttribute('aria-label') === had)?.focus();
+    return;
+  }
+  const mins = minutesOfOrder(g);
+  list.forEach((id, i) => {
+    const who = rows[i].querySelector('.ord-who');
+    let min = who.querySelector('.ord-min');
+    const text = minutesLine(g, id, mins);
+    if (text && !min) who.append(min = el('span', 'ord-min'));
+    if (min && text) min.textContent = text;
+    else if (min) min.remove();
+  });
 }
 
 // `game()` is read at tap time, so a stale list is never the one swapped.

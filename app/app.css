@@ -984,7 +984,7 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
    own line; a word wider than the whole row may still break, which no layout
    can help (the roster's rows do the same). */
 .ord-n { flex: none; min-width: 1.25rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.ord-mark { flex: none; color: var(--muted); font-size: var(--fs-footnote); }
+.ord-mark, .ord-min { flex: none; color: var(--muted); font-size: var(--fs-footnote); }
 
 /* Drag to reorder: the grab area is the order column and the avatar, so the
    rest of the row still scrolls the page under a thumb. Scoped to

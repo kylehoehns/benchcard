@@ -34,7 +34,8 @@ test('it repaints after a solve, not under the dragging finger', () => {
                             strategy.indexOf('export function refreshBudgetActuals'));
   assert.ok(!fn.includes('refreshBudgetActuals'),
     'updateBudgetUI must not paint actuals: mid-drag they are a plan out of date');
-  assert.match(render, /budget:\s*\(\) => refreshBudgetActuals\(\)/);
+  // #547: the order list's minutes are refreshed in place by the same painter, right after the actuals
+  assert.match(render, /budget:\s*\(\) => \{ refreshBudgetActuals\(\); refreshOrderList\(\); \}/);
 });
 
 test('a slider drag reaches it -- PLAN_ONLY is the drag repaint list', () => {

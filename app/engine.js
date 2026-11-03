@@ -1391,11 +1391,183 @@ export function orderChanges(maxSubs) {
   const n = Number(maxSubs);
   return Number.isFinite(n) ? Math.max(1, Math.min(ON_FLOOR, Math.trunc(n))) : DEFAULT_MAX_SUBS;
 }
+/* The one formula for who is on at stint `j`: the places j*c .. j*c+4, counted
+   round a circle of `n`. `orderLineups` seats the circle's players there and
+   `buildOrder` counts the minutes each place plays. */
+const placesOn = (n, c, j) => Array.from({ length: ON_FLOOR }, (_, t) => (j * c + t) % n);
 function orderLineups(ctx, order, avail) {
   const here = new Set(avail);
   const circle = [...new Set([...(order || []).filter(id => here.has(id)), ...avail])];
   const n = circle.length, c = orderChanges(ctx.maxSubs);
-  return ctx.stints.map((s, j) => Array.from({ length: ON_FLOOR }, (_, t) => circle[(j * c + t) % n]));
+  return ctx.stints.map((s, j) => placesOn(n, c, j).map(k => circle[k]));
+}
+
+/* One quantizer for "who is ahead": a hundredth of a minute, so season shares
+   that differ by arithmetic noise tie. `tieBreakOrder` and `buildOrder` both
+   read priority through it, and so can never disagree on what a tie is. */
+const quantizePriority = value => Math.round((Number(value) || 0) * 100);
+
+/* #547: the list Order builds for a coach who has not set one. `ids` are the
+   players here in roster order, `priority` the one number per kid `solveDay`
+   composes from the odd minutes setting (higher plays more), and `constraints`
+   the composed ones. Spot k plays every stint whose five takes place k, so the
+   list decides who plays how long; the search seats kids in spots to score
+   best. Score = 1e6 x what the rules cost in minutes + the preference cost, so
+   a rule always beats a preference. Start: kids by priority against spots by
+   minutes. Search: best swap until none improves, then every three-way turn
+   once, with a fixed cap on scores worked out -- never a clock -- so the same
+   input always gives the same list. Returns `{ order, short }`, `short` being
+   the rules the final list breaks as `{ kind, ids }`. */
+export const BUILD_CAP = 12000;
+export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c = {}, periods, cap = BUILD_CAP }) {
+  const n = ids.length;
+  if (n < 2) return { order: [...ids], short: [], evals: 0 };
+  const change = orderChanges(maxSubs);
+  const idx = new Map(ids.map((id, i) => [id, i]));
+  const floor = stints.map((s, j) => { const row = Array(n).fill(false); for (const k of placesOn(n, change, j)) row[k] = true; return row; });
+  const on = (k, j) => (floor[j][k] ? 1 : 0);
+  const mins = Array.from({ length: n }, (_, k) => stints.reduce((a, s, j) => a + on(k, j) * s.minutes, 0));
+  // minutes spots k and l share, both on (`both`) or both off
+  const share = (k, l, both) => stints.reduce((a, s, j) => a + (!!on(k, j) === both && !!on(l, j) === both ? s.minutes : 0), 0);
+  const matrix = both => Array.from({ length: n }, (_, k) => Array.from({ length: n }, (_, l) => share(k, l, both)));
+  const together = matrix(true), bothOff = matrix(false);
+  let fewestApart = Infinity;
+  for (let k = 0; k < n; k++) for (let l = k + 1; l < n; l++) {
+    fewestApart = Math.min(fewestApart, mins[k] + mins[l] - 2 * together[k][l]);
+  }
+  const pairs = list => (list || []).map(([a, b]) => [idx.get(a), idx.get(b)]).filter(([a, b]) => a != null && b != null && a !== b);
+  const avoids = pairs(c.avoids), glued = pairs(c.pairs), oneOf = pairs(c.keepOnFloor);
+  const lastAt = (c.lastPeriodFive || []).length ? lastPeriodStintIndex(stints, periods) : -1;
+  const lastKids = lastAt < 0 ? [] : (c.lastPeriodFive || []).map(id => idx.get(id)).filter(k => k != null);
+  const kidMin = ids.map(id => Number(c.minMinutes?.[id]) || 0);
+  const kidMax = ids.map(id => c.maxMinutes?.[id] ?? Infinity);
+
+  // kids by priority, a tie group sharing one weight: how many have strictly less
+  const prio = k => quantizePriority(priority[ids[k]]);
+  const groups = [];
+  for (const k of Array.from({ length: n }, (_, i) => i).sort((a, b) => prio(b) - prio(a) || a - b)) {
+    const last = groups[groups.length - 1];
+    if (last && prio(last[0]) === prio(k)) last.push(k);
+    else groups.push([k]);
+  }
+  const weight = Array(n).fill(0);
+  let placed = 0;
+  for (const group of groups) {
+    placed += group.length;
+    for (const k of group) weight[k] = n - placed;
+  }
+
+  // start: each tie group takes the next block of the most-minutes spots, in spot order
+  const spots = Array.from({ length: n }, (_, k) => k).sort((a, b) => mins[b] - mins[a] || a - b);
+  let perm = Array(n).fill(0);
+  let next = 0;
+  for (const group of groups) {
+    const block = spots.slice(next, next + group.length).sort((a, b) => a - b);
+    next += group.length;
+    [...group].sort((a, b) => a - b).forEach((kid, i) => { perm[block[i]] = kid; });
+  }
+
+  /* The score of a list, rule minutes first. `parts` is filled only when
+     asked, with what the list leaves unmet. */
+  const pos = Array(n).fill(0);
+  let evals = 0;
+  const cost = (list, parts) => {
+    for (let k = 0; k < n; k++) pos[list[k]] = k;
+    let rule = 0, pref = 0;
+    const add = (amount, kind, who) => {
+      rule += amount;
+      if (parts && amount > 1e-9) parts.push({ kind, ids: who.map(k => ids[k]) });
+    };
+    for (let k = 0; k < n; k++) {
+      const kid = list[k];
+      add(Math.max(0, kidMin[kid] - mins[k]), 'minimum', [kid]);
+      add(Math.max(0, mins[k] - kidMax[kid]), 'cap', [kid]);
+      pref -= weight[kid] * mins[k];
+    }
+    for (const [a, b] of avoids) add(together[pos[a]][pos[b]], 'apart', [a, b]);
+    for (const [a, b] of glued) add(mins[pos[a]] + mins[pos[b]] - 2 * together[pos[a]][pos[b]] - fewestApart, 'together', [a, b]);
+    for (const [a, b] of oneOf) add(bothOff[pos[a]][pos[b]], 'keepon', [a, b]);
+    if (lastAt >= 0) for (const kid of lastKids) add(on(pos[kid], lastAt) ? 0 : stints[lastAt].minutes, 'lastq', [kid]);
+    evals++;
+    return rule * 1e6 + pref;
+  };
+
+  let score = cost(perm);
+  const EPS = 1e-7;
+  const swapped = (i, j) => { const q = perm.slice(); q[i] = perm[j]; q[j] = perm[i]; return q; };
+  const turned = (i, j, k, flip) => {
+    const q = perm.slice();
+    [q[i], q[j], q[k]] = flip ? [perm[k], perm[i], perm[j]] : [perm[j], perm[k], perm[i]];
+    return q;
+  };
+  /* The best of `moves` that beats the score now, or null. Scan order is
+     fixed and only a strict gain counts. */
+  const best = moves => {
+    let top = null, topScore = score - EPS;
+    for (const move of moves) {
+      if (evals >= cap) break;
+      const q = move();
+      const s = cost(q);
+      if (s < topScore) { top = q; topScore = s; }
+    }
+    return top && { list: top, score: topScore };
+  };
+  const swaps = [], turns = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    swaps.push(() => swapped(i, j));
+    for (let k = j + 1; k < n; k++) turns.push(() => turned(i, j, k, false), () => turned(i, j, k, true));
+  }
+  const descend = () => {
+    while (evals < cap) {
+      const step = best(swaps) || best(turns);
+      if (!step) break;
+      perm = step.list;
+      score = step.score;
+    }
+  };
+  descend();
+  /* A search that ends still breaking a rule may only be stuck: two kids that
+     must both move to separate may need two moves at once. Start again from
+     the list turned round by one place, then two, and so on -- the same
+     seeds in the same order every time -- and keep the best. Only while a
+     rule is broken and the cap allows, so a list that meets every rule is
+     never looked at twice. */
+  let winner = perm, winnerScore = score;
+  for (let turn = 1; turn < n && winnerScore >= 1e6 - EPS && evals < cap; turn++) {
+    perm = winner.map((_, k) => winner[(k + turn) % n]);
+    score = cost(perm);
+    descend();
+    if (score < winnerScore - EPS) { winner = perm; winnerScore = score; }
+  }
+  perm = winner;
+
+  const searched = evals;
+  const short = [];
+  cost(perm, short);
+  evals = searched;
+  return { order: perm.map(k => ids[k]), short, evals };
+}
+
+/* The one note a built list writes when no list meets every rule. A part with
+   `each` is one per pair; the others gather every kid into one part. */
+const SHORT_PARTS = [
+  ['apart', names => `keep ${andList(names)} apart`, true],
+  ['together', names => `keep ${andList(names)} together more`, true],
+  ['minimum', names => `give ${andList(names)} their minimum`, false],
+  ['cap', names => `keep ${andList(names)} to their most minutes`, false],
+  ['keepon', names => `keep ${names.join(' or ')} on the floor`, true],
+  ['lastq', names => `start ${andList(names)} in the last period`, false],
+];
+export function orderShortNote(short, label) {
+  if (!short.length) return null;
+  const parts = [];
+  for (const [kind, say, each] of SHORT_PARTS) {
+    const of = short.filter(s => s.kind === kind);
+    if (each) parts.push(...of.map(s => say(s.ids.map(label))));
+    else if (of.length) parts.push(say(of.flatMap(s => s.ids).map(label)));
+  }
+  return { severity: 'warn', code: 'ORDER_BUILT_SHORT', playerIds: [...new Set(short.flatMap(s => s.ids))],
+    message: `No order meets every rule, so this list comes closest. It can't ${andList(parts)}.` };
 }
 
 /* `held`: minutes this player is pinned to in later stints. Seating them in an
@@ -1743,7 +1915,7 @@ function tieBreakOrder(ctx, priority, seed) {
   /* Quantized to a hundredth of a minute before it is compared. Season shares
      are averages and land on values like 0.0000000004 apart; sorting on the
      raw float would let arithmetic noise outrank the rotation. */
-  const q = id => Math.round((Number(priority && priority[id]) || 0) * 100);
+  const q = id => quantizePriority(priority && priority[id]);
   return base
     .map((id, i) => ({ id, r: q(id), i }))
     .sort((a, b) => (b.r - a.r) || (a.i - b.i))

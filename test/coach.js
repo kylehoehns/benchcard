@@ -1079,14 +1079,17 @@ export class Coach {
       `onGameDayWith({ out: ['p9'] }, 10)` is nine here and a tenth marked out.
       `edits` may be a function of the game. `names` replaces the roster
       (`p0`...), `settings` is laid over the team's and `alone` drops the
-      day's other games. */
-  async onGameDayWith(edits, rosterSize, { names, settings, alone } = {}) {
+      day's other games, `tiers` is `{ id: level }`. On the roster helper below,
+      `tieBreak` is the odd minutes setting ('levels' or 'behind'), `rules` is laid
+      over the game's constraints (`{ avoids: [['p0', 'p4']], minMinutes: { p0: 20 } }`). */
+  async onGameDayWith(edits, rosterSize, { names, settings, alone, tiers } = {}) {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     const record = gameDay();
     const [team] = record.teams;
     if (names) team.players = names.map((name, i) => ({ id: `p${i}`, name, number: '', tier: 3 }));
     if (settings) team.settings = { ...team.settings, ...settings };
+    if (tiers) team.players = team.players.map(p => (p.id in tiers ? { ...p, tier: tiers[p.id] } : p));
     if (rosterSize) team.players = team.players.slice(0, rosterSize);
     const [day] = team.days;
     day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...(typeof edits === 'function' ? edits(g) : edits) } : g));
@@ -1099,11 +1102,11 @@ export class Coach {
       `changing` players changing at once (#545's example). `edits` is laid
       over that game, e.g. `{ out: ['p1'] }`; `startingFive` is a Starting five
       rule, as ids. */
-  async onGameDayWithRoster(names, { changing = 4, startingFive, ...edits } = {}) {
+  async onGameDayWithRoster(names, { changing = 4, startingFive, rules, tiers, tieBreak, ...edits } = {}) {
     await this.onGameDayWith(g => ({
       periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4, out: [], ...edits,
-      ...(startingFive ? { constraints: { ...g.constraints, openingFive: startingFive } } : {}),
-    }), undefined, { names, settings: { maxSubs: changing }, alone: true });
+      ...(startingFive || rules ? { constraints: { ...g.constraints, ...rules, ...(startingFive ? { openingFive: startingFive } : {}) } } : {}),
+    }), undefined, { names, tiers, settings: { maxSubs: changing, ...(tieBreak ? { tieBreak } : {}) }, alone: true });
   }
 
   /** The plan's "Stint by stint" table: who is on the floor each stint, as
@@ -1116,6 +1119,16 @@ export class Coach {
   orderList() {
     return evalIn(this.c, `[...document.querySelectorAll('#stratbody .orow')].map(r => r.querySelector('.prow-t').textContent)`);
   }
+
+  /** The minutes each row of the Rotation order list shows, by name: `{ Webb: '20 min' }`.
+      A row with no minutes line (out, running late, no plan) is left out. */
+  orderMinutes() {
+    return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('#stratbody .orow')]
+      .map(r => [r.querySelector('.prow-t').textContent, r.querySelector('.ord-min')?.textContent ?? '']).filter(([, m]) => m))`);
+  }
+
+  /** The line under the Rotation order list: who built it and what the first five do. */
+  orderFooter() { return evalIn(this.c, `document.querySelector('#stratbody .pgrp-f').textContent`); }
 
   /** The marks beside the Rotation order list's names: `{ name: 'Out' }`. */
   orderMarks() {
