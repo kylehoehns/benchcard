@@ -35,16 +35,16 @@ describe('the run stepper (#452)', { skip, concurrency: true }, () => {
       assert.equal(await coach.text('#planKindBody .prow-t'), 'In a row');
       assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
       assert.equal(await coach.count('#planKindBody .pgrp-f:not([hidden])'), 0, 'no N stints is X min hint');
-      for (let i = 0; i < 5; i++) await coach.tap('More minutes');
+      for (let i = 0; i < 5; i++) await coach.tap('Longer');
       assert.equal(await coach.text('#planKindBody .pstep-val'), '28 min', '7 of the 8 subs');
-      assert.ok(await coach.isDisabled('More minutes'), 'all 8 would be no limit');
-      await coach.tap('Fewer minutes');
+      assert.ok(await coach.isDisabled('Longer'), 'all 8 would be no limit');
+      await coach.tap('Shorter');
       assert.equal(await coach.text('#planKindBody .pstep-val'), '24 min');
       await coach.tap('Sits at most N in a row');
-      await coach.tap('More minutes');
-      await coach.tap('More minutes');
+      await coach.tap('Longer');
+      await coach.tap('Longer');
       assert.equal(await coach.text('#planKindBody .pstep-val'), '16 min');
-      assert.ok(await coach.isDisabled('More minutes'), 'Sits at most stops at 4 subs');
+      assert.ok(await coach.isDisabled('Longer'), 'Sits at most stops at 4 subs');
     });
   });
 

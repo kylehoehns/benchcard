@@ -27,9 +27,9 @@ rather than acted on.
 
 **Focus never leaves the dialog (#139).** Keyboard focus always stays inside
 `#gamemode`. After each action (stepping stints, swapping, sitting someone,
-pressing This stint or Rest of game, or undoing), focus moves to a named target:
+pressing For now or Takes their minutes, or undoing), focus moves to a named target:
 the incoming player's floor row after a swap, the first floor row after reset or
-undo, the button that was just pressed after This stint or Rest of game, and the
+undo, the button that was just pressed after For now or Takes their minutes, and the
 appropriate step button (`#gmNext2` or `#gmPrev`) if that button was hidden or
 disabled by the action. Focus uses `preventScroll: true` and does not touch
 nothing that would scroll the dialog. A `gmFocus` helper in `gamemode.js` runs
@@ -48,7 +48,7 @@ adds `", just on"` if that tag shows. Example: `"3, Ana Reyes, 0 of 16 minutes"`
 The number is omitted if the player has no jersey number. Floor rows carry
 `aria-pressed="true"` when picked, `"false"` otherwise. Bench rows are `div`s
 until one is picked (non-interactive), then become `button`s. Scope buttons
-(This stint, Rest of game, and the scope toggle) carry `aria-pressed` matching
+(For now, Takes their minutes, and the scope toggle) carry `aria-pressed` matching
 the `on` class.
 
 **It holds a screen wake lock the whole time it is open.** `openGameMode`
@@ -159,23 +159,30 @@ the screen is full (a short phone at large text, after a swap), the "card no
 longer matches" line and the Running late group shrink and scroll before the foot
 moves. A toast lifts above the box in portrait, but only as far as it fits
 whole on screen; a toast too tall for the room above the box sits over it, never
-over the foot, until it goes.
+over the foot, until it goes. While a floor kid is picked for a swap, the box
+drops to its heading so the bench rows have the room; the names come back when
+the pick is made or dropped (#573).
 
 **A tied game can go to overtime (#368).** On the last stint the Next box
 offers **Tied? Add overtime** under the "Game ends at 0:00." line, and it is gone once
-the game is finished. The sheet asks for whole minutes from 1 to 10. It is
-prefilled with the length the team added last time, which is the team setting
-`overtimeMinutes` (2 until a team has added any). The sheet also asks **Who
-plays** (#369), with four choices: Next rotation, Even out, Keep this five and
-Strongest five. Next rotation is selected each time the sheet opens. "Add
-overtime" is one `undoable` step, "Overtime added, N min.": the minutes and
-the choice join the game's overtime, the plan is solved again with the stints
-already played frozen so they do not move, and the game steps onto the first
-overtime stint. Undo takes all of it back, the remembered length included,
-because it restores the whole snapshot. The button comes back on the last
-overtime stint, and a second overtime is named OT2. Who is on the floor in
-each overtime follows the choice made for it; the rules are in
-[planning-strategies.md](planning-strategies.md).
+the game is finished. One tap adds it (#564), with the length the team added
+last time (the team setting `overtimeMinutes`, 2 until a team has added any) and
+**Next rotation**. A **Change** button beside it opens the overtime sheet to
+pick the minutes or who plays. The sheet asks for whole minutes from 1 to 10,
+prefilled with that same length. It also asks **Who plays** (#369), with four
+choices: Next rotation, Even out, Keep this five and Strongest five. Next
+rotation is selected each time the sheet opens, and a one-line note under the
+picks says what the chosen one does. Either way, adding the overtime is one
+`undoable` step, "Overtime added, N min.": the minutes and the choice join the
+game's overtime, the plan is solved again with the stints already played frozen
+so they do not move, and the game steps onto the first overtime stint. Undo
+takes all of it back, the remembered length included, because it restores the
+whole snapshot. The button comes back on the last overtime stint, and a second
+overtime is named OT2. Who is on the floor in each overtime follows the choice
+made for it; the rules are in [planning-strategies.md](planning-strategies.md).
+Overtime minutes count toward a kid's own minimum and the league minimum, and
+the league minimum is still worked out from the regular game
+(`test/overtime-minimums.test.js`).
 
 Each player shows **played / projected** — minutes from the stints already
 completed, then where they finish if the plan holds. Mid-game the live question
@@ -246,7 +253,7 @@ late are the same to the plan: the engine reads `out` alone, and `late` is
 always a subset of it.
 
 Reality diverges from the plan, so a swap here **overrides** the plan for the
-current stint or the rest of the game. A **This stint** swap then re-plans the
+current stint or the rest of the game. A **For now** swap then re-plans the
 stints after it with `resolveRest` so minutes stay even (#247), and its toast
 says the rest of the game was re-planned (#415); one Undo takes back both.
 Under By hand that re-plan works from the hand numbers (#489), so a swap there
@@ -257,15 +264,15 @@ except that a pinned overtime stint goes back to its stored five and an Even
 out overtime is planned again as Even out
 ([planning-strategies.md](planning-strategies.md)).
 
-There is a third scope, **"Sit for the rest"**, and there the re-solve is the
+There is a third scope, **"Sits the rest of the game"**, and there the re-solve is the
 whole point: the picked player is out for the rest of the game and
 `resolveRest` (`state.js`) asks the solver to cover the remaining stints
 honouring what everyone has already played. It needs no replacement pick —
 *who* is the question it answers, not a precondition of asking it. On the
 current stint only that one seat changes: the four who stay are handed to the
 solver as the suffix's opening five, so one bench kid comes on and nobody else
-moves (#376). If that cannot be met it falls back to a free solve. "Rest of
-game" beside it still hands every remaining stint to one named kid, and that is
+moves (#376). If that cannot be met it falls back to a free solve. "Takes their
+minutes" beside it still hands every remaining stint to one named kid, and that is
 deliberate: there the coach named them, which is an instruction rather than an
 unfairness. Measured across 162 cases the re-solve is fairer in 115 and the
 same in 47, never worse, mean spread 2.7 against 6.5 minutes.
@@ -291,7 +298,7 @@ back on for the fifth seat, the sit stays recorded, and the coach is told once:
 when there is more than one. The sit applies again on the first re-plan that
 has five without them. Marking a sat kid Out (or Running late) and then Here now keeps the sit.
 
-A **This stint** swap and a sit call `resolveRestRelaxing` (`state.js`), which
+A **For now** swap and a sit call `resolveRestRelaxing` (`state.js`), which
 is `resolveRest` with the one cap retry a change of plan makes (#533), and not
 `replanRest` (#437). If a kid fixed to a stint has to be let go for that solve to work, the
 change still goes through and its own toast adds the same "Not enough minutes

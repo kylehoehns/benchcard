@@ -111,7 +111,7 @@ function renderPairsGroup(c) {
   if (!c.pairs.length) { wrap.hidden = true; return; }
   wrap.hidden = false;
   const box = el('div', 'pgrp');
-  box.append(switchRow('Force Together pairs to always be in together', c.hardPairs, false, v => {
+  box.append(switchRow('Force Together keeps each pair on the floor at the same time', c.hardPairs, false, v => {
     c.hardPairs = v; renderConstraints(); edit('pairs');
   }));
   wrap.append(box);
@@ -582,7 +582,9 @@ function kindControls(kind, draft, hooks = {}) {
     // #574: minutes where the game has subs, the period's own name under Breaks only
     grp.append(stepperRow(runRowLabel(game()), () => draft.n, v => { draft.n = v; }, 1, top,
       minutes ? 'minutes' : runNoun(game(), 2), () => { paintHint(); afterStep?.(); },
-      minutes ? v => runMinutesText(game(), v) : undefined));
+      minutes ? v => runMinutesText(game(), v) : undefined,
+      // a step is one substitution spot (4 minutes at 4 x 8), so no label promises one minute
+      minutes ? ['Shorter', 'Longer'] : undefined));
     body.append(grp, hint);
   }
   return body;

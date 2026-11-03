@@ -2426,7 +2426,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* #576: the Who's here row under the sentence -- a plain 48px button, ink text
    and a muted chevron, in the sentence's own weight so it reads as part of it. */
 .here-row { display: flex; align-items: center; gap: .4rem; min-height: 48px;
-  margin: -.6rem 0 .6rem; padding: 0 .3em; border: 0; background: none; cursor: pointer;
+  margin: -1rem 0 -1rem; padding: 0 .3em; border: 0; background: none; cursor: pointer;
   font: inherit; font-size: var(--fs-secondary); font-weight: 600; color: var(--ink); text-align: left; }
 .here-row .prow-chev { line-height: 1; }
 

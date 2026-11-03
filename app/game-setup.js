@@ -329,7 +329,7 @@ export const MINUTES_LO = 4, MINUTES_HI = 20;
 // joins the boot graph. `get`/`set` (rather than a state key) is what lets
 // rules.js's draft object share this with Format's `game()` fields; the
 // clamp itself is still `stepFormat` (state.js), never re-derived.
-export function stepperRow(label, get, set, lo, hi, noun, afterChange, show = String) {
+export function stepperRow(label, get, set, lo, hi, noun, afterChange, show = String, names = [`Fewer ${noun}`, `More ${noun}`]) {
   const row = el('div', 'prow pstep-row');
   row.append(el('span', 'prow-t', label));
   // a value with words in it ("up to 9 min") is wider than the two digits the column is sized for
@@ -337,10 +337,10 @@ export function stepperRow(label, get, set, lo, hi, noun, afterChange, show = St
   const wrap = el('div', 'pstep');
   const minus = el('button', 'pstep-btn', '−');
   minus.type = 'button';
-  minus.setAttribute('aria-label', `Fewer ${noun}`);
+  minus.setAttribute('aria-label', names[0]);
   const plus = el('button', 'pstep-btn', '+');
   plus.type = 'button';
-  plus.setAttribute('aria-label', `More ${noun}`);
+  plus.setAttribute('aria-label', names[1]);
   const sync = () => {
     const v = get();
     val.textContent = show(v);

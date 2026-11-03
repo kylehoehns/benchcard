@@ -102,9 +102,9 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       assert.ok(!(await coach.sees('Rest limit')), 'the old name is gone');
       await coach.tap('Sits at most N in a row');
       assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
-      await coach.tap('More minutes');
+      await coach.tap('Longer');
       assert.equal(await coach.text('#planKindBody .pstep-val'), '12 min');
-      await coach.tap('Fewer minutes');
+      await coach.tap('Shorter');
       await coach.tap('Plays at most N in a row');
       assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
       await coach.tap('Sits at most N in a row');
@@ -145,7 +145,7 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
          to share as much as it can, the plan splits them once. */
       await addRule(coach, 'Plays at least', ['Marcus Williams'], 20);
       await addRule(coach, 'Apart', ['Hana Kim', 'Nia Brooks']);
-      await coach.tap('Force Together pairs to always be in together');
+      await coach.tap('Force Together keeps each pair on the floor at the same time');
       await addRule(coach, 'Starting five', opening);
       await coach.tap('Closers');
       for (const p of closers) await coach.tap(p);

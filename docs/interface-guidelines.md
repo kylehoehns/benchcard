@@ -140,7 +140,7 @@ Design principles; Modality.*
 **S1. One Settings screen, with three sections.** The top section is headed with
 the active team's name and holds everything that belongs to that team: the team's
 display name, team color, default game format, players changing at once, league
-minimum, how odd minutes fall, and whether new games even out the season, in
+minimum, where extra minutes go (under Fine-tuning), and whether new games even out the season, in
 grouped rows with at most one footnote per group. The second
 section is headed *Benchcard* and holds appearance, How it works (with the
 tour), and About, contact and the tip jar. The third is headed *Backup and
@@ -245,7 +245,7 @@ sheet on top. *Apple: Modality. Research: NN/g, bottom sheets.*
 opens something, a checkmark means it's chosen, a switch means on or off. Use
 `<input type="checkbox" switch>` where supported; Safari gives it a haptic tap on
 iPhone. Swipe-to-remove is only a shortcut; every row can also be removed from its
-detail. The one exception is Rotation order's move buttons, which sit two to a row
+detail. The one exception is Order's move buttons, which sit two to a row
 (see [design decisions](design-decisions-rotation-order.md)).
 *Apple: Lists and tables. Web: Safari 18.0; WCAG 2.5.7.*
 
@@ -286,8 +286,8 @@ Gold, Purple. Each has a light and a dark value; Gold needs dark text on its fil
 **K1. The tint goes on three things only.** The primary action's fill, the
 tappable phrases in a game's sentence, and a selected state. Never on back
 buttons, headers, list labels or icons. Apple: use brand color "for primary
-actions or status indicators… consider moving it into the content layer." With
-Graphite, tappable phrases get a soft underline, since the tint is the ink.
+actions or status indicators… consider moving it into the content layer." Tappable
+phrases get a 1px underline in their own text color, under every team color (#576).
 *Apple: Branding (updated 2026-09-09); Color.*
 
 **K2. Player colors mean a player and nothing else.** They never signal state.

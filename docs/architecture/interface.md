@@ -176,12 +176,14 @@ The second group holds the game format (**A game is**: periods and minutes
 per period) and **A new game starts**: whether each new game opens with the
 "Even out the season so far" switch on. Its footnote says these shape what a
 new game starts as, and that any game can be changed from its own screen.
+Changing **A game is** also changes the open day's games that have not started.
 
 The third group holds **Players changing at once** (1–5, default 3, `maxSubs`),
-**The odd minutes** (who gets the high side when the clock does not divide
-evenly), and **Everyone plays at least** (the league minimum: an amount and what it counts, minutes, percent of the game, periods or full periods; default 0 minutes, [design decisions](../design-decisions.md)). Under it, **Everyone plays in** is a three-way choice, Off, Each half or Each period (`settings.playsIn`, default Off).
-These settings live together because they shape who plays, and the
-group's one footnote is the `maxSubs` read-back below. `maxSubs` has
+**Fine-tuning** (a row that opens **Extra minutes go to**: who gets the high side
+when the clock does not divide evenly, Kids behind on minutes or Best players,
+with its own one-line note), and **Everyone plays at least** (the league minimum: an amount and what it counts, minutes, percent of the game, periods or full periods; default 0 minutes, [design decisions](../design-decisions.md)). Under it, **Everyone plays in** is a three-way choice, Off, Each half or Each period (`settings.playsIn`, default Off).
+These settings live together because they shape who plays. The `maxSubs`
+read-back sits under **Players changing at once**, as described below. `maxSubs` has
 always existed in `engine.js` and was invisible to a coach until it moved here.
 It is a *preference*, and the copy says so, because the solver treats it as one
 — see the design note below. Five bare digits read as a rule, so the control
@@ -225,8 +227,8 @@ nothing is tagged and the gutter collapses rather than shouting at every row.
 
 Players carry identity: a color from a perceptually even hue set (lightness
 and chroma themed once, only the hue varies per player), used in the squad
-pills, the timeline, the budget sliders and the day chart. The stint-by-stint
-table still exists, demoted to a disclosure. Full names show at the secondary
+pills, the timeline, the budget sliders and the day chart. The sub-by-sub
+table ("Sub by sub") still exists, demoted to a disclosure. Full names show at the secondary
 type size, and the timeline no longer has a box around it (#69).
 
 Period dividers are now 3px gaps in the track color, appearing as notches cut
@@ -417,20 +419,25 @@ opens the phone to see the plan; the day heading starts the *This game*
 section, then the Plan sheet (#28, which holds the strategy, rules, lineup
 balance, evening out and, before the game starts, Copy from another game),
 and then *This game* (date, opponent, day name, tip-off, remove); card head, card and the bench button slot in after the
-timeline, and Stint-by-stint and Card options fall below. The Plan sheet
+timeline, and Sub by sub and Card options fall below. The Plan sheet
 replaced the Plan, Rules and Lineup balance folds that used to read at positions
 3, 11 and 4 — putting the strategy, constraints and evening-out controls in one
 place, opened at full height. The flex `gap` is zeroed there — the blocks already
 carry margins, and a gap double-counts every seam. The rule is `@media screen`,
 so the print path, which flattens everything through `.print-path`, is untouched.
 
+**Tappable phrases are underlined in their own color (#576).** A phrase in the
+sentence has a 1px underline drawn in its text color, under every team color.
+Under the sentence, a 48px **Who's here (N)** row (`#hereRow`) opens the same
+sheet as the players phrase.
+
 **Copy from another game (#548).** The Plan sheet's last group is one row,
 *Copy from another game*. It is hidden once the game has a stint played or
 finished, and when the team has no other game. It opens a level-2 page listing
 every other game on the team: this day's first, then other days newest first.
 Filed season games are not listed, because they hold no rules, strategy, sub
-interval or attendance. Four switches choose the parts. *Rules*, *How it
-plans* (the strategy, the order and the strategy's own settings) and *Format
+interval or attendance. Four switches choose the parts. *Rules*, *Strategy
+(Even, Closers…)* (the strategy, the order and the strategy's own settings) and *Format
 and subs* start on; *Who's here* starts off. A **Copy** button in the header
 stays disabled while all four are off. `copySetup(to, from, parts)`
 in `state.js` does the copy, and the commit is one undoable edit (`copySetup`
@@ -548,7 +555,10 @@ Mobile specifics that came out of real use:
   builder draws that list (`paintGranRows` in `game-setup.js`), for the game
   screen's own sheet and for step 2 of the first run — the two used to be the
   same choices drawn twice, once as rows and once as chips (#36). The choices
-  themselves are `GRAN_CHOICES` in `app/state.js`.
+  themselves are `GRAN_CHOICES` in `app/state.js`. The game screen's sheet lists
+  only the distinct ones for that game's length (`distinctGranChoices`, #575);
+  first-run step 2 keeps the whole list, because its minutes stepper does not
+  repaint those rows.
 - **Destructive actions leave the day's own list.** "Remove game" sits in the
   game screen's own header behind Undo, not among the day's games on Today.
 

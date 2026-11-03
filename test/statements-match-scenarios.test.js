@@ -39,7 +39,7 @@ describe('a coach checks the app against the game', { skip }, () => {
   const swapInHawks = async ({ played = true } = {}) => {
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    if (played) await coach.tap('Next stint');
+    if (played) await coach.tap('Next');
     const floor = await coach.onFloor();
     await coach.tapPlayer(floor[0]);
     await coach.tapPlayer(SQUAD.find(name => !floor.includes(name)));
@@ -114,7 +114,7 @@ describe('a coach shares the card image to print it', { skip }, () => {
   const swapInHawks = async () => {
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     const floor = await coach.onFloor();
     await coach.tapPlayer(floor[0]);
     await coach.tapPlayer(SQUAD.find(name => !floor.includes(name)));

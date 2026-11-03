@@ -461,8 +461,8 @@ export async function planSheetPass(c, origin, rec) {
     };
     await commit('together', 'Marcus and Devon together', c2 => JSON.stringify(c2.pairs) === '[["p0","p1"]]');
     const forceOff = await readC();
-    rec.check(JSON.stringify(forceOff.sw) === JSON.stringify([['Force Together pairs to always be in together', false]]),
-      `#planPairs switches read ${JSON.stringify(forceOff.sw)}, want the unchecked "Force Together pairs to always be in together"`);
+    rec.check(JSON.stringify(forceOff.sw) === JSON.stringify([['Force Together keeps each pair on the floor at the same time', false]]),
+      `#planPairs switches read ${JSON.stringify(forceOff.sw)}, want the unchecked "Force Together keeps each pair on the floor at the same time"`);
     // Mark the plan object the solver last made; a recompute after the click
     // swaps in a new one, so the mark surviving means `ok` below is stale.
     await evalJSON(c, `(async () => { const s = await import('/state.js');

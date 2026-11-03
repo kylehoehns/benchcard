@@ -48,7 +48,7 @@ describe('plain words on the Plan sheet', { skip }, () => {
     await coach.tap('Devon Ellis');
     await coach.tap('Add rule');
     const names = await coach.controls();
-    assert.ok(names.includes('Force Together pairs to always be in together'), JSON.stringify(names));
+    assert.ok(names.includes('Force Together keeps each pair on the floor at the same time'), JSON.stringify(names));
     assert.equal(names.some(n => /every stint/.test(n)), false);
   });
 
