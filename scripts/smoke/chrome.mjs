@@ -342,3 +342,52 @@ export function cdp(url, { takeMs = 10_000 } = {}) {
     close: () => sock.close(),
   };
 }
+
+/* ---------- console errors (#596), shared by smoke.mjs and look.mjs ---------- */
+
+/* #596: the console-error filter smoke and look.mjs share. A message is ours
+ * unless it names an http(s) URL on some other host. `origin` is the page's
+ * own origin: on 127.0.0.1 or localhost both spellings (any port) are ours,
+ * as smoke has always treated them; on a preview its own host is. The
+ * Cloudflare beacon is the guaranteed third-party error (its CORS preflight
+ * fails everywhere but production), so third-party noise is kept apart and
+ * never counted as a failure. */
+const LOCAL = /^(127\.0\.0\.1|localhost)$/;
+
+export function isOurs(text, origin) {
+  const host = new URL(origin).hostname;
+  const own = LOCAL.test(host) ? '127\\.0\\.0\\.1|localhost' : `${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w.-])`;
+  /* Cloudflare's own beacon (`/cdn-cgi/rum`) posts to the page's origin and a
+   * preview answers it 404, so that path is third-party noise even on our host. */
+  if (!LOCAL.test(host) && /\/cdn-cgi\//.test(text)) return false;
+  return !new RegExp(`https?://(?!${own})`).test(text);
+}
+
+/* One buffer per page: `record` files a message as ours or third party,
+ * `drain` hands both lists over and starts empty. */
+export function collector(origin) {
+  let ours = [], other = [];
+  return {
+    record: text => (isOurs(text, origin) ? ours : other).push(text),
+    drain() {
+      const out = { consoleErrors: ours, thirdParty: other };
+      ours = []; other = [];
+      return out;
+    },
+  };
+}
+
+/* The three CDP events that carry a console error, wired to one record
+ * function. Network 4xx/5xx surface through Log.entryAdded and nowhere else. */
+export function listen(c, record) {
+  c.on('Runtime.consoleAPICalled', p => {
+    if (p.type === 'error') record(p.args.map(a => a.value ?? a.description ?? a.type).join(' '));
+  });
+  c.on('Runtime.exceptionThrown', p => {
+    const d = p.exceptionDetails;
+    record(d.exception?.description || d.text);
+  });
+  c.on('Log.entryAdded', p => {
+    if (p.entry.level === 'error') record(`${p.entry.source}: ${p.entry.text} ${p.entry.url || ''}`.trim());
+  });
+}

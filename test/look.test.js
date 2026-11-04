@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 
 import { knownIssueFor, reloadsPage, CLIP_STATES } from '../scripts/smoke/clip-sweep.mjs';
 import { parseArgs, cells, slug, emptyRunProblem, unscannedProblem } from '../scripts/look.mjs';
+import { isOurs, collector } from '../scripts/smoke/chrome.mjs';
 
 /* A list shaped like the entry #187 used to have (`CLIP_SWEEP_KNOWN_ISSUES` is
  * empty now that every filed issue is fixed, so the matcher is fed its own
@@ -154,4 +155,42 @@ test('importing scripts/look.mjs exits 0 quickly and prints nothing', () => {
   assert.equal(r.error, undefined, String(r.error));
   assert.equal(r.status, 0, r.stderr);
   assert.equal(r.stdout + r.stderr, '');
+});
+
+/* ---------- #596: more static pages, and the console filter ---------- */
+
+test('--view accepts advanced, the chart pages and the two-halves page', () => {
+  const names = ['advanced', '6-player-basketball-rotation-chart', '12-player-basketball-rotation-chart',
+    'basketball-rotation-chart-two-halves'];
+  assert.deepEqual(parseArgs(['--out', 'o', '--view', names.join(',')]).views, names);
+});
+
+test('isOurs on 127.0.0.1 and localhost: the beacon is third party, local URLs and plain text are ours', () => {
+  const local = 'http://127.0.0.1:8201';
+  assert.equal(isOurs('Failed to load resource http://127.0.0.1:8201/x.js', local), true);
+  assert.equal(isOurs('Failed to load resource http://localhost:8201/x.js', local), true);
+  assert.equal(isOurs('TypeError: x is not a function', local), true);
+  assert.equal(isOurs('Access blocked https://static.cloudflareinsights.com/beacon.min.js', local), false);
+});
+
+test('isOurs on a preview: its own host is ours, anything else is third party', () => {
+  const o = 'https://lane-end-596-benchcard.kyhoehns.workers.dev';
+  assert.equal(isOurs(`network: 404 ${o}/app.js`, o), true);
+  assert.equal(isOurs('Uncaught Error: boom', o), true);
+  assert.equal(isOurs('blocked https://static.cloudflareinsights.com/beacon.min.js', o), false);
+  assert.equal(isOurs('blocked http://127.0.0.1:8201/x.js', o), false);
+  assert.equal(isOurs(`blocked ${o}.evil.example/x.js`, o), false);
+  /* Cloudflare's own beacon posts to /cdn-cgi/rum on the page's origin and a
+   * preview answers it 404 (seen on a real preview): not the app's error. */
+  assert.equal(isOurs(`network: Failed to load resource: 404 () ${o}/cdn-cgi/rum`, o), false);
+});
+
+test('collector keeps our errors and third-party noise apart, and drain empties it', () => {
+  const o = 'https://p-benchcard.kyhoehns.workers.dev';
+  const c = collector(o);
+  c.record('Uncaught Error: boom');
+  c.record('blocked https://static.cloudflareinsights.com/beacon.min.js');
+  assert.deepEqual(c.drain(), { consoleErrors: ['Uncaught Error: boom'],
+    thirdParty: ['blocked https://static.cloudflareinsights.com/beacon.min.js'] });
+  assert.deepEqual(c.drain(), { consoleErrors: [], thirdParty: [] });
 });
