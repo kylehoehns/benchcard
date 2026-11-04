@@ -446,7 +446,7 @@ export const ROWS = Object.freeze([
     run: ctx => benchDetailsPass(ctx.c, ctx.origin, ctx.rec) },
   // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
   // two-step Add-a-game flow -- full screen over the chrome, the back
-  // gesture stepping back through it, "Use it" and "Plan it" committing the
+  // gesture stepping back through it, "Use it" and "Add game" committing the
   // draft, and the discard ask -- see add-game-flow.mjs. It pushes games into
   // the day, so it reloads RICH before returning, exactly as `teamscreen`
   // above does after emptying the roster.

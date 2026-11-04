@@ -259,7 +259,7 @@ export const CLIP_SWEEP_ALLOW = [
  * floor check's own allow list, scoped to that one finding kind rather than
  * excluding the element from every check the way CLIP_SWEEP_ALLOW above does
  * — the `h2.flow-q` step headings in Add a game ("Who are you playing?",
- * "How should minutes split?") run 7–14px into the 32px side margin but stay
+ * "Who's here?") run 7–14px into the 32px side margin but stay
  * whole and readable (#204's Decisions: accepted). Same "stale entry fails"
  * treatment as the allow list above. */
 export const CLIP_SWEEP_FLOOR_ALLOW = [

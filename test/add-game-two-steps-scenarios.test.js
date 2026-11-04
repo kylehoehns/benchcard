@@ -19,14 +19,14 @@ describe('Add a game in two steps', { skip }, () => {
 
   /* The day is the Hawks (game 1) and Ravens (game 2); the Ravens, the last
      game, are on `strategy` with `constraints` laid over the rules. */
-  async function lastGameOn(strategy, constraints = {}, flags = {}) {
+  async function lastGameOn(strategy, constraints = {}) {
     await coach.onGameDayShaped(team => {
       team.players = ROSTER.map((name, i) => ({ id: `p${i}`, name, number: '', tier: 1 + (i % 5) }));
       team.season = { games: [] };
       const [day] = team.days;
       day.games = day.games.map((g, i) => ({
         ...g, out: [], periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4,
-        ...(i === day.games.length - 1 ? { strategy, constraints: { ...g.constraints, ...constraints }, ...flags } : {}),
+        ...(i === day.games.length - 1 ? { strategy, constraints: { ...g.constraints, ...constraints } } : {}),
       }));
     });
   }

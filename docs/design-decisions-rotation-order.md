@@ -61,7 +61,7 @@ entry is **Order** in CONTEXT.md (renamed from Rotation order in #574).
   list is that game's cycle, turned to begin at whoever it would put on next.
   Otherwise the list is the app's: the roster order for now, built at the next
   plan (#547). Adding a game on Order writes it the same way, at the moment it
-  is added to its day (`addGame`), whether it was cloned or picked at step 3.
+  is added to its day (`addGame`), whether it was copied from an Order game (the flow no longer asks for a strategy, #565).
   Same day only: a game on a new day, or one that replaces a filed day, is built
   from its own settings and does not carry another day's list. Alternative:
   carry the order across days. Rejected: a new day is a new set of kids and a

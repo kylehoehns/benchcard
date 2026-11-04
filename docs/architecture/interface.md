@@ -20,16 +20,17 @@ from Today — versus *what is set once a season* — Settings, behind the gear
 that only ever shows on Today (N4). All controls in the Today header are at
 least 48 pixels (#69).
 
-**Adding a game asks three questions (#32).** *Add a game* on Today used to drop
+**Adding a game asks two questions (#32, #565).** *Add a game* on Today used to drop
 a copy of the last game into the day and leave the coach on the game screen to
 fix whatever the copy had guessed wrong. It now opens `#addGameFlow`, a
 full-screen `<dialog>` that covers everything including the action bar (N8,
 C10), and asks what actually differs between this game and the last one: *Who
-are you playing?* (opponent and tip-off), *Who's here?* (one tile per roster
+are you playing?* (opponent and tip-off) and *Who's here?* (one tile per roster
 player, three across, carrying the last game's answer, where tapping a tile
-toggles that player to Out against a running count), and *How should minutes
-split?* (the four strategies with the one-line descriptions `STRATEGIES` holds,
-with no switch: the Plan sheet owns *Make up minutes from*, #563).
+toggles that player to Out against a running count). There is no strategy step
+(#565): a new game takes the strategy the last game used (`newGame` copies it),
+and the coach changes it from the game's sentence. The Plan sheet owns *Make up
+minutes from* (#563).
 It is still one tap when nothing differs: step 1 carries a *Same as 9:00?* card
 whose summary line comes from `setupSummary` in `state.js`, which joins the
 same `sentenceParts` pieces a game pass reads. The card is the whole button —
@@ -39,10 +40,10 @@ opens (`freshDraft()`). `newGame` copies the last game's setup with
 `copySetup`, the routine behind the Plan sheet's *Copy from another game*
 (below), with all four parts on. It then drops the copied order and whose it
 was, because `addGame` writes the new game's list: it continues the day's order
-when that game's list is the coach's (#545), and builds one otherwise (#547). The How to build the list choice (Mix the fives, #557) is kept. **Plan it** commits that
-draft. The card commits a fresh `freshDraft()` instead, carrying over only
-step 1's date, opponent and tip-off, so edits made on steps 2 and 3 are
-dropped and the card adds the game its label names (#428). Walking all three
+when that game's list is the coach's (#545), and builds one otherwise (#547). The How to build the list choice (Mix the fives, #557) is kept. **Add game** (the
+step 2 footer button) commits that draft. The card commits a fresh `freshDraft()`
+instead, carrying over only step 1's date, opponent and tip-off, so edits made on
+step 2 are dropped and the card adds the game its label names (#428). Walking both
 steps unchanged still lands on the same game as the card.
 When the team has no games (#126), there is no last game to copy: the draft is
 `newGame(0, null, settings)` dated today, and no *Same as …?* card is offered.

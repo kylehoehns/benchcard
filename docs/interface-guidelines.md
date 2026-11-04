@@ -80,7 +80,7 @@ Today (hub) ──push──▶ Game ──sheet──▶ Who's here · Format �
    ├──push──▶ Team (roster) ──sheet──▶ Player
    ├──push──▶ Season
    ├──gear──▶ Settings
-   └──full screen──▶ Add a game (3 steps)
+   └──full screen──▶ Add a game (2 steps)
 ```
 
 **N1. Today is the home screen and the hub. There is no tab bar.** NN/g:

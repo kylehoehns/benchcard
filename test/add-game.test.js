@@ -161,8 +161,8 @@ test('with no days the draft is newGame(0, null, settings), dated today, and off
 
 /* ---------------------------- one switch builder (Proof 3) ---------------- */
 
-/* `switchRow` (rules.js) is the app's one switch builder, and step 3's "Even
-   out earlier games" row is a second CALLER for it -- not a second copy. A
+/* `switchRow` (rules.js) is the app's one switch builder, and the Plan sheet's "Make up
+   minutes from" group is a second CALLER for it -- not a second copy. A
    GUARD, written under /new-guard: the first half runs the real module and
    asks its public surface; the other two read source, because "nobody wrote a
    second one" is a claim about the tree, not about a return value. Falsified

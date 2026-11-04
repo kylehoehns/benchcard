@@ -2634,7 +2634,7 @@ dialog.flow::backdrop { background: var(--bg); }
 }
 dialog.flow.closing { transform: translateY(100%); }
 
-/* The bar: close button, title, step count, and the three segments under
+/* The bar: close button, title, step count, and the two segments under
    them. auto 1fr auto rather than a fixed left column, so a 32px root grows
    the close button and shrinks the title's own column instead of
    overflowing the row -- but a grid item's default min-width: auto will not
@@ -2652,7 +2652,7 @@ dialog.flow.closing { transform: translateY(100%); }
    words are short enough to wrap at the space between them, never mid-word
    (flowBarFitsAt32 measures both). The close button stays centered because
    the row is align-items: center, so a taller middle column centers it
-   rather than pushing it up. The step count keeps nowrap: "1 of 3" fits its
+   rather than pushing it up. The step count keeps nowrap: "1 of 2" fits its
    own auto column at either root size. */
 /* Side padding in px, not rem: at a 32px root a .6rem gutter is 19px a
    side, and those 38px are room the title needs. The gutter is a gap
@@ -2668,7 +2668,7 @@ dialog.flow.closing { transform: translateY(100%); }
 
 /* The wrap above buys room; at a 32px root it does not buy enough. Three
    things cannot share a 300px row when one of them is a 48px touch target
-   and another is "1 of 3" at 28px: CI's font metrics painted the title cut
+   and another is "1 of 3" (the old three-step count) at 28px: CI's font metrics painted the title cut
    off by 14px where this machine had 3px to spare -- not a margin, a
    coincidence. So past the point where the row is genuinely too small, the
    title takes a row of its own and has the whole width, and the close
@@ -2702,8 +2702,8 @@ dialog.flow.closing { transform: translateY(100%); }
    already agrees with this value and is left alone -- it is shared with
    pickFive outside either flow, so it is not this rule's to delete. */
 .flow-body > div > * { margin-left: 1rem; margin-right: 1rem; }
-/* --fs-flow (30px), not --fs-large (34px) -- at 34px "How should minutes
-   split?" wrapped onto two lines at 390px. Every flow title moves together
+/* --fs-flow (30px), not --fs-large (34px) -- at 34px "Who are you
+   playing?" wrapped onto two lines at 390px. Every flow title moves together
    since they all share this one class. */
 .flow-q { font-size: var(--fs-flow); font-weight: 700; line-height: 1.2;
   margin-top: .2rem; margin-bottom: 1.1rem; }
@@ -2792,8 +2792,8 @@ dialog.flow .plr.on { border-color: transparent; box-shadow: none; }
 /* "Back" sized to its content, the primary filling the rest.
 
    flex-wrap and a rem basis on the primary, because at a 32px root the two
-   of them do not fit a 320px row: "Back" and "Plan it" are both nowrap, and
-   CI measured the primary reaching 33px past the dialog's own box on step 3.
+   of them do not fit a 320px row: "Back" and "Add game" are both nowrap, and
+   CI measured the primary ("Plan it" then) reaching 33px past the dialog's own box on the old step 3.
    Neither button may shrink -- nowrap text overflows instead, and dropping
    nowrap would break a two-word label across lines inside a 48px button.
 
@@ -3141,7 +3141,7 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 #sheetCard .pgrp .prow-ctl { display: flex; align-items: center; gap: .75rem; min-width: 0; margin-left: auto; }
 /* #221: every switch row, not just #sheetCard's own "Minutes strip" row --
    `switchRow` (rules.js) builds this same row for the Plan sheet's three
-   rule groups and for Add a game step 3, neither of which is inside
+   rule groups and for the Add a game flow, neither of which is inside
    #sheetCard, so the fix above never reached them: at 320px/32px their label
    squeezed to fit beside the switch on one line and its wrapped text painted
    under it. One class fixes every caller instead of a second scoped copy per

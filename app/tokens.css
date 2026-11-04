@@ -47,8 +47,8 @@
      here. */
   --fs-large: 2.125rem;
   /* #145 item 6: no step in the scale sat at 30px, and the flow title
-     (`.flow-q`, app.css) needed one that still fits "How should minutes
-     split?" on one line at 390px -- `--fs-large` (34px) wrapped it. K5: this
+     (`.flow-q`, app.css) needed one that still fits "Who are you
+     playing?" on one line at 390px -- `--fs-large` (34px) wrapped it. K5: this
      is its own token, not a literal, so a later text-size pass still scales
      it. Named for what it is used for, the way `--fs-large`'s own comment
      names its three screen titles, since it does not fit the rank order
