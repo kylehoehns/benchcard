@@ -147,17 +147,21 @@ export function serve(port = 0, appDir = APP) {
    parent dies). Polled twice a second; the timers are unref'd, so only the
    server itself keeps the process running. Imported: just the function. */
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  const start = process.ppid; // before any await: a parent that dies during start-up is noticed
   const args = process.argv.slice(2);
   let ttl = 60;
   let port;
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--ttl') {
-      const raw = args[++i];
+    if (args[i] === '--ttl' || args[i].startsWith('--ttl=')) {
+      const raw = args[i] === '--ttl' ? args[++i] : args[i].slice('--ttl='.length);
       ttl = raw === undefined || raw.trim() === '' ? NaN : Number(raw);
       if (!(ttl > 0) || !Number.isFinite(ttl)) {
         console.error(`serve.mjs: --ttl needs a number of minutes above 0 (got ${raw === undefined ? 'nothing' : `"${raw}"`}), e.g. --ttl 30`);
         process.exit(2);
       }
+    } else if (args[i].startsWith('--')) {
+      console.error(`serve.mjs: unknown argument ${args[i]} (usage: serve.mjs [port] [--ttl <minutes>])`);
+      process.exit(2);
     } else if (port === undefined) port = Number(args[i]) || 8201;
   }
   const server = await serve(port ?? 8201);
@@ -166,7 +170,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   console.log('redirects like Cloudflare does — /about.html 307s to /about');
   console.log(`stops when its parent process exits, or in ${ttl} minute${ttl === 1 ? '' : 's'} (--ttl)`);
   const stop = () => { server.stopHard(); process.exit(0); };
-  const start = process.ppid;
   setTimeout(stop, Math.min(ttl * 60_000, 2 ** 31 - 1)).unref(); // a longer timer fires at once
   setInterval(() => { if (process.ppid !== start) stop(); }, 500).unref();
 }

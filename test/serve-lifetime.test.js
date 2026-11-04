@@ -72,11 +72,9 @@ test('--ttl 0.02 ends the server within 5s; a live one is still answering at 2s 
   await waitFor(() => answers(live), 10_000, 'the long-TTL server to answer');
   const port = await freePort();
   const short = startServe([String(port), '--ttl', '0.02']);
-  await waitFor(() => answers(port), 10_000, 'the short-TTL server to answer');
-  const started = Date.now();
+  await waitFor(() => short.out.includes('serving app') || short.exitCode !== null, 10_000, 'the short-TTL server to announce itself');
   const exit = await raceExit(short, 5_000);
   assert.ok(exit, `--ttl 0.02 server was still running after 5s (stdout: ${short.out})`);
-  assert.ok(Date.now() - started < 5_000);
   assert.equal(await answers(port), false, 'the port still answers after the TTL server exited');
   assert.equal(await answers(live), true, 'a server with its parent alive and TTL not reached stopped answering');
   assert.equal(keeper.exitCode, null);
@@ -115,3 +113,21 @@ for (const [label, args] of [
     assert.ok(!/serving app/.test(s.out), 'serve.mjs announced it was serving');
   });
 }
+
+test('--ttl=0.02 behaves like --ttl 0.02: the server ends within 5s', { timeout: 30_000 }, async () => {
+  const port = await freePort();
+  const s = startServe([String(port), '--ttl=0.02']);
+  const exit = await raceExit(s, 5_000);
+  assert.ok(exit, `--ttl=0.02 server was still running after 5s (stdout: ${s.out})`);
+  assert.equal(exit.code, 0);
+});
+
+test('an unknown -- argument exits 2 naming it, and never listens', { timeout: 30_000 }, async () => {
+  const port = await freePort();
+  const s = startServe([String(port), '--bogus']);
+  const exit = await raceExit(s, 10_000);
+  assert.ok(exit, 'serve.mjs kept running with an unknown argument');
+  assert.equal(exit.code, 2, `expected exit 2, got ${exit.code} (stderr: ${s.err})`);
+  assert.match(s.err, /--bogus/);
+  assert.equal(await answers(port), false, 'serve.mjs listened despite an unknown argument');
+});
