@@ -2606,7 +2606,7 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
   }
 }
 
-/* ---- add a game, three steps ---- */
+/* ---- add a game, two steps ---- */
 /* A full-screen flow, not a bottom sheet. Like dialog.bsheet above it needs
    no z-index (showModal() promotes it to the top layer) and no place in the
    phone order: list -- and display stays off this rule for the same reason
@@ -2788,27 +2788,6 @@ dialog.flow .plr.on { border-color: transparent; box-shadow: none; }
 .flow-count { margin-top: .7rem; font-size: var(--fs-secondary); color: var(--muted);
   font-variant-numeric: tabular-nums; }
 .flow-note { margin-top: .3rem; font-size: var(--fs-footnote); color: var(--muted); }
-
-/* Step 3's four choices: a card each, name over the one line `STRATEGIES`
-   holds for it, the chosen one ringed the way a chosen tile is. */
-.flow-opts { display: grid; gap: .5rem; margin-bottom: .4rem; }
-/* A 22px radio circle in its own grid column, .opt-t and .opt-d sharing the
-   second -- the circle is a ::before pseudo-element, decoration that never
-   reaches the accessibility tree (so no aria-hidden node is needed), with
-   aria-checked on the button itself the real state. */
-.opt { display: grid; grid-template-columns: 22px 1fr; column-gap: .75rem; row-gap: .15rem;
-  align-items: start; width: 100%; min-height: 48px; text-align: left;
-  padding: .75rem .9rem; border-radius: var(--r); border: 1px solid var(--line);
-  background: var(--surface); font: inherit; color: var(--ink); }
-.opt[aria-checked="true"] { border-color: var(--tint); box-shadow: inset 0 0 0 2.5px var(--tint); }
-/* An empty ring off; a filled dot on, the inset --surface ring carving the
-   dot out of the fill (the prototype's own proportions). */
-.opt::before { content: ''; grid-row: 1 / span 2; width: 22px; height: 22px;
-  margin-top: .1rem; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--line-2); }
-.opt[aria-checked="true"]::before { border-color: var(--tint); background: var(--tint);
-  box-shadow: inset 0 0 0 4px var(--surface); }
-.opt-t { font-size: var(--fs-body); font-weight: 600; }
-.opt-d { font-size: var(--fs-secondary); color: var(--muted); }
 
 /* "Back" sized to its content, the primary filling the rest.
 
@@ -4097,7 +4076,6 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      marks its selected button. */
   .seg button.on, .seg button[aria-selected="true"],
   .plr.on,
-  .opt[aria-checked="true"],
   .chip.sel,
   .gm-p.picked,
   .color-opt.on {

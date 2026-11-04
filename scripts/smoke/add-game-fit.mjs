@@ -9,7 +9,7 @@ import { evalJSON, openAddGameFlow as openFlow, realTap, tap, waitClosed } from 
    everything here drives the flow at a size it was NOT designed against
    (320px, a 32px root, names longer than any the fixture ships) and measures
    whether the text survives it. `add-game-flow.mjs` keeps the behavior --
-   the three steps, the back gesture, what a commit puts in the day.
+   the two steps, the back gesture, what a commit puts in the day.
 
    Each check lands the width and root font it measures at (`land`), so this
    file can run before or after any other; the next landing sets them again. */

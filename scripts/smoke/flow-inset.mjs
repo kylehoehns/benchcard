@@ -83,8 +83,6 @@ async function addGameSweep(c, ck) {
     await measureInset(c, 'agBody', width, `add a game step 1 (with the "Same as" card)@${width}px`, ck);
     await realTap(c, '#agNext');
     await measureInset(c, 'agBody', width, `add a game step 2@${width}px`, ck);
-    await realTap(c, '#agNext');
-    await measureInset(c, 'agBody', width, `add a game step 3@${width}px`, ck);
     await realTap(c, '#agClose'); // nothing typed on this walk -- closes at once
     await waitClosed(c, '#addGameFlow');
 

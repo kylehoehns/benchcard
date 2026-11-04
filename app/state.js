@@ -68,10 +68,9 @@ export const minutesText = m => `${fmtMinutes(m)} minute${fmtMinutes(m) === '1' 
  * ================================================================== */
 
 /* #28 defect 4: each line is one short sentence, in the prototype's voice --
-   the Plan sheet's `#stratwhy` (`strategy.js`) and, since #32, step 3 of the
-   add-a-game flow (`teams-view.js`) are its only readers (checked: `grep -rl
-   STRATEGIES app test scripts` names state.js itself, strategy.js and
-   teams-view.js, plus tests and scripts that read the same source text --
+   the Plan sheet's `#stratwhy` (`strategy.js`) is its only reader (checked:
+   `grep -rl STRATEGIES app test scripts` names state.js itself and
+   strategy.js, plus tests and scripts that read the same source text --
    none of them a second, separately-worded copy), so shortening here does
    not touch the Help sheet's own, separately-worded strategy copy in
    `index.html`, or `about.html` / `advanced.html` / `docs/architecture.md`,

@@ -1624,7 +1624,7 @@
   </main>
 
   <!-- ======================== ADD A GAME (#32) ========================
-       N8/C10: adding a game is a full-screen three-step flow, not a bottom
+       N8/C10: adding a game is a full-screen two-step flow, not a bottom
        sheet -- a step count, a ✕ top left, and always skippable (step 1's
        "Same as 11:30? Use it" commits the copy in one tap). `showModal()`
        puts it in the top layer, so it covers the whole chrome including the
@@ -1633,7 +1633,7 @@
        Top level, outside every `.view`: `showModal()` throws on a dialog
        whose ancestor is `hidden`, and this opens from Today.
 
-       NO STEP CONTENT HERE. All three steps are built into `#agBody` by
+       NO STEP CONTENT HERE. Both steps are built into `#agBody` by
        `teams-view.js`, so nothing in this shell can drift out of step with
        the draft it is editing. The ask row mirrors `#pasteAsk`/`#addAsk`
        above (C4, rationale at app/trap.js:485-501): a `showModal()` dialog
@@ -1645,7 +1645,7 @@
         <span class="flow-t">Add a game</span>
         <span class="flow-step" id="agStep"></span>
       </div>
-      <!-- Decoration: `#agStep` beside it already says "1 of 3" in words, so
+      <!-- Decoration: `#agStep` beside it already says "1 of 2" in words, so
            reading these out would say it twice. The segments themselves are
            built by `paintFlow` (teams-view.js), one per `FLOW_STEPS` entry,
            so the count here is never a second, hand-authored copy. -->
@@ -2005,12 +2005,13 @@
         rule still wins when it is lower.</p>
 
       <h3 class="help-h">A tournament day, and the season</h3>
-      <p class="help-p"><b>Add a game</b> on Today asks three questions: who
-        you're playing, who's here, and how to split the minutes. It copies
-        the format, who is at the gym and your rules from the last game, so
-        only the opponent and tip-off are new. If nothing has changed, the
+      <p class="help-p"><b>Add a game</b> on Today asks two questions: who
+        you're playing and who's here. It copies the format, who is at the
+        gym and your rules from the last game, so only the opponent and
+        tip-off are new. A new game plans the same way as the last one. To
+        change it, tap it in the game's sentence. If nothing has changed, the
         first question shows a <b>Same as …?</b> card. Tap <b>Add game</b>
-        there to skip the other two questions. From the second game on, the Plan sheet's <b>Make up minutes from</b>
+        there to skip the other question. From the second game on, the Plan sheet's <b>Make up minutes from</b>
         choice offers <b>Earlier today</b>. Pick it and the day evens out across every
         game, so a kid who sat more in game 1 gets it back in game 2. Pick <b>This
         game only</b> and each game is fair on its own. The <b>Season</b> screen shows the running totals for the day.</p>

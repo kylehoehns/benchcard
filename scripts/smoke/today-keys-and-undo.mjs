@@ -45,14 +45,14 @@ export async function todayKeysAndUndoPass(c, origin, rec) {
 
   /* Add a game opens the new game's own screen -- through the three-step
      flow (#32), which is what the button does now: the tap opens the dialog
-     and the third step's "Add game" is what commits the game and opens it.
+     and the last step's "Add game" is what commits the game and opens it.
      The claim this check makes is unchanged; only the path to it is. One
      `step()` per tap, because `step` settles after each and the commit runs
      the dialog's close animation. */
   await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
   const flowOpenOnAdd = await evalIn(c, `!!document.getElementById('addGameFlow')?.open`);
-  rec.check(flowOpenOnAdd, 'Add a game did not open the three-step flow');
-  for (let i = 0; i < 3; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
+  rec.check(flowOpenOnAdd, 'Add a game did not open the two-step flow');
+  for (let i = 0; i < 2; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
   const onGamesAfterAdd = await onGames();
   rec.check(onGamesAfterAdd, '"Add game" did not open the new game\'s screen');
   const titleAfterAdd = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
@@ -163,7 +163,7 @@ export async function todayKeysAndUndoPass(c, origin, rec) {
   // it" has been pressed, and stepping straight through types nothing, so
   // the opponent input on the screen it opens is still empty.
   await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
-  for (let i = 0; i < 3; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
+  for (let i = 0; i < 2; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
   const addedOpp = await evalIn(c, `document.getElementById('label')?.value ?? null`);
   rec.check(addedOpp === '', `Add a game: the opponent input reads "${addedOpp}", want it empty (the new game's own)`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));

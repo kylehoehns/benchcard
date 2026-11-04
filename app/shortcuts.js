@@ -103,7 +103,7 @@ function onKey(e) {
   // pointed at would be baffling
   if (!$('#tour').hidden) return;
   // and for the Add-a-game flow (#32): it covers the screen, so the keys
-  // belong to the three steps, not to the game underneath them
+  // belong to the two steps, not to the game underneath them
   if ($('#addGameFlow')?.open) return;
   // the help sheet is reading matter, and the shortcuts it describes should
   // not fire out from under it

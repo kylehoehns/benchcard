@@ -27,7 +27,7 @@ import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
-         initials, STRATEGIES, setMakeUp, newGameMakeUp, openGame, dayHeading, addGame, removeGame,
+         initials, setMakeUp, newGameMakeUp, openGame, dayHeading, addGame, removeGame,
          hasGames, bestPlayersOffered } from './state.js';
 import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
@@ -108,7 +108,7 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
   on('#removeTeam', 'onclick', removeTeam);
   // "+ Game" and the two entries below it are static buttons on Today now,
   // not rebuilt every render -- bound once, like #removeTeam above. It opens
-  // the three-step flow (#32); `wireAddGameFlow` binds it along with the
+  // the two-step flow (#32, #565); `wireAddGameFlow` binds it along with the
   // rest of the flow's controls. #100 removed "New day": a day files itself
   // once it is over, so there is nothing here left to press.
   wireAddGameFlow();
@@ -714,18 +714,21 @@ export function renderTabs() {
   }
 }
 
-/* ---------------- Add a game, in three steps (#32) --------------------
+/* ---------------- Add a game, in two steps (#32, #565) ----------------
  *
  * The one-tap "+ Game" is gone: it dropped a copy of the last game into the
  * day and left the coach on a screen full of controls to undo it with. The
- * flow asks the three questions that copy was guessing at -- who you are
- * playing, who is here, how the minutes split -- and is still one tap when
- * the answer is "same as last time" (N8: always skippable).
+ * flow asks the two questions that copy was guessing at -- who you are
+ * playing and who is here -- and is still one tap when the answer is "same as
+ * last time" (N8: always skippable). It used to ask a third, how the minutes
+ * split (#32); #565 took it out on purpose, so do not put it back: a new game
+ * takes the strategy the last one used (`newGame` copies it) and a coach
+ * changes it from the game's sentence.
  *
- * `newGame(len, lastGame(), settings)` builds the draft at OPEN, and both
- * "Plan it" (step 3) commits that object; "Use it" (step 1's card) commits
+ * `newGame(len, lastGame(), settings)` builds the draft at OPEN, and the last
+ * step ("Add game") commits that object; "Use it" (step 1's card) commits
  * a fresh one from the same `freshDraft()` (#428), so it adds what the card
- * names. Walking all three steps unchanged lands on the same game.
+ * names. Walking both steps unchanged lands on the same game.
  *
  * The steps themselves are one list below -- the question each one asks
  * beside the builder that fills its body -- so a heading and its content
@@ -735,7 +738,6 @@ export function renderTabs() {
 const FLOW_STEPS = [
   { q: 'Who are you playing?', build: stepWho },
   { q: "Who's here?", build: stepHere },
-  { q: 'How should minutes split?', build: stepSplit },
 ];
 const STEPS = FLOW_STEPS.length;
 
@@ -836,7 +838,7 @@ function stepWho(wrap) {
      what the button used to. */
   const card = el('button', 'flow-card press');
   card.type = 'button';
-  // #428: the card adds the game it names, so steps 2 and 3's edits are
+  // #428: the card adds the game it names, so step 2's edits are
   // dropped; what step 1 shows beside it (date, opponent, tip-off) is kept.
   card.onclick = () => {
     const { date, label, tipoff } = draft;
@@ -907,8 +909,8 @@ function paintHereCount() {
 function stepHere(wrap) {
   if (!state.players.length) {
     /* I10: unlike the Who sheet's own empty state (game-setup.js) this one is
-       reachable on a brand-new team's very first game, where Next still walks
-       on to step 3 and lets a coach plan for nobody -- copy is the only fix
+       reachable on a brand-new team's very first game, where Add game still
+       goes ahead and lets a coach plan for nobody -- copy is the only fix
        in scope (no navigation added), so it names where the roster gets
        filled in rather than repeating game-setup.js's plain line. */
     wrap.append(el('p', 'sheetempty', 'No players on the roster yet. Build your roster on the Team page, then come back.'));
@@ -924,30 +926,6 @@ function stepHere(wrap) {
   if (lastGame()) {
     wrap.append(el('p', 'flow-note', "Copied from the last game. Tap anyone who's changed."));
   }
-}
-
-/* Step 3. The four words come off `#stratseg` itself rather than a list
-   written here -- the Plan sheet's picker and this one have to read the same,
-   and two lists is how they stop. The sentence under each is `STRATEGIES`,
-   the one map that holds them. */
-function stepSplit(wrap, q) {
-  const group = el('div', 'flow-opts');
-  group.setAttribute('role', 'radiogroup');
-  group.setAttribute('aria-label', q);
-  for (const src of document.querySelectorAll('#stratseg button[data-strat]')) {
-    const key = src.dataset.strat;
-    const b = el('button', 'opt press');
-    b.type = 'button';
-    b.setAttribute('role', 'radio');
-    b.setAttribute('aria-checked', String(draft.strategy === key));
-    b.append(el('span', 'opt-t', src.textContent.trim()), el('span', 'opt-d', STRATEGIES[key]));
-    b.onclick = () => {
-      draft.strategy = key;
-      for (const n of group.children) n.setAttribute('aria-checked', String(n === b));
-    };
-    group.append(b);
-  }
-  wrap.append(group);
 }
 
 function flowNext() {

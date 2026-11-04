@@ -16,6 +16,14 @@ in that order, on a screen that covers everything else. When nothing differs —
 same team, same format, same strategy — one tap on **Use it** makes the game and
 opens it, which is the path most second and third games of a day take.
 
+> **2026-11-03, reversed by #565 (do not put step 3 back).** The owner dropped the
+> third step, "How should minutes split?". Most coaches use one strategy every
+> game, so asking each time was a choice made over and over for nothing. Add a
+> game now asks two things, who you are playing and who is here. A new game takes
+> the strategy the last one used (`newGame` copies it) and the coach changes it
+> from the strategy phrase in the game sentence. The rest of this spec still
+> describes the three-step design it was written for.
+
 Today the same tap creates a game instantly with no questions, then drops the
 coach on the game screen to go find what changed. That is faster to build and
 slower to use.

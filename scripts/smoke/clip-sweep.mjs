@@ -363,7 +363,7 @@ export const CLIP_PROBE = `(() => {
   // "Cut off" means an ancestor's computed overflow-x actually clips painted
   // content, not just that a flex/grid item rendered past its own content
   // box into room a sibling isn't using (".prow-t { flex: 1; min-width: 0 }"
-  // wraps into empty space next to a switch on add-a-game step 3, fully
+  // wraps into empty space next to a switch on a Plan sheet row, fully
   // visible — scrollWidth alone can't tell that apart from a real clip). So
   // this walks up for the nearest ancestor whose overflow-x would clip,
   // falling back to the viewport.

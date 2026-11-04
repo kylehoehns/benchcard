@@ -746,6 +746,19 @@ export class Coach {
     })()`);
   }
 
+  /** Add a game's step counter and progress as a coach sees them: the words
+      ("1 of 2"), how many progress segments there are, and the label on the
+      button that moves on. Null when the flow is not open. */
+  addGameStep() {
+    return evalIn(this.c, `(() => {
+      const d = document.querySelector('#addGameFlow');
+      if (!d || !d.open) return null;
+      return { step: document.querySelector('#agStep').textContent.trim(),
+        segments: document.querySelector('#agProg').children.length,
+        next: document.querySelector('#agNext').textContent.trim() };
+    })()`);
+  }
+
   /** The gray lines under the groups of rows on the screen or sheet a coach
       is looking at, top to bottom. */
   footnotes() {
@@ -1167,13 +1180,14 @@ export class Coach {
 
   /** Game day with the team reshaped by `shape(team)` before the app opens:
       for a scenario that needs a started game, or a second day, beside the
-      Hawks and Ravens. */
-  async onGameDayShaped(shape) {
+      Hawks and Ravens. `ready` is the page's own signal, for a shape with no
+      games on Today. */
+  async onGameDayShaped(shape, ready = TODAY_GAME_READY) {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     const record = structuredClone(gameDay()); // gameDay() shares RICH's games
     shape(record.teams[0]);
-    await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
+    await land(this.c, this.origin, { record, ready });
   }
 
   /** Game day with only the first game of the day, a roster of exactly `names`

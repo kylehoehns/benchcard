@@ -445,12 +445,12 @@ export const ROWS = Object.freeze([
   { id: 'benchdetails', name: 'bench mode: next change, scope control, no spill, reachable rows, Leave', selectable: true, setup: 'rich',
     run: ctx => benchDetailsPass(ctx.c, ctx.origin, ctx.rec) },
   // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
-  // three-step Add-a-game flow -- full screen over the chrome, the back
+  // two-step Add-a-game flow -- full screen over the chrome, the back
   // gesture stepping back through it, "Use it" and "Plan it" committing the
   // draft, and the discard ask -- see add-game-flow.mjs. It pushes games into
   // the day, so it reloads RICH before returning, exactly as `teamscreen`
   // above does after emptying the roster.
-  { id: 'addgameflow', name: 'add a game: three steps', selectable: true, setup: 'rich',
+  { id: 'addgameflow', name: 'add a game: two steps', selectable: true, setup: 'rich',
     run: ctx => addGameFlowPass(ctx.c, ctx.origin, ctx.rec) },
   // #151 item 6 (M4): the switch knob and a player chip avatar change state
   // with no transition -- see m4-instant.mjs.

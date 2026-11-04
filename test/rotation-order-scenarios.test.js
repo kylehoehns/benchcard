@@ -269,12 +269,6 @@ describe('Rotation order: where a later game starts', { skip }, () => {
   afterEach(() => { assert.deepEqual(coach.errors, [], 'the page logged an error'); });
 
   const sameAsCard = async () => (await coach.controls()).find(n => n.startsWith('Same as'));
-  const stepThree = async word => {
-    await coach.tap('Next');
-    await coach.tap('Next');
-    await coach.tap((await coach.controls()).find(n => n.startsWith(`${word} `)));
-    await coach.tap('Add game');
-  };
 
   test('12. with exactly five players everybody plays every stint, and the next game starts where the count of changes lands', async () => {
     await coach.onGameDayWithRoster(ROSTER.slice(0, 5), { strategy: 'order' });
@@ -318,18 +312,12 @@ describe('Rotation order: where a later game starts', { skip }, () => {
     assert.deepEqual(await coach.orderList(), ['Avery', 'Blake', 'Casey', 'Drew', 'Indy', 'Emery', 'Finley', 'Gray', 'Harper']);
   });
 
-  test('15. picking Order in the add-a-game steps starts it where the day\'s Order game stopped', async () => {
+  test('15. a game added through the add-a-game steps after an Order game starts where it stopped', async () => {
     await coach.onGameDayWithRoster(ROSTER, { strategy: 'order' });
     await coach.tap('Add a game');
     await coach.fill('Opponent', 'Owls');
     await coach.tap('Next');
-    await coach.tap('Next');
-    await coach.tap((await coach.controls()).find(n => n.startsWith('Even ')));
     await coach.tap('Add game');
-    await coach.tap('Back to Smoke Test');
-    await coach.tap('Add a game');
-    await coach.fill('Opponent', 'Ravens');
-    await stepThree('Order');
     await coach.tap('Plan, rotation order');
 
     assert.deepEqual(await coach.orderList(), GAME_TWO_ORDER);
