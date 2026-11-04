@@ -30,53 +30,14 @@
  * carried the reasoning while it was open; `notes/DECISIONS.md` has the rest.
  * The What's new page (#499) is covered by both arms the same way (#542).
  */
-import { spawn } from 'node:child_process';
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { serve } from './serve.mjs';
+import { launch, closeChrome } from './smoke/chrome.mjs';
 
 const JSON_OUT = process.argv.includes('--json');
 
 /* The server is `scripts/serve.mjs` -- the Cloudflare-shaped one, which used
    to live in this file. It moved so that `smoke.mjs` and `og.mjs` could stop
    running their own, non-redirecting copies. */
-
-const CHROME = [
-  process.env.CHROME_PATH,
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium',
-].filter(Boolean);
-
-async function launch(port) {
-  let bin = null;
-  for (const c of CHROME) { try { await readFile(c); bin = c; break; } catch { /* next */ } }
-  if (!bin) throw new Error('No Chrome found. Set CHROME_PATH.');
-  const dir = await mkdtemp(join(tmpdir(), 'benchcard-redir-'));
-  const proc = spawn(bin, [
-    '--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`,
-    '--no-first-run', '--no-default-browser-check', '--disable-gpu',
-    '--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', 'about:blank',
-  ], { stdio: 'ignore' });
-  /* 45s, not 20. A cold GitHub runner has taken longer than 20s to hand back a
-     DevTools page, and the redirect check went red on it with nothing wrong --
-     which is the worst kind of failure, because a suite that cries wolf stops
-     being read. `died` separates "Chrome is slow" from "Chrome is not running",
-     so a real launch failure still reports as one rather than as a timeout. */
-  const deadline = Date.now() + 45_000;
-  let died = null;
-  proc.on('exit', (code, sig) => { died = `Chrome exited early (code ${code}, signal ${sig})`; });
-  for (;;) {
-    try {
-      const list = JSON.parse(await (await fetch(`http://127.0.0.1:${port}/json/list`)).text());
-      const page = list.find(t => t.type === 'page' && t.webSocketDebuggerUrl);
-      if (page) return { proc, dir, ws: page.webSocketDebuggerUrl };
-    } catch { /* not up */ }
-    if (died) { throw new Error(died); }
-    if (Date.now() > deadline) { proc.kill(); throw new Error('Chrome did not expose a DevTools page in 45s'); }
-    await new Promise(r => setTimeout(r, 100));
-  }
-}
 
 function cdp(url) {
   const sock = new WebSocket(url);
@@ -110,8 +71,7 @@ const add = (name, pass, detail) => results.push({ name, pass, detail });
 
 const server = await serve();
 const origin = `http://127.0.0.1:${server.address().port}`;
-const port = 9800 + Math.floor(Math.random() * 400);
-const { proc, dir, ws } = await launch(port);
+const { proc, dir, ws } = await launch(0, false);
 const c = cdp(ws);
 try {
   await c.ready;
@@ -252,9 +212,8 @@ try {
   }
 } finally {
   c.close();
-  proc.kill();
   try { server.stopHard(); } catch { /* already down */ }
-  await rm(dir, { recursive: true, force: true }).catch(() => {});
+  await closeChrome(proc, dir);
 }
 
 const failed = results.filter(r => !r.pass);
