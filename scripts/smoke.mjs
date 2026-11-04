@@ -141,7 +141,9 @@ async function runCheck(row, ctx) {
     /* #178: the hang hook. BENCHCARD_SMOKE_HANG names a row; when it matches
        the one about to run, this runs a real hang instead of that row's own
        `run` -- Chrome is alive, the CDP call below never resolves, and only
-       the watchdog ends it. It is for test/smoke-timeout.test.js only. */
+       the watchdog ends it. It is for test/smoke-timeout.test.js only. The
+       watchdog counts from here, not from process start (#558). */
+    if (process.env.BENCHCARD_SMOKE_HANG === row.name) armWatchdog();
     const result = process.env.BENCHCARD_SMOKE_HANG === row.name
       ? await ctx.c.send('Runtime.evaluate', { expression: 'new Promise(() => {})', awaitPromise: true })
       : await row.run(ctx);
@@ -510,7 +512,8 @@ if (HAS_TIMEOUT) {
  * #178. One `shutdown`, used by all three ways a run can end early (the time
  * limit, Ctrl-C, `kill`), so "close Chrome, close the server, exit" is
  * written once. Started before `serve()`, per the spec's Design section, so
- * even a `serve()` that hangs is still caught by the limit. */
+ * even a `serve()` that hangs is still caught by the limit. (Under
+ * BENCHCARD_SMOKE_HANG it is armed at the hang instead; see `armWatchdog`.) */
 let server = null;
 let watchdogTimer = null;
 
@@ -526,10 +529,19 @@ async function shutdown(code) {
 process.on('SIGINT', () => { shutdown(130); });
 process.on('SIGTERM', () => { shutdown(143); });
 
-watchdogTimer = setTimeout(() => {
-  console.error(`smoke: timed out after ${TIMEOUT_MIN} min while running "${current}"`);
-  shutdown(1);
-}, TIMEOUT_MIN * 60_000);
+/* #558: clear-then-set, so a second call restarts the clock. A normal run arms
+ * it here, before `serve()`. With BENCHCARD_SMOKE_HANG set (the test hook) it is
+ * armed by runCheck right before the hang instead: under load the steps before
+ * the hang (Chrome boot, cold load, reset) used up the whole timeout, and the
+ * test saw "cold load" named instead of the hung row. */
+function armWatchdog() {
+  clearTimeout(watchdogTimer);
+  watchdogTimer = setTimeout(() => {
+    console.error(`smoke: timed out after ${TIMEOUT_MIN} min while running "${current}"`);
+    shutdown(1);
+  }, TIMEOUT_MIN * 60_000);
+}
+if (!process.env.BENCHCARD_SMOKE_HANG) armWatchdog();
 
 /* #459: `--shard suite` is the suite and its coverage, nothing else. */
 if (SHARD?.suite) {
