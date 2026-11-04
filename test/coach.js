@@ -758,7 +758,7 @@ export class Coach {
 
   /** The line under the heading-and-chips on Add a rule: what the picked kind does. */
   kindLine() {
-    return this.text('#planKindBody > .pgrp-f');
+    return this.text('#planKindBody > .plan-kind-line');
   }
 
   /** The "Keep them on together" group on Add a rule or a Together rule's page:

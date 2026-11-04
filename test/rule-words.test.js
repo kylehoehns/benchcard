@@ -5,7 +5,6 @@ import { SIT_REFUSALS } from '../app/engine.js';
 import { S } from './state-fixture.js';
 import { stripComments } from './js-comments.js';
 import { sitRulesMap } from './sit-rules-map.js';
-import { lacks } from './prose.js';
 
 /* #136: bench mode, the solver's warnings and the tour used rule names from
    before the redesign. `KINDS` in rules.js (`Plays at least`, `Plays at
@@ -160,13 +159,6 @@ test('removing a team\'s last-team toast no longer says "The day rebalanced"', (
   const m = teamsView.match(/last \? '' : ' ([^']*)'/);
   assert.ok(m, 'the day-changed clause is gone from teams-view.js');
   assert.equal(m[1], 'The day evened out.');
-});
-
-/* #568: the game-wide "Force Together" switch (and the `hardPairs` flag behind
-   it) is gone, so no switch label there is left to hold to the `KINDS` words;
-   the strength is two choice rows on each Together rule. */
-test('the game-wide Force Together switch is gone from rules.js', () => {
-  assert.ok(lacks(rulesJs, /Force Together|hardPairs|renderPairsGroup/));
 });
 
 /* The help sheet's Rules section (#help in index.html) is coach-visible copy

@@ -6,6 +6,13 @@ a plain sentence chip ("Kade capped at 12 min", "Jack / Jackson apart"), and
 adding one starts from a row of rule types rather than a form. The starting
 five and Starts the last period pickers reuse the same tap-a-player control as closers.
 
+Add a rule sorts the rule types under three headings: one player, two players,
+and who starts and finishes. The picked type's one-line explanation sits above
+its picker (`KIND_GROUPS` and `KIND_LINES` in `app/rules.js`). A Together rule
+also has a strength, As much as possible or Always, chosen under the two-player
+picker and on the rule's own page. The reasons are in
+[Together strength](../design-decisions-together.md).
+
 **Rules are also editable in place (#148).** Tapping a rule's chip opens its own
 page with the same controls Add a rule shows (without the kind choices, because
 a rule's kind does not change), and each change applies immediately. Plays at

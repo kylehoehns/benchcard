@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, fillGroups, fillClosers, DEFAULT_TIER, tiersDiffer, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { isAlways, generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, fillGroups, fillClosers, DEFAULT_TIER, tiersDiffer, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -608,7 +608,7 @@ export function ruleItems(g) {
     items.push({ kind: 'cap', text: `${nm(id)} plays at most ${v} min`, removable: true, id });
   }
   for (const pair of c.pairs) {
-    items.push({ kind: 'together', text: `${joinNames(pair.slice(0, 2).map(nm))} ${pair[2] === true ? 'always ' : ''}together`, removable: true, pair });
+    items.push({ kind: 'together', text: `${joinNames(pair.slice(0, 2).map(nm))} ${isAlways(pair) ? 'always ' : ''}together`, removable: true, pair });
   }
   for (const pair of c.avoids) {
     items.push({ kind: 'apart', text: `${joinNames(pair.map(nm))} apart`, removable: true, pair });

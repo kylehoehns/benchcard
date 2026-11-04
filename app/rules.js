@@ -16,7 +16,7 @@
  */
 import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
-import { fmtMinutes, periodNoun } from './engine.js';
+import { fmtMinutes, periodNoun, isAlways } from './engine.js';
 import { playsInDetail, state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
          ruleItems, runHint, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
@@ -303,7 +303,7 @@ function draftFrom(item) {
     case 'minimum': case 'cap':
       return { kind: item.kind, id: item.id, minutes: minutesBucket(c, item.kind)[item.id] };
     case 'together': case 'apart': case 'keepon':
-      return { kind: item.kind, a: item.pair[0], b: item.pair[1], always: item.kind === 'together' && item.pair[2] === true };
+      return { kind: item.kind, a: item.pair[0], b: item.pair[1], always: item.kind === 'together' && isAlways(item.pair) };
     case 'starts': return { kind: 'starts', ids: [...c.openingFive] };
     case 'lastq': return { kind: 'lastq', ids: [...c.lastPeriodFive] };
     case 'rest': return { kind: 'rest', n: c.maxConsecutive };
@@ -605,7 +605,7 @@ function renderKindBody() {
   const body = $('#planKindBody');
   if (!body) return;
   body.textContent = '';
-  body.append(el('p', 'pgrp-f', KIND_LINES[draft.kind](g)));
+  body.append(el('p', 'plan-kind-line', KIND_LINES[draft.kind](g)));
   body.append(kindControls(draft.kind, draft, { onPick: renderKindBody, afterStep: syncAddRuleBtn }));
 
   const replaces = (draft.kind === 'starts' && c.openingFive.length)
@@ -624,8 +624,16 @@ function syncAddRuleBtn() {
 
 // Adds [a, b] to a pair list unless some pair already names both -- the same
 // "no duplicate rule" check for `together`, `apart` and `keepon` below.
-const addPairOnce = (list, a, b, always = false) => {
-  if (!pairInList(list, a, b)) list.push(always ? [a, b, true] : [a, b]);
+const addPairOnce = (list, a, b) => {
+  if (!pairInList(list, a, b)) list.push([a, b]);
+};
+
+// Together carries a strength, so a pair already in the list takes the one
+// picked, in the same place, rather than the pick being dropped.
+const setTogether = (list, a, b, always) => {
+  const i = list.findIndex(pr => pairInList([pr], a, b));
+  const pr = always ? [a, b, true] : [a, b];
+  if (i < 0) list.push(pr); else list[i] = pr;
 };
 
 function commitAddRule() {
@@ -634,7 +642,7 @@ function commitAddRule() {
   switch (draft.kind) {
     case 'minimum': c.minMinutes[draft.id] = draft.minutes; break;
     case 'cap': c.maxMinutes[draft.id] = draft.minutes; break;
-    case 'together': addPairOnce(c.pairs, draft.a, draft.b, draft.always === true); break;
+    case 'together': setTogether(c.pairs, draft.a, draft.b, draft.always === true); break;
     case 'apart': addPairOnce(c.avoids, draft.a, draft.b); break;
     case 'keepon': addPairOnce(keepOnList(c), draft.a, draft.b); break;
     case 'starts': c.openingFive = [...draft.ids]; break;

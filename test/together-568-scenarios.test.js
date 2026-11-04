@@ -146,4 +146,25 @@ describe('Add a rule groups its kinds and each Together rule has its own strengt
     await coach.tap('One of two on');
     assert.equal(await coach.strengthRows(), null);
   });
+
+  const pairRules = { pairs: [['p0', 'p1'], ['p2', 'p3', true]], avoids: [], minMinutes: {}, maxMinutes: {}, keepOnFloor: [], openingFive: [], lastPeriodFive: [], maxConsecutive: 0, maxBench: 0, targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [] };
+  const together = async () => (await coach.controls()).filter(n => / together$/.test(n));
+
+  test('adding Together Always for a pair that is As much as possible makes that rule Always, in place', async () => {
+    await onGame({ constraints: pairRules });
+    await openPlan();
+    await addTogether('Always');
+    assert.deepEqual(await together(), ['Avery and Blake always together', 'Casey and Drew always together']);
+  });
+
+  test('adding Together As much as possible for a pair that is Always makes that rule As much as possible, in place', async () => {
+    await onGame({ constraints: pairRules });
+    await openPlan();
+    await coach.tap('Add a rule');
+    await coach.tap('Together');
+    await coach.tap('Casey');
+    await coach.tap('Drew');
+    await coach.tap('Add rule');
+    assert.deepEqual(await together(), ['Avery and Blake together', 'Casey and Drew together']);
+  });
 });

@@ -2093,8 +2093,15 @@ test('568: two Always links with the two ends set Apart are refused, naming all 
   assert.equal(p.ok, false);
   const e = noteOf(p, 'PAIR_CHAIN_APART');
   assert.equal(e.severity, 'error');
-  assert.equal(e.message, 'Blake and Casey are set Apart, but both are set Always together with Avery, so they would always be on together. Drop one of the rules.');
+  assert.equal(e.message, 'Blake and Casey are set Apart, but Always together rules tie both to Avery, so they would always be on together. Drop one of the rules.');
   assert.deepEqual([...e.playerIds].sort(), ['p1', 'p2']);
+});
+
+test('568: a three-link Always chain with the two ends set Apart names the player in the middle, not a false "both"', () => {
+  const p = together(10, { constraints: { pairs: [['p1', 'p0', true], ['p0', 'p3', true], ['p3', 'p2', true]], avoids: [['p1', 'p2']] } });
+  assert.equal(p.ok, false);
+  const e = noteOf(p, 'PAIR_CHAIN_APART');
+  assert.equal(e.message, 'Blake and Casey are set Apart, but Always together rules tie both to Avery and Drew, so they would always be on together. Drop one of the rules.');
 });
 
 test('568: a chain with either link As much as possible is not refused', () => {

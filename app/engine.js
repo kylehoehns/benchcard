@@ -325,7 +325,7 @@ function raiseLockedTargets(targets, locked, minMinutes, avail) {
 }
 
 /* #568: a Together pair is `[a, b]`, or `[a, b, true]` when set Always. */
-const isAlways = pr => pr[2] === true;
+export const isAlways = pr => pr[2] === true;
 
 /* Always-together pairs tie players into groups that play every stint as one:
    `Map` of id to the (shared) Set of everyone tied to it. */
@@ -342,12 +342,12 @@ function normalize(constraints, availSet) {
   const c = constraints || {};
   // A pair rule means nothing unless both players are at the game. Three lists
   // share that split now, hence the helper.
-  const splitPairs = (list) => {
+  const splitPairs = (list, withAlways = false) => {
     const keep = [], dropped = [];
-    for (const [a, b, always] of list || []) (availSet.has(a) && availSet.has(b) ? keep : dropped).push(always === true ? [a, b, true] : [a, b]);
+    for (const pr of list || []) (availSet.has(pr[0]) && availSet.has(pr[1]) ? keep : dropped).push(withAlways && isAlways(pr) ? [pr[0], pr[1], true] : [pr[0], pr[1]]);
     return [keep, dropped];
   };
-  const [keepPairs, droppedPairs] = splitPairs(c.pairs);
+  const [keepPairs, droppedPairs] = splitPairs(c.pairs, true);
   const [keepAvoids, droppedAvoids] = splitPairs(c.avoids);
   const [keepOnFloor, droppedKeepOn] = splitPairs(c.keepOnFloor);
   const filterIds = (ids) => (ids || []).filter(id => availSet.has(id));
@@ -534,7 +534,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       if (direct.has(pairKey(a, b)) || group.get(a) !== group.get(b)) continue;
       const via = [...group.get(a)].filter(id => id !== a && id !== b);
       err('PAIR_CHAIN_APART',
-        `${label(a)} and ${label(b)} are set Apart, but both are set Always together with ${andList(via.map(label))}, so they would always be on together. Drop one of the rules.`,
+        `${label(a)} and ${label(b)} are set Apart, but Always together rules tie both to ${andList(via.map(label))}, so they would always be on together. Drop one of the rules.`,
         [a, b]);
     }
   }

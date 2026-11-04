@@ -54,6 +54,7 @@ import { CONFIRM_DIALOG } from './heading-outline.mjs';
 import { land } from './page-state.mjs';
 import { firstLine } from './verdict.mjs';
 import { LEAGUE_RULES_STATE, BOTH_RUNS_STATE, SITS_DETAIL_STATE } from './league-states.mjs';
+import { TOGETHER_STATES } from './together-states.mjs';
 
 /* Two long, unbroken words (no hyphen) — `LONG_NAME` already covers the
  * hyphenated case (`Featherstone-Whitmore`), so this second name exercises
@@ -647,7 +648,7 @@ const describeFinding = p => {
 
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
 export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, LEAGUE_MIN_STATE, ORDER_STATE, PLAN_NOTES_STATE,
-  LEAGUE_RULES_STATE, BOTH_RUNS_STATE, SITS_DETAIL_STATE];
+  LEAGUE_RULES_STATE, BOTH_RUNS_STATE, SITS_DETAIL_STATE, ...TOGETHER_STATES];
 
 /* The states that navigate to their own page and so wipe whatever the run
  * set up on the one before (the roster, injected CSS). Shared with

@@ -76,20 +76,23 @@ differently.
    The rule's sentence says it: "Avery and Blake together" stays for As much
    as possible; Always reads "Avery and Blake always together". The Changed
    and Removed toasts follow, since they reuse the sentence.
-4. **Where the strength is set.** On Add a rule when Together is picked, and
+4. **Where the strength is set.** Adding Together for a pair that already
+   has a Together rule sets that rule's strength to the one picked, in place
+   (found in review: otherwise the choice was silently lost). On Add a rule when Together is picked, and
    on a Together rule's detail page (the same `kindControls`, a live edit
    through `replaceRule`, with one Undo per visit like every other edit
    there). The draft carries `always: true | false`.
 5. **Engine wording** (no "Force Together", no "stint"):
-   - `PAIR_CHAIN_APART`: "Blake and Casey are set Apart, but both are set
-     Always together with Avery, so they would always be on together. Drop
-     one of the rules."
+   - `PAIR_CHAIN_APART`: "Blake and Casey are set Apart, but Always
+     together rules tie both to Avery, so they would always be on together.
+     Drop one of the rules." (Worded for a chain through more than one
+     player too, found in review.)
    - tied partner note: "Blake plays 8 min because they are set Always
      together with Avery (capped at 8 min)."
    - tied group note: "Avery, Blake and Casey play every minute because 3
      players are set Always together and only 2 can sit."
    - `SIT_RULES.PAIR_CHAIN_APART` in `app/gamemode.js`: "two players set
-     Apart are both set Always together with a third".
+     Apart are tied together by Always together rules".
 6. **Groups and lines** in Add a rule. `KINDS` keeps its name and its
    `['kind', 'Label']` entries (so both parsers above keep working), grouped
    under headings in the order below. Each heading is a `.pgrp-h`, and each
