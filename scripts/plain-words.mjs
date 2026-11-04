@@ -43,7 +43,7 @@ export function visibleText(html) {
   h = h.replace(/<nav\b[\s\S]*?<\/nav>/gi, (nav) => nav.replace(/<\/a>/gi, '</a><br>'));
   h = h.replace(new RegExp(`</?(?:${BLOCK})\\b[^>]*>`, 'gi'), '\n');
   h = h.replace(/<span\b[^>]*class="[^"]*\btok\b[^"]*"[^>]*>/gi, '\n');
-  return decode(h.replace(/<[^>]*>/g, ''));
+  return decode(h.replace(/<[^>]*>/g, ' '));
 }
 
 /** Sentences: a line break, or . ! ? followed by white space, ends one. */
@@ -66,7 +66,7 @@ export function problems(file, list) {
     for (const w of BANNED) {
       if (bannedRe(w).test(s)) out.push(`${file}: "${s}": banned word "${w}"; ${hint}`);
     }
-    const n = s.split(/\s+/).length;
+    const n = s.split(/\s+/).filter((t) => /[\p{L}\p{N}]/u.test(t)).length;
     if (n > MAX_WORDS) out.push(`${file}: "${s}": ${n} words, limit ${MAX_WORDS}; ${hint}`);
   }
   return out;

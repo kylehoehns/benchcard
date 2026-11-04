@@ -29,7 +29,8 @@ time" read a human judgement.
 - **Sentences.** A sentence ends at `.`, `!` or `?` followed by white space, or
   at a block element boundary (p, li, h1-h6, dt, dd, figcaption, summary, div,
   td, th, br, a heading or list item with no full stop). Words are runs of
-  non-space characters. The card legend on `advanced.html` is term/meaning
+  non-space characters that hold a letter or digit (a lone "—" is not a word).
+  Inline tags become a space, so neighbouring spans never glue into one word. The card legend on `advanced.html` is term/meaning
   pairs written as inline spans; each `<span class="tok…">` starts a new
   sentence so the legend is not read as one 29-word line.
 - **Mock-ups of the app's own screen.** Both pages draw the app's rules list,

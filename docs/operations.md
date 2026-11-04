@@ -320,6 +320,10 @@ Two things address that, and they are different problems:
   in Settings. Since #423 the chart pages also have direct links from the
   welcome screen and from Advanced (see the roster-size pages below), so that
   anchor is no longer the only way in to them.
+  `test/plain-words.test.js` reads the visible text of `about.html` and
+  `advanced.html` and fails on a banned word or an over-long sentence; the word
+  list and the limit are in `scripts/plain-words.mjs`. Whether a sentence is plain
+  enough for a new coach is a reviewer's call (the Plain words item in `REVIEW.md`).
 - **The roster-size pages** — `6-player-basketball-rotation-chart.html` through
   `12-…` — are the long tail. Google's autocomplete suggests every one of those
   variants across unrelated seeds, no competitor has a page for any of them, and

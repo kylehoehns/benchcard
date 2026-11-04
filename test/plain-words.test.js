@@ -80,6 +80,17 @@ test('each link in a nav is its own sentence; links in prose are not split', () 
   assert.deepEqual(sentences(visibleText(html)), ['First part', 'Second part', 'Read the guide now.']);
 });
 
+test('inline tags do not glue neighbouring words together', () => {
+  const t = sentences(visibleText('<body><p><span>Every</span><span>stint</span> counts.</p></body>'));
+  assert.deepEqual(t, ['Every stint counts.']);
+  assert.equal(problems('f', t).length, 1);
+});
+
+test('a lone dash or comma is not a word', () => {
+  const s = Array.from({ length: 25 }, () => 'word').join(' ') + ' \u2014 ,';
+  assert.deepEqual(problems('f', [s]), []);
+});
+
 test('entities are decoded', () => {
   assert.deepEqual(sentences(visibleText('<body><p>Tom&rsquo;s &amp; Ann&#39;s plan.</p></body>')),
     ['Tom’s & Ann\'s plan.']);
@@ -97,9 +108,17 @@ const SOURCES = {
   'app/advanced.html': page('app/advanced.html'),
 };
 
+const WN = 'The kind you pick says what it does in one line.';
+const KNOWN = {
+  'scripts/whats-new.json': WN,
+  'app/about.html': 'A break between periods is not a rest.',
+  'app/advanced.html': 'A break between periods is not a rest.',
+};
+
 for (const [file, list] of Object.entries(SOURCES)) {
   test(`${file}: the scan read sentences`, () => {
     assert.ok(list.length > 0, `${file} yielded no sentences, so the scan measured nothing`);
+    assert.ok(list.includes(KNOWN[file]), `${file}: known sentence "${KNOWN[file]}" not among the scanned ones`);
   });
   test(`${file} uses plain words and short sentences`, () => {
     const out = problems(file, list);
