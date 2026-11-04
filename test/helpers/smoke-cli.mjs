@@ -26,7 +26,9 @@ export const CWD = new URL('.', ROOT).pathname;
  * regression that falls through to a real run. */
 export const FAST_MS = 5000;
 
-export function run(args, env = {}) {
+/* `limitMs` (optional) goes to execFileSync's `timeout`: SIGTERM when it
+ * passes, which smoke's handler turns into a Chrome close. */
+export function run(args, env = {}, limitMs) {
   const sandbox = mkdtempSync(join(tmpdir(), 'ci-guard-'));
   const start = Date.now();
   let status = 0, stdout = '', stderr = '';
@@ -35,6 +37,7 @@ export function run(args, env = {}) {
       cwd: CWD,
       encoding: 'utf8',
       env: { ...process.env, ...env, TMPDIR: sandbox, TMP: sandbox, TEMP: sandbox },
+      ...(limitMs ? { timeout: limitMs } : {}),
     });
   } catch (e) {
     status = e.status;
