@@ -149,7 +149,6 @@ describe('a coach sets the league rules in Settings', { skip }, () => {
     await coach.fill('Opponent', 'Owls');
     await coach.setTime('Tip-off', '10:15 AM');
     await coach.tap('Next');
-    await coach.tap('Next');
     await coach.tap('Add game');
     await coach.tap('Back to Smoke Test');
     const [day] = await coach.savedDays();
