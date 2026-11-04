@@ -224,6 +224,35 @@ test('a dir something is still writing into for a moment after the kill is still
   assert.deepEqual(r.reaped, [dir]);
 });
 
+/* #558: closeChrome waited only for the MAIN process to exit, then removed the
+   profile dir once. Helpers in Chrome's group can outlive the main and keep
+   writing for a moment, so the rm hit ENOTEMPTY and the dir was left behind.
+   The stand-in: a detached node as the main (leads its own group, exits on
+   SIGTERM) plus a child in the SAME group that ignores SIGTERM and writes into
+   the dir for about 1.5s, so a single rm right after the main exits races
+   its writes. Red on the old closeChrome 3 of 3 runs. */
+test('closeChrome removes the profile dir although a helper in its group outlives the main and keeps writing (#558)', { timeout: 30_000 }, async () => {
+  const root = sandbox();
+  const dir = join(root, 'benchcard-smoke-558-helper');
+  mkdirSync(dir);
+  const main = spawn(process.execPath, ['-e', `
+    const cp = require('child_process');
+    cp.spawn(process.execPath, ['-e', \`
+      process.on('SIGTERM', () => {});
+      const fs = require('fs'), path = require('path');
+      let n = 0;
+      const end = Date.now() + 1500;
+      while (Date.now() < end) { try { fs.writeFileSync(path.join(process.env.WRITE_DIR, 'f' + n++), 'x'); } catch { /* dir gone */ } }\`],
+    { stdio: 'ignore', env: process.env });
+    ${SLEEP};`], { stdio: 'ignore', detached: true, env: { ...process.env, WRITE_DIR: dir } });
+  pidsToKill.add(main.pid); groupsToKill.add(main.pid);
+  await waitFor(() => readdirSync(dir).length > 0, 10_000, 'the helper to start writing');
+  await closeChrome(main, dir);
+  assert.ok(!existsSync(dir), 'closeChrome left the profile dir behind: a helper was still writing into it');
+  await new Promise(r => setTimeout(r, 2000));
+  assert.ok(!existsSync(dir), 'the profile dir came back after closeChrome resolved');
+});
+
 test('old-format and foreign dirs are not touched', async () => {
   const root = sandbox();
   mkdirSync(join(root, 'benchcard-smoke-OLD123'));

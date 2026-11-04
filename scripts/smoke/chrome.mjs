@@ -177,12 +177,19 @@ export async function launch(port, headful, onSpawn) {
    on both. `proc.kill(sig)` is kept as the fallback for the one case
    `process.kill` on a group can miss — Chrome exiting between the `exitCode`
    check above and the kill call, which throws ESRCH. SIGKILL is still the
-   escalation if SIGTERM has not finished the job in 5s. */
+   escalation if SIGTERM has not finished the job in 5s.
+
+   #558: the main's exit is not the end of Chrome. Helpers in its group can
+   outlive the main and keep writing into the profile dir, so one `rm` right
+   after the main exits hit ENOTEMPTY and the error was swallowed, leaving the
+   dir in TMPDIR (the hung-check test caught it under load in 6 of 20 runs).
+   So after the main is gone, wait until the whole group is (up to 5s, then
+   SIGKILL it and wait briefly), and let the rm retry. */
 export async function closeChrome(proc, dir) {
+  const kill = sig => {
+    try { process.kill(-proc.pid, sig); } catch { try { proc.kill(sig); } catch { /* already gone */ } }
+  };
   if (proc.exitCode === null && proc.signalCode === null) {
-    const kill = sig => {
-      try { process.kill(-proc.pid, sig); } catch { try { proc.kill(sig); } catch { /* already gone */ } }
-    };
     kill('SIGTERM');
     const exited = await new Promise(ok => {
       const t = setTimeout(() => ok(false), 5000);
@@ -190,7 +197,20 @@ export async function closeChrome(proc, dir) {
     });
     if (!exited) kill('SIGKILL');
   }
-  await rm(dir, { recursive: true, force: true }).catch(() => {});
+  const groupGone = () => { try { process.kill(-proc.pid, 0); return false; } catch (e) { return e.code === 'ESRCH'; } };
+  if (!(await waitUntil(groupGone, 5000))) {
+    try { process.kill(-proc.pid, 'SIGKILL'); } catch { /* gone */ }
+    await waitUntil(groupGone, 1000);
+  }
+  await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }).catch(() => {});
+}
+
+/* Polls `done()` every 50ms for up to `ms`; true if it came true in time. */
+async function waitUntil(done, ms) {
+  for (const end = Date.now() + ms; ; await sleep(50)) {
+    if (done()) return true;
+    if (Date.now() >= end) return false;
+  }
 }
 
 /* A minimal CDP client: send(method, params) → result, plus event handlers.

@@ -1,7 +1,10 @@
 # #558 — smoke-timeout's hung-check test fails when the machine is busy
 
-Small lane (a brief, not a full spec): about 10 lines change outside `test/`
-and `docs/`, none in the four pure modules, `state.js` or `live.js`.
+Light review, with a brief instead of a full spec. The first fix fit the
+small lane. The cleanup fix (finding 3) took the change to about 40 lines
+outside `test/` and `docs/`, past the small lane's 20. This batch's lane runs
+light review anyway (quality-reviewer and doc-writer only), and nothing here
+touches the four pure modules, `state.js` or `live.js`.
 
 ## Issue
 
@@ -36,6 +39,15 @@ Two facts settle the cause:
    probe with `{ timeout: 200 }` around a 1-second `execFileSync` passed. So
    the comment's math (which also did not add up: 45 + 30 > 45) described a
    limit that was never enforced.
+3. **Cleanup has its own race, which the first fix uncovered.** With only the
+   watchdog fix, the 20-run proof passed 14 of 20. All six failures were
+   "Chrome's --user-data-dir was left behind". `closeChrome` waited only for
+   Chrome's main process, then removed the profile once and ignored any
+   error. Chrome's helper processes can still be writing into the profile for
+   a moment after the main exits, so the remove failed. The old 30-second
+   wait hid this, because by then Chrome was idle. A 0.6-second hang shuts
+   Chrome down while it is still busy after the page load. `reapOrphans`
+   (#514) had already learned the same lesson for the next run's sweep.
 
 ## Decisions (the issue left these open)
 
@@ -53,8 +65,15 @@ Two facts settle the cause:
   takes an optional limit, passed to `execFileSync`'s `timeout`, which sends
   SIGTERM; smoke's SIGTERM handler closes Chrome. Sized from the steps:
   Chrome boot cap 45s (`chrome.mjs`) + cold load and `reset` 60s (about 3x
-  the 21s worst seen) + the 0.6s watchdog + 10s cleanup (`closeChrome`'s 5s
-  SIGTERM grace, the profile `rm`, process exit) = about 116s, so 120s.
+  the 21s worst seen) + the 0.6s watchdog + 11s cleanup (`closeChrome`'s 5s
+  SIGTERM grace, up to 5s for the helpers, about 1s of remove retries) =
+  about 117s, so 120s.
+- **Cleanup waits for the whole Chrome, then retries the remove.**
+  `closeChrome` waits (up to 5s) until every process in Chrome's group is
+  gone, SIGKILLs any left, then removes the profile with retries, the way
+  `reapOrphans` does. This is the issue's "if smoke's cleanup itself can
+  hang, fix that instead" case, and it helps every smoke run, not just the
+  test.
 - **What still proves the watchdog starts before `serve()`:** the second test
   in the file (`--timeout 0.001`, no hang variable) fires while Chrome is
   still booting. It is unchanged.
@@ -72,6 +91,10 @@ Two facts settle the cause:
 - `test/smoke-timeout.test.js` under `node --test`, spawning the real
   `scripts/smoke.mjs`. Red first: with the old watchdog, `--timeout 0.01`
   fires during "launching Chrome", so the regex naming the hung row fails.
+- `closeChrome` under `node --test`, against a stand-in Chrome whose helper
+  ignores SIGTERM and keeps writing into the profile. Red first: the old
+  single remove leaves the directory.
+- The 20-runs-under-load proof, beside two `scripts/smoke.mjs` loops.
 
 ## Out of scope
 

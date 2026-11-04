@@ -512,7 +512,8 @@ if (HAS_TIMEOUT) {
  * #178. One `shutdown`, used by all three ways a run can end early (the time
  * limit, Ctrl-C, `kill`), so "close Chrome, close the server, exit" is
  * written once. Started before `serve()`, per the spec's Design section, so
- * even a `serve()` that hangs is still caught by the limit. */
+ * even a `serve()` that hangs is still caught by the limit. (Under
+ * BENCHCARD_SMOKE_HANG it is armed at the hang instead; see `armWatchdog`.) */
 let server = null;
 let watchdogTimer = null;
 

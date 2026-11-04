@@ -40,15 +40,16 @@ for (const value of BAD_TIMEOUTS) {
  * The limit is the 120_000 ms passed to execFileSync through run(), because
  * node:test's own `timeout` option cannot stop a synchronous test. It is sized
  * from the steps: Chrome boot cap 45s (chrome.mjs) + cold load and reset 60s
- * (about 3x the 21s worst seen under load) + 0.6s watchdog + 10s cleanup
- * (closeChrome's 5s SIGTERM grace, the profile rm, exit) = about 116s < 120s. */
+ * (about 3x the 21s worst seen under load) + 0.6s watchdog + 11s cleanup
+ * (closeChrome's 5s SIGTERM grace + up to 5s waiting for helpers + about 1s of
+ * rm retries) = 45 + 60 + 0.6 + 11 = 116.6s < 120s. */
 test('a hung check ends the run: exit 1, names the check, and leaves no Chrome behind', NEEDS_CHROME, () => {
   const r = run(
     ['--only', 'rich fixture is live', '--timeout', '0.01'],
     { BENCHCARD_SMOKE_HANG: 'rich fixture is live' },
     120_000,
   );
-  assert.equal(r.status, 1, `expected exit 1, got ${r.status} — stdout: ${r.stdout} stderr: ${r.stderr}`);
+  assert.equal(r.status, 1, `${r.timedOut ? 'the 120s harness limit fired before smoke ended itself; ' : ''}expected exit 1, got ${r.status} — stdout: ${r.stdout} stderr: ${r.stderr}`);
   assert.match(r.stderr, /smoke: timed out after 0\.01 min while running "rich fixture is live"/);
   assertNoSmokeProfileLeft(r, 'hung check (post-cleanup)');
 });

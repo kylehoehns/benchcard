@@ -31,7 +31,7 @@ export const FAST_MS = 5000;
 export function run(args, env = {}, limitMs) {
   const sandbox = mkdtempSync(join(tmpdir(), 'ci-guard-'));
   const start = Date.now();
-  let status = 0, stdout = '', stderr = '';
+  let status = 0, stdout = '', stderr = '', timedOut = false;
   try {
     stdout = execFileSync(process.execPath, [SMOKE, ...args], {
       cwd: CWD,
@@ -41,13 +41,14 @@ export function run(args, env = {}, limitMs) {
     });
   } catch (e) {
     status = e.status;
+    timedOut = e.code === 'ETIMEDOUT'; // execFileSync's `limitMs` fired
     stdout = e.stdout ?? '';
     stderr = e.stderr ?? '';
   }
   const ms = Date.now() - start;
   const chromeProfileDirs = readdirSync(sandbox);
   rmSync(sandbox, { recursive: true, force: true });
-  return { status, stdout, stderr, ms, chromeProfileDirs };
+  return { status, stdout, stderr, ms, chromeProfileDirs, timedOut };
 }
 
 export function assertNeverLaunchedChrome(r, label) {
