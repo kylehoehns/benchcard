@@ -31,7 +31,8 @@ evening PR that merges after midnight goes red on main (#591 -> #592).
 The check date is the date (`%cs`, the commit's own offset) of **the PR's last
 commit**, found like this:
 
-1. HEAD has two parents (a PR test merge): use `HEAD^2`.
+1. HEAD has two parents and its committer is GitHub (a PR test merge): use
+   `HEAD^2`.
 2. Else HEAD's subject ends in `(#N)` and `git fetch origin refs/pull/N/head`
    succeeds: use that fetched commit.
 3. Else: HEAD itself (a local branch run, or a direct push).

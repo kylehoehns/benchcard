@@ -44,8 +44,10 @@ The `checks that need history` job runs `scripts/check-sitemap-lastmod.mjs`,
 which fails when a branch changes `app/<page>.html` for a page in the sitemap
 but that page's `<lastmod>` in `sitemap.xml` does not change (a chart page
 changing through `scripts/charts.mjs` is caught the same way, because the
-generator rewrites the HTML). A `<lastmod>` equal to the day the check runs
-also passes, as with the about dateline. The sitemap's dates are set once from
+generator rewrites the HTML). A `<lastmod>` equal to the day the PR's last
+commit was made also passes, as with the about dateline. That day comes from
+`scripts/pr-commit-date.mjs`, not from HEAD, which on main is a squash commit
+dated at merge time. The sitemap's dates are set once from
 `git log -1 --format=%cs -- <file>` and then kept honest by this check: a
 page that changed must have a new `<lastmod>`, or the crawler's cached copy
 stays stale. Run it locally with `node scripts/check-sitemap-lastmod.mjs

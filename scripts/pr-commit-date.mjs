@@ -9,10 +9,13 @@
    keeps them at `refs/pull/<N>/head`.
 
    THE RULE, in order, each step falling to the next on any git failure:
-     1. HEAD has two parents (a PR test merge): `HEAD^2`.
+     1. HEAD has two parents and its committer is GitHub (a PR test merge):
+        `HEAD^2`. A local `git merge origin/main` tip also has two parents,
+        but its `HEAD^2` is main's tip, so it falls through.
      2. HEAD's subject ends in `(#N)` and `git fetch origin refs/pull/N/head`
         works: the fetched commit.
      3. HEAD itself (a local run, or a direct push).
+   Rebase-merge is not handled (it falls to HEAD); the repo squash-merges.
    The date is `%cs`, the commit's own offset. Returns YYYY-MM-DD, or null if
    even HEAD's date cannot be read. It never throws. */
 
@@ -33,8 +36,10 @@ const dateOf = (rev, cwd) => {
 
 export function prCommitDate(cwd = process.cwd()) {
   try {
-    const d = dateOf('HEAD^2', cwd);
-    if (d) return d;
+    if (git(['log', '-1', '--format=%cn', 'HEAD'], cwd) === 'GitHub') {
+      const d = dateOf('HEAD^2', cwd);
+      if (d) return d;
+    }
   } catch {}
   try {
     const n = git(['log', '-1', '--format=%s', 'HEAD'], cwd).match(/\(#(\d+)\)\s*$/);
