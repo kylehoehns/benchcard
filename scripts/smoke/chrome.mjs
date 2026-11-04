@@ -1,10 +1,11 @@
 /* Chrome launch and the DevTools protocol client. Moved out of `smoke.mjs`;
    `launch`'s own `--headful` read became a parameter (`headful`), since arg
-   parsing stays in `smoke.mjs`, and #510 added `reapOrphans`. */
+   parsing stays in `smoke.mjs`, #510 added `reapOrphans`, and #595 the watcher. */
 import { spawn, execFile } from 'node:child_process';
 import { mkdtemp, access, rm, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 /* ---------- Chrome ---------- */
@@ -68,7 +69,10 @@ function descendsFrom(p, ownerPid, byPid) {
 
 /* #510: a Chrome whose owner node process was SIGKILLed has no handler to
    close it (closeChrome only runs from code in the owner), so the next
-   `launch()` reaps it. The owner's PID is in the profile dir's name
+   `launch()` reaps it. #595 made that the backstop: `launch()` also starts a
+   watcher (chrome-watcher.mjs) that closes Chrome the moment its owner dies,
+   SIGKILL included, so a sweep only has work when the watcher was itself
+   killed. The owner's PID is in the profile dir's name
    (`benchcard-smoke-<ownerPid>-XXXXXX`, made atomically by mkdtemp), rather
    than in a PID file written after spawn, which an owner killed in between
    would never write. Chromes are found by command line (every process of one
@@ -112,6 +116,25 @@ export async function reapOrphans(root) {
   return result;
 }
 
+/* #595: the watcher process that ties Chrome to this owner. It runs
+   `chrome-watcher.mjs` in its own process group (so Ctrl-C on the owner's
+   terminal does not kill it before it cleans up), with a pipe on its stdin
+   that nothing here ever writes to: when this process dies for any reason, the
+   OS closes the pipe and the watcher kills Chrome's group and removes `dir`.
+   Unref'd, child and pipe, so it never keeps this process alive. */
+const watchers = new WeakMap();
+function watch(proc, dir) {
+  try {
+    const w = spawn(process.execPath, [fileURLToPath(new URL('./chrome-watcher.mjs', import.meta.url)), String(proc.pid), dir],
+      { stdio: ['pipe', 'ignore', 'ignore'], detached: true });
+    w.on('error', () => {});
+    w.stdin.on('error', () => {});
+    w.unref();
+    w.stdin.unref();
+    return w;
+  } catch { return null; }   // no watcher: reapOrphans is still the backstop
+}
+
 /* #178 review: `onSpawn`, called the instant Chrome is spawned — before the
    DevTools poll below, which can itself take up to 45s. Without it, a caller
    that only learns `proc`/`dir` from this function's return value has nothing
@@ -133,6 +156,7 @@ export async function launch(port, headful, onSpawn) {
     '--hide-scrollbars', '--mute-audio',
     'about:blank',
   ], { stdio: 'ignore', detached: true }); // detached: closeChrome can kill the whole process group
+  watchers.set(proc, watch(proc, dir));
   onSpawn?.(proc, dir);
 
   // Poll the DevTools endpoint rather than parsing stderr; it is the only
@@ -203,6 +227,10 @@ export async function closeChrome(proc, dir) {
     await waitUntil(groupGone, 1000);
   }
   await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }).catch(() => {});
+  /* #595: the cleanup is done, so let the watcher go (it finds nothing left and
+     exits), or a long run would pile them up. */
+  watchers.get(proc)?.stdin.end();
+  watchers.delete(proc);
 }
 
 /* Polls `done()` every 50ms for up to `ms`; true if it came true in time. */
