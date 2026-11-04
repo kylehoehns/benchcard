@@ -181,7 +181,11 @@ esac
  *  head (one commit on top of main) pushed to origin as refs/pull/77/head. */
 function mergeFixture(code) {
   const f = fixture((lanes) => writeFileSync(join(lanes, 'preview-check.mjs'),
-    `console.log('stub preview check for #' + process.argv[2]); process.exit(${code});\n`));
+    `import { appendFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+appendFileSync(join(dirname(fileURLToPath(import.meta.url)), 'argv.log'), JSON.stringify(process.argv.slice(2)) + '\\n');
+console.log('stub preview check for #' + process.argv[2]); process.exit(${code});\n`));
   git(f.main, 'checkout', '-q', '-b', 'pr-77');
   writeFileSync(join(f.main, 'change.txt'), 'x\n');
   git(f.main, 'add', 'change.txt');
@@ -196,6 +200,8 @@ const mergeOne = (f) => run('bash', [join(f.main, 'scripts', 'lanes', 'merge-one
   cwd: f.root, env: { ...GIT_ENV, PATH: `${f.bin}:${process.env.PATH}` },
 });
 
+const stubArgv = (f) => readFileSync(join(f.main, 'scripts', 'lanes', 'argv.log'), 'utf8');
+
 describe('merge-one.sh', () => {
   test('a failed preview check: exit 4, says so, and never calls gh pr merge', () => {
     const f = mergeFixture(1);
@@ -206,6 +212,7 @@ describe('merge-one.sh', () => {
     const calls = readFileSync(f.log, 'utf8');
     assert.ok(calls.includes('statusCheckRollup'), 'the checks were read first');
     assert.ok(!/^pr merge/m.test(calls), `gh pr merge was called:\n${calls}`);
+    assert.equal(stubArgv(f), '["77"]\n', 'the preview check got the PR number');
   });
 
   test('a passing preview check: gh pr merge is called, merged #N as <sha7>, main green, exit 0', () => {
@@ -216,6 +223,7 @@ describe('merge-one.sh', () => {
     assert.match(r.stdout, /main green \+ deployed at [0-9a-f]{7}/);
     const calls = readFileSync(f.log, 'utf8');
     assert.match(calls, /^pr merge 77 --squash/m);
+    assert.equal(stubArgv(f), '["77"]\n', 'the preview check got the PR number');
   });
 });
 

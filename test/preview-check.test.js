@@ -9,7 +9,7 @@ import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { aliasUrl, viewsFor, notChecked, urlsFromSummary, verdict, commentText } from '../scripts/lanes/preview-check.mjs';
+import { aliasUrl, viewsFor, notChecked, urlsFromSummary, urlToCheck, lookFailure, verdict, commentText } from '../scripts/lanes/preview-check.mjs';
 import { parseArgs } from '../scripts/look.mjs';
 
 const FIVE = ['today', 'games', 'team', 'season', 'settings'];
@@ -78,6 +78,19 @@ test('urlsFromSummary: a missing line is null, and a summary that is not text is
     { preview: null, alias: 'https://a-benchcard.kyhoehns.workers.dev' });
   assert.deepEqual(urlsFromSummary(null), { preview: null, alias: null });
   assert.deepEqual(urlsFromSummary(''), { preview: null, alias: null });
+});
+
+test('urlToCheck: the summary\'s own alias when it names one, else the branch-derived URL', () => {
+  const branch = 'https://a-very-long-branch-benchcard.kyhoehns.workers.dev';
+  assert.equal(urlToCheck('https://shortened-benchcard.kyhoehns.workers.dev', branch), 'https://shortened-benchcard.kyhoehns.workers.dev');
+  assert.equal(urlToCheck(null, branch), branch);
+});
+
+test('lookFailure says a timeout timed out, and otherwise shows the last stderr lines', () => {
+  assert.match(lookFailure({ killed: true, signal: 'SIGTERM', message: 'x' }), /timed out/);
+  const other = lookFailure({ code: 1, stderr: 'a\nb\nc\nd\n', message: 'x' });
+  assert.doesNotMatch(other, /timed\s+out/);
+  assert.match(other, /b \/ c \/ d/);
 });
 
 const rec = (file, over = {}) => ({ file, findings: [], consoleErrors: [], thirdParty: [], ...over });

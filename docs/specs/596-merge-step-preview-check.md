@@ -111,6 +111,9 @@ refuses to merge when it fails.
 - **The URL** comes from the branch name, as the lane asked, checked against
   the head build's pinned preview so "matches the PR head" is measured, not
   assumed.
+- **The URL, when the build names one.** The build's own alias when the check
+  run names one (Cloudflare may shorten a long branch's), else the
+  branch-derived URL. The PR comment names the URL actually checked.
 - **Exit code 4** for a failed preview check, so the existing 1/2/3 keep their
   meaning.
 

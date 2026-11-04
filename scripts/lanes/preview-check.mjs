@@ -37,7 +37,9 @@ const REPO = 'kylehoehns/benchcard';
 const CHECK = 'Workers Builds: benchcard';
 const BUILD_CAP_MS = 20 * 60_000, BUILD_EVERY_MS = 20_000;
 const ALIAS_CAP_MS = 5 * 60_000, ALIAS_EVERY_MS = 10_000;
-const FETCH_MS = 15_000, GIT_MS = 120_000, GH_MS = 60_000, LOOK_MS = 16 * 60_000;
+const FETCH_MS = 15_000, GIT_MS = 120_000, GH_MS = 60_000, LOOK_MS = 60 * 60_000;
+/* LOOK_MS caps a slot wait plus the run (ci-slot.sh waits for a Chrome slot
+ * with no limit, then CI_SLOT_TIMEOUT bounds the run itself). */
 const APP_VIEWS = VIEWS.map(v => v.name);
 
 /* ---------- pure parts ---------- */
@@ -61,6 +63,15 @@ export function viewsFor(paths) {
 }
 
 export const notChecked = paths => paths.filter(p => p === 'app/404.html');
+
+/* The URL actually checked: the build's own alias when the check run names
+ * one (Cloudflare may shorten a long branch's), else the branch-derived one. */
+export const urlToCheck = (summaryAlias, branchUrl) => summaryAlias || branchUrl;
+
+export function lookFailure(e) {
+  if (e.killed || e.signal === 'SIGTERM') return `look.mjs timed out after ${LOOK_MS / 60_000} minutes (a slot wait plus the run)`;
+  return `look.mjs did not finish: ${(e.stderr || e.message).trim().split('\n').slice(-3).join(' / ')}`;
+}
 
 export function urlsFromSummary(summary) {
   const text = typeof summary === 'string' ? summary : '';
@@ -143,7 +154,7 @@ async function lookAt(alias, views) {
         '--height', '844', '--font', '16', '--view', views.join(','), '--out', out],
       { timeout: LOOK_MS, maxBuffer: 20e6, env: { ...process.env, CI_SLOT_TIMEOUT: '900' } });
     } catch (e) {
-      throw new Error(`look.mjs did not finish: ${(e.stderr || e.message).trim().split('\n').slice(-3).join(' / ')}`);
+      throw new Error(lookFailure(e));
     }
     return JSON.parse(await readFile(join(out, 'measurements.json'), 'utf8'));
   } finally { await rm(out, { recursive: true, force: true }); }
@@ -153,7 +164,7 @@ export async function main(argv = process.argv.slice(2)) {
   const N = argv[0];
   if (!/^\d+$/.test(N ?? '')) { console.error('usage: node scripts/lanes/preview-check.mjs <pr-number>'); return 1; }
   const { headRefName, headRefOid: sha } = JSON.parse(await gh(['pr', 'view', N, '--json', 'headRefName,headRefOid']));
-  const url = aliasUrl(headRefName);
+  let url = aliasUrl(headRefName);
   const result = { url, sha, views: [], notChecked: [], shots: 0, findings: [], consoleErrors: [], problems: [], pass: false };
   try {
     await git('fetch', '-q', 'origin', 'main');
@@ -164,7 +175,8 @@ export async function main(argv = process.argv.slice(2)) {
 
     log(`waiting for ${CHECK} on ${sha.slice(0, 7)}`);
     const built = await waitForBuild(sha);
-    const { preview } = urlsFromSummary(built.output?.summary);
+    const { preview, alias } = urlsFromSummary(built.output?.summary);
+    url = result.url = urlToCheck(alias, url);
     if (preview) { log(`waiting for ${url} to serve ${preview}`); await waitForAlias(url, preview); }
     else log('the check run names no Preview URL; relying on the check run alone');
 
