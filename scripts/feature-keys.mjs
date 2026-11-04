@@ -109,7 +109,7 @@ export const FEATURES = [
    * three surfaces for the strategy alone, so `term` for `shape:even` stays
    * narrowed to `#help` rather than trusting "Steady" everywhere: about.html
    * and advanced.html instead prove the shape by the one sentence that names
-   * it ("every stint about as strong as every other"), via `text`, which
+   * it ("every lineup about as strong as every other"), via `text`, which
    * cannot be confused with the strategy's own name. */
   { key: 'strategy:balanced', src: 'state.js STRATEGIES', term: ['even'] },
   { key: 'strategy:minutes', src: 'state.js STRATEGIES', term: ['by hand'] },
@@ -118,7 +118,7 @@ export const FEATURES = [
   { key: 'strategy:order', src: 'state.js STRATEGIES', term: ['order'] },
 
   { key: 'shape:even', src: 'balance.js SHAPES',
-    term: { '#help': ['steady'] }, text: ['every stint about as strong as every other'] },
+    term: { '#help': ['steady'] }, text: ['every lineup about as strong as every other'] },
   { key: 'shape:start', src: 'balance.js SHAPES', term: ['start strong'], text: ['start strong'] },
   { key: 'shape:finish', src: 'balance.js SHAPES', term: ['finish strong'], text: ['finish strong'] },
   { key: 'shape:both', src: 'balance.js SHAPES', term: ['both ends'], text: ['both ends'] },
