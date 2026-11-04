@@ -155,6 +155,9 @@ notes/     ROADMAP.md (the why), DECISIONS.md (what was built, to 2026-09)
 .claude/   settings.json, hooks/, skills/, agents/
 ```
 
+`docs/design-decisions.md` is near the 60 KB limit: a new decision goes in the matching
+side file in its index, or in a new side file added to that index.
+
 `app/` is the only directory that is deployed, by way of its copy in `dist/`
 (§ Deploy). Everything above it is process, and none of it reaches a coach.
 
