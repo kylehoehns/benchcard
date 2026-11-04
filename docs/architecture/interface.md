@@ -179,10 +179,10 @@ per period). The team default for *Make up minutes from* is not asked here
 shape what a new game starts as, and that any game can be changed from its own screen.
 Changing **A game is** also changes the open day's games that have not started.
 
-The third group holds **Players changing at once** (1–5, default 3, `maxSubs`),
-**Fine-tuning** (a row that opens **Extra minutes go to**: who gets the high side
+The third group holds **Players changing at once** (1–5, default 3, `maxSubs`)
+and **Fine-tuning** (a row that opens **Extra minutes go to**: who gets the high side
 when the clock does not divide evenly, Kids behind on minutes or Best players,
-with its own one-line note), and **Everyone plays at least** (the league minimum: an amount and what it counts, minutes, percent of the game, periods or full periods; default 0 minutes, [design decisions](../design-decisions.md)). Under it, **Everyone plays in** is a three-way choice, Off, Each half or Each period (`settings.playsIn`, default Off).
+with its own one-line note).
 While every player on the team is at one level, the **Extra minutes go to** row
 is hidden and the note under Fine-tuning points to the Team page instead. A
 saved Best players keeps the row showing. The reasons are in
@@ -208,7 +208,23 @@ fire), so that option alone says "no ceiling" — and deliberately does **not**
 say "no limit", because the floor is still pulling and a promise about both
 bounds would be false.
 
-The fourth group holds **Remove this team**, the zone's one destructive
+**League rules** is one heading over four groups, so each footnote sits under
+the rule it explains (#566). **Everyone plays at least** is the league minimum:
+an amount and what it counts (minutes, percent of the game, quarters of time or
+whole quarters, named for the game's own period count), with a live line under
+it that says what it comes to in the open game, or in a game built from the
+team's format when none is open. Default 0 minutes, [design decisions](../design-decisions.md).
+**Everyone plays in** is a three-way choice, Off, Each half or Each period
+(`settings.playsIn`, default Off). **Plays at most** and **Sits at most** are each
+a switch, *Limit time on the floor in a row* and *Limit time on the bench in a row*.
+On, a stepper appears under it, starting at 2 and running from 1 to the most
+the game allows (`settings.maxConsecutive` and `settings.maxBench`, default 0,
+which is off). The stepper is the one the rule's own page uses. A new game starts
+from these team values. A change here reaches the open day's games that have not
+started, and not a started game or another day's. A game's own change stays with
+that game ([league rules](../design-decisions-league-rules.md)).
+
+The last group holds **Remove this team**, the zone's one destructive
 action, with a footnote (`#teamCount`) that reads "2 of 3 teams" when there
 is more than one. The longer explanations that used to sit under each Settings
 control now live in How it works, in its "Settings" section (#142).

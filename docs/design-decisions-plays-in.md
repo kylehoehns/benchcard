@@ -33,7 +33,8 @@ Same columns as "When rules disagree": the two rules, what wins, what the plan s
   `settings.minUnit` `full` is a fourth unit beside `min`, `pct` and `periods`,
   with the same 0–8 range. `periods` still means minutes, so two periods is 16
   minutes in a 4×8, however they fall. `full` means each kid plays two whole
-  periods. The rule reads "Everyone plays at least 2 full periods (16 min)".
+  periods. The rule reads "2 whole quarters (16 min)" in a 4-period game
+  (it read "full periods" before #566; the saved value is still `full`).
   Saved teams hold `min`, `pct` or `periods`, so they load with the setting
   off. A "sits at least one full period" rule is not built.
   - **A minute minimum does not give whole periods, so the engine pins them.**
@@ -89,7 +90,8 @@ Same columns as "When rules disagree": the two rules, what wins, what the plan s
 - **Everyone plays in is a setting, and it steps the halftime default aside (#451).**
   `settings.playsIn` is `off` (the default, and what every saved team means),
   `halves` (each half) or `periods` (each period: each quarter in a 4-period
-  game). It sits in Settings beside Everyone plays at least. Its rule sentence is
+  game). It sits in Settings under League rules, in its own group beside Everyone
+  plays at least (#566). Its rule sentence is
   "Everyone plays in each half", or "Everyone plays in every quarter" (or half,
   or period, by the game's period count). With it on, the halftime default does
   not run: `HALF_LATE` and `HALF_EARLY` are not said, and the halftime cost term

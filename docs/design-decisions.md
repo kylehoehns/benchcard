@@ -456,8 +456,7 @@ text left open, and a future reader needs them to read the plan.
   name changed. The stored key stays `maxConsecutive`, so a team saved under
   the old name loads unchanged.
 - **Sits at most N in a row is the bench twin of Plays at most (#441).** The
-  stored key is `maxBench`, 1 to 4 stints, default 2, counted by the same run
-  counter read the other way round. Each stint past the limit costs
+  stored key is `maxBench`, 1 to 4 stints. Each stint past the limit costs
   `over x over x 400`. The search, the two up-front lines (`BENCH_TOO_FEW` and
   `BENCH_SUBS`) and the re-plan count are in
   [Sits at most, in full](design-decisions-sits-at-most.md).
@@ -740,3 +739,4 @@ text left open, and a future reader needs them to read the plan.
   plan: [in full](design-decisions-rotation-order.md). **Platoon and Closers
   start filled in (#569)**: [in full](design-decisions-filled-in.md).
   **Levels (#570)**: [in full](design-decisions-levels.md).
+  **League rules**: [in full](design-decisions-league-rules.md).
