@@ -47,6 +47,36 @@ which runs beside the browser rows (in CI, as its own `--shard suite` part;
 re-recording) is in `AGENTS.md` § Layout. Inline `<script>` in an HTML page is
 not counted: only the `.js` files `app/` serves are.
 
+Fixtures (A26): two on purpose, in `fixtures.mjs`. A lean `SEED` for the
+cold-load measurement, and a `RICH` record (11 players, two games today, three
+filed, levels set) for the overlay, touch, narrow and sweep passes. Do not
+merge them back into one. A check that needs a page asks `land()` in
+`page-state.mjs` for it (record, width, text size, media) rather than
+navigating and waiting for boot by hand. The harness resets to `RICH` before
+each rich row, so a check never restores what it changed.
+
+The clock (#178): every page opens with its clock pinned to 2026-09-12 12:00
+local (`clock.mjs`), ticking forward from there, not frozen, since `SETTLE`
+and the wait loops need it to move. A run gives the same answer at any hour.
+
+Ending (#510, #595): `--timeout <minutes>` (default 60) closes Chrome and
+exits 1 naming the check it was on; `Ctrl-C` and `kill` do the same. After a
+SIGKILL, a small watcher process closes the run's Chrome, and the next
+`launch()` reaps any left over if the watcher was killed too.
+
+The large-text passes: one pass over every app screen at 320px with the
+default font emulated at 32px (a reader on 200% text). The list is
+`APP_LARGE_TEXT_STATES` in `app-large-text.mjs`, and the run prints every name
+it measured. It checks both axes: `STRANDED_ABOVE` exists because a toast
+160px above the viewport once passed every horizontal probe. The other pages
+(`about`, `advanced`, the generated chart pages, `404` and `whats-new`) are
+checked at 390 and 320 for overflow, alt text, ids, lang, touch targets and
+console errors, plus the 32px pass at 320 and 390, the two cells where the
+large-text media queries are live. On the two guides it also checks that
+nothing sticks out of a `.plate` and no `.nm` name is cut.
+`APP_LARGE_TEXT_ALLOW` and `LARGE_TEXT_ALLOW` are empty; `AGENTS.md` § Layout
+has the rule for them.
+
 | Check | File | Fixture |
 | --- | --- | --- |
 | `no console errors` | `scripts/smoke.mjs` | whole run |

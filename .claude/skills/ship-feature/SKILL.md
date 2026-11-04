@@ -11,9 +11,7 @@ description: >
 
 # Ship a change from a GitHub issue
 
-The source of truth is a **GitHub issue**. Issues are fuzzy, over-loaded and
-sometimes wrong about the tree — several in this repo's history were falsified
-by the first survey. So the pipeline has two halves:
+The pipeline has two halves:
 
 - **Understand** — *with the human.* You grill the issue into a locked, written
   spec. You ask, the human decides.
@@ -22,10 +20,9 @@ by the first survey. So the pipeline has two halves:
   the production code yourself.
 
 Run it top to bottom. **Do not start Build until the human confirms the spec**
-(in the small lane, the brief) —
-except for a `ready-for-agent` ticket with nothing left to ask (step 2), where
-the ticket is the confirmation. One issue at a time — `AGENTS.md` § The loop
-says why.
+(in the small lane, the brief) — except for a `ready-for-agent` ticket with
+nothing left to ask (step 2), where the ticket is the confirmation. One issue
+at a time — `AGENTS.md` § The loop says why.
 
 ## The team
 
@@ -43,20 +40,19 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 
 **Every hand-off to `developer` launches a new one.** Do not message a
 `developer` that has already reported, for review findings, a broken proof, a
-browser defect or a red CI run. Every turn re-sends the agent's whole context,
-so a reused one pays for the whole earlier build again on every turn. #23's
-developer was reused for seven rounds, grew to 964k tokens, and cost 28% of
-all the tokens this project had used. The new one gets the spec path, the
-current handoff and the findings verbatim; that is the whole brief.
+browser defect or a red CI run: every turn re-sends its whole context (#23's
+reused developer cost 28% of all the tokens this project had used). The new
+one gets the spec path, the current handoff and the findings verbatim; that is
+the whole brief.
 
 ## The small-fix lane
 
-Most issues are a few lines, and running them through the whole pipeline
-costs what a feature costs (#245: 4 lines of `app/`). So there are two lanes,
-and step 1 picks one. **This section is the only place the lane's conditions
-are written;** `AGENTS.md` and `REVIEW.md` point here. The small lane is a
-deliberate trade against `REVIEW.md`'s "the same passes every time": the
-quality pass still runs; the reuse and efficiency passes do not.
+Most issues are a few lines, and the whole pipeline costs what a feature costs
+(#245: 4 lines of `app/`). So there are two lanes, and step 1 picks one.
+**This section is the only place the lane's conditions are written;**
+`AGENTS.md` and `REVIEW.md` point here. The small lane is a deliberate trade
+against `REVIEW.md`'s "the same passes every time": the quality pass still
+runs; the reuse and efficiency passes do not.
 
 A change is **small** when all three hold:
 
@@ -107,29 +103,30 @@ The PR body says it switched.
    gh issue view "$ISSUE" --comments
    ```
 
-   Do not resolve the gaps yourself. List the fuzzy terms, the contradictions,
-   the unstated thresholds, and every claim about the tree — then **survey the
-   claims before grilling**. A claim the code does not support is a question for
-   the human, not a requirement.
+   List the fuzzy terms, the contradictions, the unstated thresholds, and
+   every claim about the tree — then **survey the claims before grilling**. A
+   claim the code does not support is a question for the human, not a
+   requirement.
 
    If the issue is a `ready-for-agent` ticket, also read its parent issue (the
    spec `/to-tickets` cut it from) and every closed blocker's pull request: the
    decisions live there, and a blocker may have changed the tree the ticket
    describes.
 
-   Then **pick the lane** (§ The small-fix lane). A small change skips step 3.
+   Then **pick the lane** (§ The small-fix lane).
 
 2. **Grill only what is still open.** A `ready-for-agent` ticket was decided
    with the human before it was published. If the survey holds up every claim
    and each acceptance criterion has a concrete value, there is nothing to ask:
-   skip to step 3 (small lane: step 4) and do not wait for a go-ahead. Otherwise, grill just the
-   falsified claims and the missing values. Any other issue is grilled in full.
+   skip to step 3 (small lane: step 4) and do not wait for a go-ahead.
+   Otherwise, grill just the falsified claims and the missing values. Any other
+   issue is grilled in full.
 
-   **Grill it** with `/grill-with-docs`. One question at a time, each with your
-   recommended answer; facts get looked up, decisions go to the human. As terms
-   settle, `CONTEXT.md` gets them; a hard-to-reverse trade-off gets an ADR in
-   `docs/adr/` (sparingly — `/domain-modeling` says when). **Do not proceed
-   until the human says it is locked.**
+   **Grill it** with `/grill-with-docs`: one question at a time, each with your
+   recommended answer; facts get looked up, decisions go to the human. Terms go
+   to `CONTEXT.md`; a hard-to-reverse trade-off gets an ADR in `docs/adr/`
+   (sparingly — `/domain-modeling` says when). **Do not proceed until the
+   human says it is locked.**
 
 3. **Write the spec** to `docs/specs/<issue>-<slug>.md`, in this shape:
 
@@ -154,7 +151,7 @@ The PR body says it switched.
 
    For a ticket, **What would settle it** is its acceptance criteria. If the
    ticket names `docs/interface-guidelines.md` rules, **Constraints** include
-   them; a ticket that touches nothing a coach sees names none, and needs none.
+   them.
 
    Leave the spec, `CONTEXT.md` and any ADR on disk, uncommitted. Get the
    human's go-ahead — unless step 2 found nothing to ask, in which case build.
@@ -162,9 +159,8 @@ The PR body says it switched.
 ## Build
 
 > The spec on disk is the whole handoff. Start this half in a **fresh
-> session** (or clear the conversation) pointed at the spec. That keeps the
-> unattended run clean and proves the spec stands alone — if the build reaches
-> for something only the chat knew, the spec was incomplete.
+> session** pointed at the spec: if the build reaches for something only the
+> chat knew, the spec was incomplete.
 
 4. **Branch and read.** `git switch -c issue-<N>-<slug>` from an up-to-date
    `main`. Read the spec and `AGENTS.md`. Pull out every "reuse / do not
@@ -172,13 +168,12 @@ The PR body says it switched.
    into — they go to the developer **verbatim, up front**, not buried in prose.
 
 5. **`developer`** builds it test-first, with `/tdd`, over the seams in the
-   spec's **Proof**. Its prompt carries the spec path and those constraints. Each
-   coach-facing slice starts from a red scenario (`AGENTS.md` § Test seams).
+   spec's **Proof**. Its prompt carries the spec path and those constraints.
    Wait until it reports each slice's test and the failure it saw before the
-   code existed, and a green `npm test`. The slice also settles
-   "Would a coach notice this?" (the section below): an entry, or the opt-out line. A slice whose reported failure is an
+   code existed, and a green `npm test`. A slice whose reported failure is an
    import error or a typo rather than the behavior's assertion never saw red:
-   send it back.
+   send it back. The build also settles "Would a coach notice this?" (the
+   section below): an entry, or the opt-out line.
 
 6. > **Refactor on green, once.** Hand the change to **`refactorer`**:
    > production first (the suite is the oracle), then tests (production frozen,
@@ -186,17 +181,12 @@ The PR body says it switched.
    > structure without changing behavior". `refactorer.md` owns its hand-back
    > condition. Run it here, never in the fix loop.
 
-   **Prove and commit.** Run the proof pair — `AGENTS.md` § Layout names it:
-   one full `npm run smoke`, which runs the unit suite inside itself and judges
-   the coverage floor, so the suite runs once. It runs once per commit, here,
-   by you. No agent before this point ran
-   it. Both green: stage **explicit paths**,
-   including `docs/specs/<N>-<slug>.md`, and commit with no trailers — the hook
-   denies `git add -A` and a trailer on this commit and on the one in step 8.
-   Record the **handoff**: `git rev-parse HEAD` and that `git status
-   --porcelain` printed nothing, and the smoke table as printed (its `node
-   --test` row carries the suite's pass count). Every agent launched
-   from here on gets that handoff verbatim.
+   **Prove and commit.** You run the proof pair here (`AGENTS.md` § Layout);
+   no agent before this point ran it. Green: stage explicit paths, including
+   `docs/specs/<N>-<slug>.md`, and commit. Record the **handoff**: `git
+   rev-parse HEAD`, that `git status --porcelain` printed nothing, and the
+   smoke table as printed (its `node --test` row carries the suite's pass
+   count). Every agent launched from here on gets that handoff verbatim.
 
 7. **Review and docs, in parallel.** Build one diff per changed file, not one
    combined diff — step 6 committed the change, so `git diff HEAD` is empty
@@ -213,27 +203,26 @@ The PR body says it switched.
    In **one** message, launch `reuse-reviewer`, `quality-reviewer`,
    `efficiency-reviewer` and `doc-writer`, passing the absolute path of
    `.review/`, the spec path and **the handoff from step 6** to each — told to
-   read `stat.txt` first and then only the diff files it needs. A single
-   file's diff can still pass 60 KB; the reviewer reads that one in parts, as
-   `guard-read.sh` already says. `quality-reviewer` also judges the tests
-   against `/tdd`'s anti-patterns: implementation-coupled, tautological, and a
-   source-reading test the spec did not name as a seam.
+   read `stat.txt` first and then only the diff files it needs.
+   `quality-reviewer` also judges the tests against `/tdd`'s anti-patterns:
+   implementation-coupled, tautological, and a source-reading test the spec
+   did not name as a seam.
 
    While they work, run **`/code-review <branch>`** and
-   **`/security-review`** yourself. They are skills, not team agents, so they
-   run in this session, and both judge the committed branch against `main`.
-   Neither reads `REVIEW.md`, so grade each finding with its severity, then
-   write the ones that survive verification to `.review/skills.md`, next to the
-   diffs step 8 hands on. A skill that finds nothing still gets a line there,
-   saying it ran clean.
+   **`/security-review`** yourself. Neither reads `REVIEW.md`, so grade each
+   finding with its severity, then write the ones that survive verification to
+   `.review/skills.md`, next to the diffs step 8 hands on. A skill that finds
+   nothing still gets a line there, saying it ran clean.
 
    When the diff touches anything a coach sees (`app/**` other than
    `sw.js`), take pictures first: with `npm run serve` running, run `node
    scripts/look.mjs --url http://127.0.0.1:8201 --widths 320,390 --font 16,32
    --view <the views the diff touches> --out .review/look` (add `--dark` when
    colors change), and hand `quality-reviewer` the absolute path of
-   `.review/look` too. It reads the PNGs and `measurements.json`, whose
-   `findings` list cut-off text; `AGENTS.md` § Layout says how to read them.
+   `.review/look` too. Use long, real-length made-up names (e.g. "Alexandria
+   Montgomery-Okafor"), and shoot each sheet scrolled to the bottom and at
+   full height. Clipping or cramped wrapping is a blocker, not a note.
+   `AGENTS.md` § Layout says how to read `measurements.json`.
 
 8. **Fix, once.** Actionable findings, from the reviewers and from
    `.review/skills.md` alike, go to a new `developer`, handed the same
@@ -242,18 +231,14 @@ The PR body says it switched.
    `REVIEW.md` **Blocker** that survives it stops the run: report it in the
    wrap-up rather than shipping.
 
-   **Prove and commit again**, the same way as step 6 — the proof pair (one
-   proof, not two), explicit paths including every file `doc-writer` changed,
-   no trailers, a fresh handoff (HEAD moved, so step 6's is stale). Only when
-   nothing was actionable **and** `git status --porcelain` is still empty —
-   `doc-writer` edits after step 6's commit — is the tree exactly what step 6
-   proved: keep that handoff and go on to step 9 without running the pair
-   again.
+   **Prove and commit again**, the same way as step 6, including every file
+   `doc-writer` changed, with a fresh handoff. Only when nothing was
+   actionable **and** `git status --porcelain` is still empty is the tree
+   exactly what step 6 proved: keep that handoff and go on to step 9.
 
 9. **Verify what a harness cannot.** `/browser-verify` for anything a reader
-   sees. The proof pair already ran at whichever step above is current — cite
-   that handoff in your report rather than running `npm test` or `npm run
-   smoke` again.
+   sees. Cite the current handoff for the proof pair rather than running it
+   again.
 
 ## Would a coach notice this?
 
@@ -284,8 +269,8 @@ fails a PR that changes a coach-facing path under `app/` and has neither.
 
 ## Ship
 
-10. **Open the PR.** The proof points already committed the change; this step
-    pushes what is already on the branch rather than making a new commit.
+10. **Open the PR.** This pushes what the proof points already committed. In a
+    batch, local CI (step 11) is green on this commit first.
 
     ```bash
     npm run check:history
@@ -294,21 +279,16 @@ fails a PR that changes a coach-facing path under `app/` and has neither.
     PR=$(gh pr view --json number -q .number)
     ```
 
-    When step 5's "Would a coach notice this?" says nobody would, the
-    `No coach note:` line goes in a commit message (so `npm run check:history`
-    passes before the PR exists) and in the PR body (CI reads that).
+    Write the body with the `pr` skill's template, in plain words a newcomer
+    can follow. Evidence is what you ran and what it printed, before and
+    after. The body ends with `Closes #N`, and nothing after it.
 
-    Write the body with the `pr` skill's template (Summary, Evidence, Merge
-    Danger; source: `mattpocock/skills`, `skills/in-progress/pr`), in plain
-    words a newcomer can follow. Evidence is what you ran and what it printed,
-    before and after. The body ends with `Closes #N` so merging closes the
-    issue, and nothing after it (`AGENTS.md` § Rules; `guard-bash.sh` denies a
-    generated-by line or session link).
-
-11. **Prove the pushed commit.** In a batch, run local CI on it
-    (`scripts/lanes/ci-local.sh <worktree>`, the same five checks GitHub
-    runs) and put its GREEN line in the PR's Evidence. Outside a batch, the
-    proof pair from step 6 or 8 already names this commit.
+11. **Prove the pushed commit.** In a batch, run local CI
+    (`scripts/lanes/ci-local.sh <worktree>`, the same five checks GitHub runs)
+    on the commit before you push it, and again after any later commit or
+    rebase; never push a commit whose local CI is red. Its GREEN line goes in
+    the PR's Evidence. Outside a batch, the proof pair from step 6 or 8
+    already names this commit.
 
 ## Wrap up
 
@@ -348,34 +328,31 @@ RUN=$(gh run list --branch <branch> --workflow tests --limit 1 --json databaseId
 gh run view "$RUN" --log-failed
 ```
 
-or from the preview comment. Local green is not CI green: the history checks
-need a base ref, which is why step 10 runs `npm run check:history` before the
-push. Fix, prove, push, and run the merge step again. **Three attempts at
-most**; then stop and report.
+or from the preview comment. Fix, prove, push, and run the merge step again.
+**Three attempts at most**; then stop and report.
 
 ## A batch of tickets
 
 When the human hands over a list of tickets and says the PRs may be merged,
-they run as lanes: each ticket builds in its own worktree
-(`git worktree add ../benchcard-wt/<N> -b issue-<N>-<slug> main`), in
-parallel, and each is still one issue, one spec (or small-lane brief) and one PR. What stays serial:
+they run as lanes: `scripts/lanes/lane.sh <issue> <branch> <port>` makes each
+ticket its own worktree and lane prompt, and the lanes build in parallel. Each
+is still one issue, one spec (or small-lane brief) and one PR. What stays
+serial:
 
-- **The proof pair runs one lane at a time.** Two smoke runs on one machine
-  starve each other's Chrome and fail on timing.
-- **Merge one at a time,** with the merge step (§ The merge step). Never
-  approve; that stays a human's.
-- **Watch `main` after each merge.** No person is watching it, so a red
-  `main` run goes unnoticed otherwise. The merge step watches it for you and
-  exits 2 with `MAIN RED` when it fails; find that run with `gh run list
-  --workflow tests --commit <sha> --json databaseId`. Then run `npm run flakes`. When a
-  failing name shows two or more failures there (this run and at least one
-  before it), rerun the failed jobs once (`gh run rerun <id> --failed`) and
-  watch again. Otherwise, or if the rerun fails too, treat it as a real
-  break: file an issue naming the run and the failing test, and merge nothing
-  more until it is understood.
+- **Chrome-heavy runs share one machine-wide slot**: `ci-local.sh` takes it,
+  and any other smoke or look run goes through `scripts/lanes/ci-slot.sh`.
+  Two at once starve each other's Chrome and fail on timing.
+- **Merge one at a time,** with the merge step (§ The merge step).
+- **Watch `main` after each merge.** No person is watching it. The merge step
+  watches it for you and exits 2 with `MAIN RED` when it fails; find that run
+  with `gh run list --workflow tests --commit <sha> --json databaseId`. Then
+  run `npm run flakes`. When a failing name shows two or more failures there
+  (this run and at least one before it), rerun the failed jobs once (`gh run
+  rerun <id> --failed`) and watch again. Otherwise, or if the rerun fails too,
+  treat it as a real break: file an issue naming the run and the failing test,
+  and merge nothing more until it is understood.
 - **After each merge, the next lane rebases onto `main`,** then proves again.
 - **Remove the worktree** once its PR is merged.
 
 Step 12's "do not merge" is the default; only the human's word for this batch
 lifts it.
-

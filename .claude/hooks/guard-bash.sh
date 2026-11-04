@@ -4,7 +4,8 @@
 # Prose in AGENTS.md is read once at session start and competes with 11KB of
 # other prose. These three have all been violated or nearly violated before,
 # and all three are exactly matchable, so they belong here instead of there.
-# AGENTS.md still states each rule and WHY -- this file is only the enforcement.
+# AGENTS.md lists each rule in its "What is enforced" table; the deny
+# messages below carry the WHY, at the moment it matters.
 #
 # Scoping matters as much as matching: a guard that fires on `grep -n
 # update-budgets scripts/smoke.mjs` would be turned off within a day, and a
@@ -48,17 +49,17 @@ if grep -qE 'smoke\.mjs[^|;&]*--update-budgets' <<<"$cmd"; then
 fi
 
 if grep -qE '(^|[|;&[:space:]])git[[:space:]]+add[[:space:]]+(-A|--all|\.)([[:space:]]|$)' <<<"$cmd"; then
-  deny 'Blocked: stage explicit paths, never `git add -A` / `git add .`. This tree carries screenshots, .playwright-mcp scratch and worktrees that are ignored today only because someone remembered to ignore them; the next scratch file will not be. AGENTS.md, "Rules".'
+  deny 'Blocked: stage explicit paths, never `git add -A` / `git add .`. This tree carries screenshots, .playwright-mcp scratch and worktrees that are ignored today only because someone remembered to ignore them; the next scratch file will not be. AGENTS.md, "What is enforced".'
 fi
 
 if grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' <<<"$cmd" \
    && grep -qiE 'co-authored-by' <<<"$cmd"; then
-  deny 'Blocked: no `Co-Authored-By` trailer in this repo. 382 commits carry zero trailers and AGENTS.md ("Rules") says so explicitly; that overrides the general instruction to keep the trailer. Re-run the commit without it.'
+  deny 'Blocked: no `Co-Authored-By` trailer in this repo. 382 commits carry zero trailers and AGENTS.md ("What is enforced") says so explicitly; that overrides the general instruction to keep the trailer. Re-run the commit without it.'
 fi
 
 if grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' <<<"$cmd" \
    && grep -qiE 'claude-session:' <<<"$cmd"; then
-  deny 'Blocked: no `Claude-Session` trailer in this repo, for the same reason as Co-Authored-By: AGENTS.md ("Rules"). Re-run the commit without it.'
+  deny 'Blocked: no `Claude-Session` trailer in this repo, for the same reason as Co-Authored-By: AGENTS.md ("What is enforced"). Re-run the commit without it.'
 fi
 
 # A PR or issue body is posted, not committed: read it from the command and
