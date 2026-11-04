@@ -41,6 +41,10 @@ Two consequences worth stating, because both have teeth:
    it** asks for that the diff does not do, or something the diff does that no
    spec asked for, is Important. A change in `/ship-feature`'s small-fix lane
    carries no spec; judge it the same way against its issue.
+8. **Plain words.** Read every new coach-facing sentence (What's new, About,
+   the Reference page) and ask whether a coach who has never seen the app
+   would understand it the first time. `test/plain-words.test.js` checks only
+   the word list and the 25-word limit; the rest stays a judgement.
 
 ## Severity
 

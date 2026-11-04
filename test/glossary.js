@@ -72,7 +72,11 @@ export function avoidRegexes(terms, drops = new Set(), overrides = {}) {
    and both HTML comments and block comments stripped, so a caller scans
    exactly the text a reader or screen reader sees. `path` is repo-relative. */
 export function htmlBodyCopy(path) {
-  let html = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  return htmlBodyText(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
+}
+
+/* The same step on an HTML string, for scripts/plain-words.mjs. */
+export function htmlBodyText(html) {
   const bodyAt = html.indexOf('<body');
   if (bodyAt > -1) html = html.slice(bodyAt);
   html = html.replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ');
