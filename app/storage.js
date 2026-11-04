@@ -213,6 +213,13 @@ export const DEFAULT_SETTINGS = Object.freeze({
   /* #451: Everyone plays in each 'halves' or each 'periods', or 'off'. 'off' is
      what every record written before this key existed means. */
   playsIn: 'off',
+  /* #566: the two "in a row" league rules, in stints (whole periods under
+     Breaks only), 0 = off. Each new game starts from them; a game keeps its own
+     number once made (`constraints.maxConsecutive` / `maxBench`). A record
+     saved before these keys existed gets them from its games, in
+     `sanitizeTeam`: the strictest. */
+  maxConsecutive: 0,
+  maxBench: 0,
   /* #563: what the team last chose on the Plan sheet's "Make up minutes from"
      row -- 'game', 'day' or 'season'. Read once, by `newGame`'s rule, at the
      moment a game is created; it never reaches the solver and never changes a
@@ -268,6 +275,13 @@ const strictNum = v => (typeof v === 'number' || (typeof v === 'string' && v.tri
 /* #447: the most the league minimum can be in each unit it is counted in. */
 const MIN_UNIT_MAX = { min: 60, pct: 100, periods: 8, full: 8 };
 export const PLAYS_IN = ['off', 'halves', 'periods'];
+/* #566: a team's "in a row" value is a whole number 0-20 (the game's own range).
+   Anything else is not a value the coach gave, and `sanitizeTeam` re-derives it. */
+const RUN_MAX = 20;
+/* The two "in a row" rules: the key on a team's settings and on a game's
+   constraints, and the rule kind it is. One place for the pair. */
+export const RUN_KEYS = Object.freeze({ maxConsecutive: 'rest', maxBench: 'bench' });
+const validRun = v => { const n = strictNum(v); return Number.isInteger(n) && n >= 0 && n <= RUN_MAX; };
 
 export const sanitizeSettings = raw => {
   const s = isObj(raw) ? raw : {};
@@ -285,6 +299,7 @@ export const sanitizeSettings = raw => {
     minUnit,
     // #451: strict, so an unreadable value is off, which is what every older record means
     playsIn: PLAYS_IN.includes(s.playsIn) ? s.playsIn : DEFAULT_SETTINGS.playsIn,
+    ...Object.fromEntries(Object.keys(RUN_KEYS).map(k => [k, validRun(s[k]) ? Number(s[k]) : DEFAULT_SETTINGS[k]])),
     /* #563: shape-driven, no version branch. A saved choice is kept; else the
        old `seasonDefault: true` (strict, as it always was) means 'season'; else
        'day'. `seasonDefault` is not written back, so a second pass is a no-op. */
@@ -623,8 +638,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
           openingFive: keep(c.openingFive).slice(0, 5),
           lastPeriodFive: keep(c.lastPeriodFive).slice(0, 5),
           hardPairs: !!c.hardPairs,
-          maxConsecutive: num(c.maxConsecutive, 0, 0, 20),
-          maxBench: num(c.maxBench, 0, 0, 20),
+          ...Object.fromEntries(Object.keys(RUN_KEYS).map(k => [k, num(c[k], 0, 0, RUN_MAX)])),
           closing: { stints: num(closing.stints, 2, 1, 40), players: keep(closing.players).slice(0, 5) },
           units: (Array.isArray(c.units) ? c.units : []).map(keep),
         },
@@ -668,6 +682,16 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
   // with one new game (#100's fallback). A real v7 `days` array left empty
   // is a coach who removed every game (#126) -- that stays zero days, or
   // the removal would come back on every reload.
+  /* #566: a team value the saved settings do not hold takes the strictest of
+     its games' own (the smallest non-zero, else 0). Shape-driven: once the
+     settings hold a valid number it is kept, so a second pass changes nothing.
+     Before the fallback game below, which takes it. */
+  const rawSettings = isObj(raw.settings) ? raw.settings : {};
+  for (const key of Object.keys(RUN_KEYS)) {
+    if (validRun(rawSettings[key])) continue;
+    const set = days.flatMap(d => d.games).map(g => g.constraints[key]).filter(v => v > 0);
+    settings[key] = set.length ? Math.min(...set) : 0;
+  }
   if (!days.length && !hadDaysArray) days = [{ name: '', date: today0, games: [newGame(0, null, settings)] }];
 
   const activeDay = num(raw.activeDay, 0, 0, days.length - 1);

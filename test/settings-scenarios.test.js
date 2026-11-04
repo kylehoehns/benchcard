@@ -121,8 +121,9 @@ describe('a coach changes Settings', { skip }, () => {
   test('full periods and Each half are kept, and the Plan sheet reads both rules (#450 #451)', async () => {
     await coach.onGameDayWith({}, 10);
     await coach.tap('Settings');
-    await coach.choose('Counted in', 'full periods');
+    await coach.choose('Counted in', 'whole quarters');
     await coach.fill('How much everyone plays at least', '2');
+    await coach.press('Tab');
     await coach.tap('Each half');
     assert.equal(await coach.isPressed('Each half'), true);
     await coach.comeBackLaterOn('settings');
@@ -133,7 +134,7 @@ describe('a coach changes Settings', { skip }, () => {
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap((await coach.controls()).find(n => /^Rules, /.test(n)));
-    assert.ok(await coach.sees('Everyone plays at least 2 full periods (16 min)'),
+    assert.ok(await coach.sees('Everyone plays at least 2 whole quarters (16 min)'),
       `Rules reads: ${JSON.stringify((await coach.controls()).filter(n => /Everyone/.test(n)))}`);
     assert.ok(await coach.sees('Everyone plays in each half'),
       `Rules reads: ${JSON.stringify((await coach.controls()).filter(n => /Everyone/.test(n)))}`);

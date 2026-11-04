@@ -283,23 +283,27 @@ _Avoid_: last-period five, finishing five, closing five
 _In code_: `lastPeriodFive`
 
 **Plays at most N in a row**:
-A rule that no one plays more than a number of stints in a row.
+A rule that no one plays more than a number of stints in a row. Its team value is
+set once in Settings, under League rules, and each new game starts from it; a game
+can change its own number.
 _Avoid_: rest limit, fatigue limit, max consecutive
 _In code_: `maxConsecutive`
 
 **Sits at most N in a row**:
-A rule that no one sits on the bench more than a number of stints in a row.
+A rule that no one sits on the bench more than a number of stints in a row. Set the
+same way as Plays at most N in a row (a team value in Settings, then per game).
 _In code_: `maxBench`
 
 ## Team settings
 
 **League minimum**:
 A team setting for the least every available player gets, when a league
-requires one. It is an amount counted in minutes, a percent of the game,
-periods, or full periods, so what it comes to is a number of minutes for a
-given game. Full periods also means whole periods, start to finish: the plan
-pins each player on for that many entire periods. A player who arrives late is
-owed the same share of the time left.
+requires one. It is an amount counted in minutes, a percent of the game, periods
+(shown as quarters of time, or halves of time in a 2-period game), or whole
+periods (shown as whole quarters, or whole halves), so what it comes to is a
+number of minutes for a given game. Whole periods also means start to finish: the
+plan pins each player on for that many entire periods. A player who arrives late
+is owed the same share of the time left.
 _Avoid_: league floor
 
 **Extra minutes go to**:

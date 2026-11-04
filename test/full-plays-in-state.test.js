@@ -21,7 +21,7 @@ test('J. league minimum of 2 full periods: every kid plays 2 whole quarters, and
     const p = S.plans[0];
     assert.ok(p.ok, p.issues.map(i => i.code).join());
     for (const id of ids(10)) assert.ok(wholeQuarters(p.stints, id) >= 2, `${id} has ${wholeQuarters(p.stints, id)}`);
-    assert.ok(S.ruleItems(g).some(i => i.text === 'Everyone plays at least 2 full periods (16 min)'),
+    assert.ok(S.ruleItems(g).some(i => i.text === 'Everyone plays at least 2 whole quarters (16 min)'),
       S.ruleItems(g).map(i => i.text).join(' | '));
   });
 });
@@ -96,6 +96,8 @@ test('a re-plan mid-game places the full periods that fit and names the rest, ne
     }
     const r = S.resolveRest(g, S.plans[0], 3);
     assert.ok(r.issues.some(i => i.code === 'FULL_PERIODS_SHORT'), r.issues.map(i => i.code).join());
+    const short = r.issues.find(i => i.code === 'FULL_PERIODS_SHORT');
+    assert.match(short.message, /gets \d of 2 whole quarters: /, short.message);
   });
 });
 

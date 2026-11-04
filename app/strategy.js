@@ -13,7 +13,7 @@
  * wiring stays in app.js too -- picking a strategy is `edit('strategy')`,
  * not a repaint of this section.
  */
-import { fmtMinutes, deriveShortNames, isOvertimeStint, tiersDiffer, fivesAreSet } from './engine.js';
+import { fmtMinutes, periodNoun, deriveShortNames, isOvertimeStint, tiersDiffer, fivesAreSet } from './engine.js';
 import { gameStarted } from './live.js';
 import { icon } from './icons.js';
 import { $, el, moveButton } from './dom.js';
@@ -59,22 +59,22 @@ export function renderStrategy() {
    Empty and hidden under Even and Closers. The league minimum still holds
    under Platoon and Order, so the line says how, only when one is set. */
 const SKIPS = {
-  platoon: "Platoon plays whole groups, so Players changing at once, Everyone plays in, full periods and making up minutes from other games don't apply.",
-  order: "The order decides who plays, so Everyone plays in, full periods and making up minutes from other games don't apply.",
-  minutes: "By hand plays the minutes you set, so making up minutes from other games doesn't apply.",
+  platoon: g => `Platoon plays whole groups, so Players changing at once, Everyone plays in, whole ${periodNoun(g.periods, 2)} and making up minutes from other games don't apply.`,
+  order: g => `The order decides who plays, so Everyone plays in, whole ${periodNoun(g.periods, 2)} and making up minutes from other games don't apply.`,
+  minutes: () => "By hand plays the minutes you set, so making up minutes from other games doesn't apply.",
 };
 
 function leagueClause(g) {
   if (!fivesAreSet(g.strategy) || !(leagueMinFor(g) > 0)) return '';
   const inFull = leagueUnit() === 'full';
   const warns = g.strategy === 'order';
-  if (inFull) return ` Your league minimum still counts in minutes, not as full periods${warns ? ', and the plan only warns when someone falls short' : ''}.`;
+  if (inFull) return ` Your league minimum still counts in minutes, not as whole ${periodNoun(g.periods, 2)}${warns ? ', and the plan only warns when someone falls short' : ''}.`;
   return ` Your league minimum still counts${warns ? ', but the plan only warns when someone falls short' : ''}.`;
 }
 
 function paintSkipLine(g) {
   const line = $('#stratskip');
-  line.textContent = SKIPS[g.strategy] ? SKIPS[g.strategy] + leagueClause(g) : '';
+  line.textContent = SKIPS[g.strategy] ? SKIPS[g.strategy](g) + leagueClause(g) : '';
   line.hidden = !line.textContent;
 }
 

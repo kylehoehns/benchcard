@@ -1420,7 +1420,7 @@ test('a settings block holds only what the app reads, so the file makes no claim
   const s = sanitize({ version: 6, onboarded: true,
     teams: [{ ...good(), settings: { maxSubs: 4, tieBreak: 'levels', leagueMin: 12 } }] }, H);
   assert.deepEqual(Object.keys(s.teams[0].settings),
-    ['maxSubs', 'tieBreak', 'minMinutes', 'minUnit', 'playsIn', 'makeUp', 'periods', 'periodMinutes', 'color', 'overtimeMinutes'],
+    ['maxSubs', 'tieBreak', 'minMinutes', 'minUnit', 'playsIn', 'maxConsecutive', 'maxBench', 'makeUp', 'periods', 'periodMinutes', 'color', 'overtimeMinutes'],
     'a key nothing honours must not survive into the record a coach can open');
   assert.equal(s.teams[0].settings.maxSubs, 4);
   assert.equal(s.teams[0].settings.tieBreak, 'levels');

@@ -159,7 +159,8 @@ test('newGame from a game builds the same game the Same as card always did', () 
     label: '', tipoff: '', periods: 2, periodMinutes: 16, overtime: [],
     granMode: 'perPeriod', granValue: 2, out: ['c'], late: ['c'],
     useCarryover: true, useSeasonTargets: false,
-    constraints: from.constraints, strategy: 'order', balance: 'even',
+    // #566: the two in-a-row numbers are the team's (none here), not the copied game's
+    constraints: { ...from.constraints, maxConsecutive: 0, maxBench: 0 }, strategy: 'order', balance: 'even',
     live: { at: 0, overrides: {} },
   });
   assert.equal('order' in g, false, 'the new game continues the day\'s order instead');

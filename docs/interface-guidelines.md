@@ -139,9 +139,10 @@ Design principles; Modality.*
 
 **S1. One Settings screen, with three sections.** The top section is headed with
 the active team's name and holds everything that belongs to that team: the team's
-display name, team color, default game format, players changing at once, league
-minimum and where extra minutes go (under Fine-tuning), in
-grouped rows with at most one footnote per group. The second
+display name, team color, default game format, players changing at once, the league
+rules (one heading: the minimum, Everyone plays in, and the two in-a-row limits,
+each group with its own footnote) and where extra minutes go (under Fine-tuning),
+in grouped rows with at most one footnote per group. The second
 section is headed *Benchcard* and holds appearance, How it works (with the
 tour), and About, contact and the tip jar. The third is headed *Backup and
 restore* and holds file and paste backup controls. The heading is the scope, so

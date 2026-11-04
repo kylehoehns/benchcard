@@ -759,6 +759,55 @@ export class Coach {
     })()`);
   }
 
+  /** Settings' League rules as a coach reads them: how many "League rules"
+      headings show, and each group under the first one in order, as
+      `{ title, on, stepper, footnote, rows }` -- the rule's name (a switch row
+      is named by its switch, "Plays at most"), whether its switch is on (null
+      when it has none), the stepper's value (null when there is none), the
+      line under it (null when none) and every row's own text. Null when the
+      heading is not showing. */
+  leagueRules() {
+    return evalIn(this.c, `(() => {
+      const shown = e => e.getClientRects().length > 0;
+      const clean = e => e.textContent.replace(/\\s+/g, ' ').trim();
+      const heads = [...document.querySelectorAll('#view-settings .pgrp-h')].filter(shown).filter(e => clean(e) === 'League rules');
+      if (!heads.length) return null;
+      const groups = [];
+      for (let e = heads[0].nextElementSibling; e && !/^H[23]$/.test(e.tagName); e = e.nextElementSibling) {
+        if (e.classList.contains('pgrp-f')) { if (shown(e) && groups.length && groups.at(-1).footnote === null) groups.at(-1).footnote = clean(e); continue; }
+        if (!e.classList.contains('pgrp') || !shown(e)) continue;
+        if (e.querySelector('#fineTuneBtn')) break; // the next section: Fine-tuning
+        const sw = e.querySelector('input[switch]');
+        const val = e.querySelector('.pstep-val');
+        groups.push({
+          title: sw ? sw.getAttribute('aria-label').split(':')[0] : clean(e.querySelector('.prow-t')),
+          on: sw ? sw.checked : null,
+          stepper: val && shown(val) ? clean(val) : null,
+          footnote: null,
+          rows: [...e.querySelectorAll('.prow-t')].filter(shown).map(clean),
+        });
+      }
+      return { headings: heads.length, groups };
+    })()`);
+  }
+
+  /** Tap `button` ("Shorter" or "Longer") on the stepper in the League rules
+      group a coach calls `rule` ("Plays at most", "Sits at most"). */
+  async stepRule(rule, button) {
+    const { result } = await this.c.send('Runtime.evaluate', { expression: `(() => {
+      const heads = [...document.querySelectorAll('#view-settings .pgrp-h')].filter(e => e.textContent.trim() === 'League rules');
+      for (let e = heads[0]?.nextElementSibling; e && !/^H[23]$/.test(e.tagName); e = e.nextElementSibling) {
+        const sw = e.querySelector?.('input[switch]');
+        if (sw?.getAttribute('aria-label').split(':')[0] === ${JSON.stringify(rule)}) {
+          return [...e.querySelectorAll('.pstep-btn')].find(b => b.getAttribute('aria-label') === ${JSON.stringify(button)}) ?? null;
+        }
+      }
+      return null;
+    })()` });
+    if (!result.objectId) throw new Error(`stepRule ${JSON.stringify(rule)} ${JSON.stringify(button)}: no such button. League rules: ${JSON.stringify(await this.leagueRules())}`);
+    await this.#tapObject(result.objectId, `${rule} ${button}`);
+  }
+
   /** The gray lines under the groups of rows on the screen or sheet a coach
       is looking at, top to bottom. */
   footnotes() {

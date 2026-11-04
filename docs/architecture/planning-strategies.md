@@ -30,11 +30,13 @@ overtime does not count, [design decisions](../design-decisions-sits-at-most.md#
 Under Breaks only a stint is a whole period, so both limits count quarters,
 halves or periods instead.
 
-The league minimum and Everyone plays in are Settings, not rules on one player.
-A league minimum counted in full periods is pinned once, before the search, so
-each kid plays those whole periods; Platoon and Order apply no pins, so
-they ignore that unit. Everyone plays in adds a cost for each kid who misses a
-half or a period, and Platoon and Order do not price it.
+The league minimum, Everyone plays in and the team's two in-a-row values are
+Settings, not rules on one player; a game can change its own in-a-row number
+([league rules](../design-decisions-league-rules.md)). A league minimum counted
+in whole periods (the unit `full`, shown as whole quarters in a 4-period game)
+is pinned once, before the search, so each kid plays those whole periods; Platoon
+and Order apply no pins, so they ignore that unit. Everyone plays in adds a cost
+for each kid who misses a half or a period, and Platoon and Order do not price it.
 The choices behind both are in [full periods and plays in](../design-decisions-plays-in.md).
 
 There is a third pair relation, `keepOnFloor` -- "One of two on".

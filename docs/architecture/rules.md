@@ -8,7 +8,9 @@ five and Starts the last period pickers reuse the same tap-a-player control as c
 
 **Rules are also editable in place (#148).** Tapping a rule's chip opens its own
 page with the same controls Add a rule shows (without the kind choices, because
-a rule's kind does not change), and each change applies immediately. Half-done
+a rule's kind does not change), and each change applies immediately. Plays at
+most and Sits at most are not in Add a rule (#566): their team value is set once
+in Settings, and a game's own number is changed on its page, which says so. Half-done
 picks — one player in a pair, no players in a five — are not applied until the
 pick is complete, and the stored rule keeps its last whole value. A pair that
 matches another rule of the same kind reads "You already have this rule." on the

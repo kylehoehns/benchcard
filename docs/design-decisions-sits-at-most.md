@@ -9,7 +9,7 @@ arrivals were decided in #537, #540 and #541; their entries are at the end.
 ## Sits at most N in a row
 
 - **Sits at most N in a row is the bench twin of that limit (#441).** The
-  stored key is `maxBench`, 1 to 4 stints, default 2. The engine counts a bench
+  stored key is `maxBench`, 1 to 4 stints (its team value is in [League rules](design-decisions-league-rules.md)). The engine counts a bench
   run with the same counter it uses for a play run, read the other way round
   (`runEndingAt` and `longestRun` take an `on` flag), so there is one run
   counter, not two. The search treats a kid whose bench run has reached the
