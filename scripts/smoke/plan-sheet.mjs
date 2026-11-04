@@ -101,7 +101,7 @@ export async function planSheetPass(c, origin, rec) {
   rec.check(reopened.overflowY === 'auto', `#sheetPlanBody's overflow-y is ${reopened.overflowY}, want auto so the coach can scroll it`);
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
-  // Ravens, useCarryover on: the evens phrase scrolls to "Across the day".
+  // Ravens, useCarryover on: the evens phrase scrolls to "Make up minutes from".
   await tap(c, `document.getElementById('backBtn').click()`);
   await tap(c, `document.querySelectorAll('.today-game')[1].click()`);
   await evalIn(c, setGame(`s.game().useCarryover = true;`));
@@ -109,7 +109,7 @@ export async function planSheetPass(c, origin, rec) {
   await tap(c, `document.getElementById('phraseEvens').click()`);
   const evensHdOff = await headerOffset(c, '#planDay .pgrp-h');
   rec.check(evensHdOff !== null && Math.abs(evensHdOff) <= 8,
-    `the "Across the day" header sits ${evensHdOff}px from the scrolling body's top after tapping the evens line, want within 8px`);
+    `the "Make up minutes from" header sits ${evensHdOff}px from the scrolling body's top after tapping the evens line, want within 8px`);
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
   await evalIn(c, setGame(`s.game().useCarryover = false;`));
   await tap(c, `document.getElementById('backBtn').click()`);
@@ -544,37 +544,44 @@ export async function planSheetPass(c, origin, rec) {
 
   /* ---- item 7: evening out ---- */
   await tap(c, `document.getElementById('phraseRules').click()`);
-  const dayGroup = await evalJSON(c, `JSON.stringify({
-    disabled: document.querySelector('#planDay input[switch]')?.disabled,
-    checked: document.querySelector('#planDay input[switch]')?.checked,
-    footer: document.querySelector('#planDay .pgrp-f')?.textContent,
+  // #563: one row, "Make up minutes from". Hawks is game 1 of the day and RICH has filed games.
+  const makeUp = () => evalJSON(c, `JSON.stringify({
+    heading: document.querySelector('#planDay .pgrp-h')?.textContent,
+    rows: [...document.querySelectorAll('#planDay .pgrp .prow')].map(b => b.querySelector('.prow-t').textContent),
+    on: [...document.querySelectorAll('#planDay .pgrp .prow')].filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.querySelector('.prow-t').textContent),
+    footer: document.querySelector('#planDay > .pgrp-f')?.textContent,
+    switches: document.querySelectorAll('#planDay input[switch], #planSeason').length,
   })`);
-  rec.check(dayGroup.disabled === true, 'the "Even out earlier games" switch is not disabled on Hawks (game 0)');
-  rec.check(dayGroup.checked === false, 'the "Even out earlier games" switch is checked on Hawks (game 0)');
-  rec.check(dayGroup.footer === "This is the first game today, so there's nothing to even out.",
-    `the day-group footer reads "${dayGroup.footer}"`);
-  const seasonGroup = await evalJSON(c, `JSON.stringify(!!document.querySelector('#planSeason input[switch]'))`);
-  rec.check(seasonGroup, '"Even out the season so far" is missing (RICH has filed games)');
+  const pickMakeUp = label => tap(c, `[...document.querySelectorAll('#planDay .pgrp .prow')].find(b => b.querySelector('.prow-t').textContent === ${JSON.stringify(label)}).click()`);
+  const hawksRow = await makeUp();
+  rec.check(hawksRow.heading === 'Make up minutes from', `the group heading reads "${hawksRow.heading}" on Hawks (game 1)`);
+  rec.check(JSON.stringify(hawksRow.rows) === JSON.stringify(['This game only', 'The season so far']),
+    `Hawks (game 1, RICH has filed games) offers ${JSON.stringify(hawksRow.rows)}, want This game only and The season so far`);
+  rec.check(JSON.stringify(hawksRow.on) === JSON.stringify(['This game only']), `Hawks has ${JSON.stringify(hawksRow.on)} checked, want This game only`);
+  rec.check(hawksRow.footer === 'Kids who played less get a little more here, and kids who played more get a little less. Never more than a sub or two either way.',
+    `the group footer reads "${hawksRow.footer}"`);
+  rec.check(hawksRow.switches === 0, 'a switch or #planSeason host is still on the Plan sheet');
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
   await tap(c, `document.getElementById('backBtn').click()`);
   await tap(c, `document.querySelectorAll('.today-game')[1].click()`);
   await tap(c, `document.getElementById('phraseRules').click()`);
-  const ravensDay = await evalJSON(c, `JSON.stringify(document.querySelector('#planDay input[switch]')?.disabled)`);
-  rec.check(ravensDay === false, 'the "Even out earlier games" switch is disabled on Ravens (a later game)');
-  await tap(c, `document.querySelector('#planDay input[switch]').click()`);
-  const afterCarryOn = await evalJSON(c, `(async () => JSON.stringify({
-    useCarryover: (await import('/state.js')).game().useCarryover,
-    switchAttr: document.querySelectorAll('#planDay input[switch], #planSeason input[switch]').length === 2,
-  }))()`);
-  rec.check(afterCarryOn.useCarryover === true, 'game().useCarryover is not true after turning "Even out earlier games" on');
-  rec.check(afterCarryOn.switchAttr, 'not every switch row carries the boolean `switch` attribute');
+  const ravensRow = await makeUp();
+  rec.check(JSON.stringify(ravensRow.rows) === JSON.stringify(['This game only', 'Earlier today', 'The season so far']),
+    `Ravens (a later game, filed games) offers ${JSON.stringify(ravensRow.rows)}, want all three`);
+  await pickMakeUp('Earlier today');
+  const afterCarryOn = await evalJSON(c, `(async () => { const g = (await import('/state.js')).game(); return JSON.stringify({
+    flags: [g.useCarryover, g.useSeasonTargets],
+    on: [...document.querySelectorAll('#planDay .pgrp .prow')].filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.querySelector('.prow-t').textContent),
+  }); })()`);
+  rec.check(JSON.stringify(afterCarryOn.flags) === '[true,false]', `the flags are ${JSON.stringify(afterCarryOn.flags)} after picking Earlier today, want [true,false]`);
+  rec.check(JSON.stringify(afterCarryOn.on) === JSON.stringify(['Earlier today']), `Earlier today is not the checked row (${JSON.stringify(afterCarryOn.on)})`);
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
   const evensLine = await evalJSON(c, `JSON.stringify({
     hidden: document.getElementById('sentenceEvens')?.hidden,
     text: document.getElementById('phraseEvens')?.textContent,
   })`);
-  rec.check(evensLine.hidden === false, 'turning on "Even out earlier games" did not show the sentence\'s second line');
+  rec.check(evensLine.hidden === false, 'picking Earlier today did not show the sentence\'s second line');
   // #102: Hawks' 9:00 tip-off, read through the same `tipoffLabel` the
   // sentence itself calls (`evensOutWant`, dom.mjs), rather than a
   // hard-coded "9:00 AM" this ICU version's own AM/PM spacing (an ASCII
@@ -582,14 +589,16 @@ export async function planSheetPass(c, origin, rec) {
   const wantEvens = await evensOutWant(c, '09:00');
   rec.check(evensLine.text === wantEvens, `the second line reads "${evensLine.text}", want "${wantEvens}"`);
 
-  // toggle useSeasonTargets.
+  // the season so far shows the season panel; then back to This game only.
   await tap(c, `document.getElementById('phraseRules').click()`);
-  await tap(c, `document.querySelector('#planSeason input[switch]').click()`);
-  const seasonOn = await evalJSON(c, `(async () => JSON.stringify((await import('/state.js')).game().useSeasonTargets))()`);
-  rec.check(seasonOn === true, 'game().useSeasonTargets is not true after toggling "Even out the season so far"');
-  await tap(c, `document.querySelector('#planSeason input[switch]').click()`);
-  // undo the carryover switch too.
-  await tap(c, `document.querySelector('#planDay input[switch]').click()`);
+  await pickMakeUp('The season so far');
+  const seasonOn = await evalJSON(c, `(async () => JSON.stringify({
+    flags: [(await import('/state.js')).game().useCarryover, (await import('/state.js')).game().useSeasonTargets],
+    panel: !!document.querySelector('#planDay #seasonadj'),
+  }))()`);
+  rec.check(JSON.stringify(seasonOn.flags) === '[true,true]', `the flags are ${JSON.stringify(seasonOn.flags)} after picking The season so far, want [true,true]`);
+  rec.check(seasonOn.panel, 'the season panel host is missing from the group after picking The season so far');
+  await pickMakeUp('This game only');
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
   await tap(c, `document.getElementById('backBtn').click()`);
   await tap(c, `document.querySelector('.today-game').click()`);

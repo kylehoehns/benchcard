@@ -641,7 +641,7 @@
       </dialog>
 
       <!-- The Plan sheet (#28): one dialog, two panes. `#planMain` is level
-           1 (Strategy, Rules, Lineups, Across the day, Across the season);
+           1 (Strategy, Rules, Lineups, Make up minutes from);
            `#planSub` is level 2, filled fresh by whichever row pushed it
            (a rule's detail or Add a rule in rules.js, Lineup balance in
            balance.js) -- only one is ever built at a time (C5). The header's
@@ -683,7 +683,6 @@
             <div id="planPairs" hidden></div>
             <div id="planLineups"></div>
             <div id="planDay"></div>
-            <div id="planSeason" hidden></div>
             <div id="planCopy" hidden></div>
           </div>
           <div id="planSub" data-pane="sub" hidden></div>
@@ -1391,12 +1390,10 @@
     </div>
     <p class="pgrp-f">Each team keeps its own settings.</p>
 
-    <!-- Group B: what a new game starts as. Both rows are read by newGame
+    <!-- Group B: what a new game starts as. Read by newGame
          ONLY when there is no game to clone from -- see DEFAULT_SETTINGS.
          "A game is" reuses `.minwrap`, the same layout Everyone plays at
-         least (group C) wants; the carryover switch is a `.seg` because it
-         is a genuinely closed pair of stances, the same line the tie-break
-         stance below draws. -->
+         least (group C) wants. -->
     <div class="pgrp">
       <div class="prow">
         <span class="prow-t">A game is</span>
@@ -1407,13 +1404,6 @@
           <input class="minmins" id="setPerMins" type="number" min="1" max="40" step="1"
                  inputmode="numeric" aria-label="Minutes in a period">
           <span aria-hidden="true">min</span>
-        </div>
-      </div>
-      <div class="prow">
-        <span class="prow-t">A new game starts</span>
-        <div class="seg wide" id="seasonDefSeg" role="group" aria-label="How a new game starts">
-          <button class="press" type="button" data-sdef="0">Fair on its own</button>
-          <button class="press" type="button" data-sdef="1">Evening out the season</button>
         </div>
       </div>
     </div>
@@ -2020,19 +2010,17 @@
         the format, who is at the gym and your rules from the last game, so
         only the opponent and tip-off are new. If nothing has changed, the
         first question shows a <b>Same as …?</b> card. Tap <b>Add game</b>
-        there to skip the other two questions. From the second game on there
-        is a switch called <b>Even out earlier
-        games</b>. Leave it on and the day evens out across every game, so a kid who sat
-        more in game 1 gets it back in game 2. Turn it off and each game is fair on its
-        own. The <b>Season</b> screen shows the running totals for the day.</p>
+        there to skip the other two questions. From the second game on, the Plan sheet's <b>Make up minutes from</b>
+        choice offers <b>Earlier today</b>. Pick it and the day evens out across every
+        game, so a kid who sat more in game 1 gets it back in game 2. Pick <b>This
+        game only</b> and each game is fair on its own. The <b>Season</b> screen shows the running totals for the day.</p>
       <p class="help-p">When a day is over, its games are added to the
         <b>Season</b> screen. It keeps how much each player actually played,
         and you can export it as a spreadsheet. Once a season has games in it,
-        every game gets a second switch called
-        <b>Even out the season so far</b>. It gives kids who are behind for
-          the season a stint or two more, and kids who are ahead a stint or
-          two less. The switch starts off. In <b>Settings</b> you can have
-          every new game start with it on.</p>
+        <b>Make up minutes from</b> also offers
+        <b>The season so far</b>. It gives kids who are behind for
+        the season a little more, and kids who are ahead a little
+        less. Once you pick it, every new game opens on it.</p>
 
       <h3 class="help-h">Reading the card</h3>
       <!-- Bold here means "printed on the paper", not "stressed in this
@@ -2112,7 +2100,7 @@
            paragraph under it). Each `dt` names the row it came from; the
            `dd` is that row's old text, verbatim except where it names a
            control this redesign renamed -- the old Rules fold is now the
-           Plan sheet's Across the season section (decision 16's own ban,
+           Plan sheet's Make up minutes from section (decision 16's own ban,
            above, still applies). Backup's three old paragraphs (the intro
            note, the persisted-storage line and the restore note) fold into
            one dd: the row itself only keeps one footnote at a time, and this
@@ -2128,12 +2116,6 @@
           the game before it, so this is what a game starts as when there is
           nothing to copy: a brand new team, or your first game. You can still
           change it per game from the game screen.</dd>
-        <dt>A new game starts</dt>
-        <dd>Every game you add can open with “Even out the season so far” already on,
-          so you do not tick it each week. You can still change it per game in the
-          game's Plan, under Across the season. Until your first game day is
-          added to the season, there is nothing to even out, so both choices
-          make the same plan.</dd>
         <dt>Players changing at once</dt>
         <dd>How many players go in at each sub. Fewer keeps the same kids
           together longer. More means shorter waits on the bench. Totals come

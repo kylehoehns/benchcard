@@ -142,8 +142,6 @@ export async function stepThreeVisuals(c, ck, label) {
     const lines = titleWidth > contentWidth + 0.5 ? Math.max(2, Math.ceil(titleWidth / contentWidth)) : 1;
     const onCs = getComputedStyle(on, '::before');
     const offCs = getComputedStyle(off, '::before');
-    const sw = document.querySelector('#agBody input[switch]');
-    const pgrp = sw ? sw.closest('.pgrp') : null;
     return JSON.stringify({
       found: true,
       lines,
@@ -152,7 +150,6 @@ export async function stepThreeVisuals(c, ck, label) {
       onWidth: onCs.width, onHeight: onCs.height,
       offWidth: offCs.width, offHeight: offCs.height,
       onBg: onCs.backgroundColor, offBg: offCs.backgroundColor,
-      swInPgrp: !!pgrp,
     });
   })()`);
   if (!ck(r.found, `${label}: step 3 needs its title and a checked and an unchecked option to compare`)) return;
@@ -164,5 +161,4 @@ export async function stepThreeVisuals(c, ck, label) {
     `${label}: an unchecked option's radio circle is ${r.offWidth}x${r.offHeight}, want 22px x 22px`);
   ck(r.onBg !== r.offBg,
     `${label}: a checked and an unchecked radio circle both fill "${r.onBg}" -- checked should be a filled dot, unchecked an empty ring`);
-  ck(r.swInPgrp, `${label}: "Even out earlier games" is not inside a .pgrp group`);
 }

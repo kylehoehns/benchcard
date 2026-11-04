@@ -180,6 +180,47 @@ export function copySetup(to, from, { rules, plan, format, here }) {
   }
 }
 
+/* #563: "Make up minutes from", the one choice the two per-game flags hold.
+   'game' = (off, off), 'day' = (on, off), 'season' = (on, on); the storage
+   cleaner turns the fourth pair into 'season'. `makeUpOf` is the one reader
+   and `setMakeUp` the one writer: nothing else sets either flag. Passing the
+   team's `settings` remembers the pick as the team's last choice. */
+export const makeUpOf = g => (g.useSeasonTargets ? 'season' : g.useCarryover ? 'day' : 'game');
+export function setMakeUp(g, choice, settings) {
+  g.useCarryover = choice !== 'game';
+  g.useSeasonTargets = choice === 'season';
+  if (settings) settings.makeUp = choice;
+}
+
+/* The new-game rule, for `newGame` and Add a game: the team's last choice of
+   the season so far is kept; otherwise earlier today from a day's second game
+   on (`n` games already in the day) and this game only for a first game. */
+export const newGameMakeUp = (n, settings) => (settings?.makeUp === 'season' ? 'season' : n > 0 ? 'day' : 'game');
+
+/* The strategies that honor the choice: Even and Closers. By hand sets its own
+   targets and Platoon and Order set the fives, so none of the flags reaches
+   their plan. Read here once, for `evensOutDay`, `seasonTargetsFor` and the row. */
+const usesMakeUp = g => g.strategy !== 'minutes' && !fivesAreSet(g.strategy);
+
+/* The choices the open game's row offers, in order, and none at all when the
+   strategy ignores them or fewer than two would change the plan. */
+export function makeUpOffers(g, i) {
+  if (!usesMakeUp(g)) return [];
+  const offers = ['game'];
+  if (i > 0) offers.push('day');
+  if ((state.season?.games || []).length > 0) offers.push('season');
+  return offers.length > 1 ? offers : [];
+}
+
+/* The checked row: the saved choice if it is offered, else what it does here
+   (the season with nothing filed plans as earlier today). Showing never writes. */
+export function makeUpShown(g, i, offers = makeUpOffers(g, i)) {
+  const saved = makeUpOf(g);
+  if (offers.includes(saved)) return saved;
+  if (saved === 'season' && offers.includes('day')) return 'day';
+  return 'game';
+}
+
 export function newGame(n, from, settings) {
   const g = {
     id: uid('g'), label: '', tipoff: '',
@@ -196,25 +237,14 @@ export function newGame(n, from, settings) {
     periodMinutes: settings?.periodMinutes ?? 8,
     overtime: [],
     granMode: 'everyN', granValue: 4,
-    out: [], late: [], useCarryover: n > 0,
-    /* Season carryover (B3). Off, and -- unlike format, availability and
-       strategy below -- deliberately NOT copied from the game this one clones.
-       `useCarryover` defaults on for game 2+, and that precedent was not
-       followed: the day carryover rearranges one afternoon, this one moves a
-       season, and one tap is a cheap price for never being surprised.
-
-       The team's own default (v6, slice 4) is the one thing allowed to turn it
-       on, because a coach who has already decided is not being surprised --
-       they are being obeyed. Read here and nowhere else: it is not a solver
-       input and it never touches a game that already exists. Absent settings
-       (a fresh team, the no-games fallback in `sanitizeTeam`) mean off, which
-       is inert anyway -- neither has a season yet. */
-    useSeasonTargets: settings?.seasonDefault === true,
+    out: [], late: [],
     constraints: emptyConstraints(),
     strategy: 'balanced', balance: 'even',
     live: { at: 0, overrides: {} },
     seed: (Math.random() * 2 ** 31) >>> 0,
   };
+  // #563: how a new game makes up minutes, by the one rule `newGameMakeUp` holds
+  setMakeUp(g, newGameMakeUp(n, settings));
   // Format, who is at the gym and the constraints hold all day; only the
   // opponent, tip-off and seed are per-game. Deep-copied, so editing game 2
   // never reaches back into game 1 and corrupts the day's carryover. The day's
@@ -1446,11 +1476,6 @@ export const STRATEGY_WORDS = {
   order: 'rotation order',
 };
 
-/* The one switch label two callers build (rules.js's own carryover switch and
-   #32 step 3 in the Add-a-game flow, both via `switchRow`) -- one string, so
-   they cannot drift into naming the same setting two different ways. */
-export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
-
 /* The pass's one-line summary (#26 item 5, decision 2): "<N> player(s) ·
    <strategy words>", then "evens out the day" for a later game with carryover
    on, then "<N> rule(s)" when `ruleCount(g)` is above 0. Built only from
@@ -1458,12 +1483,12 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
    after playing still counts), `g.strategy`/`g.useCarryover` and `ruleCount`
    -- nothing here is re-derived. */
 /* Whether game `i` of the day evens out the games before it: a later game
-   with its switch on -- except on Order and Platoon, whose fives come from the
-   order or the units the coach set and so cannot make up anyone's minutes
-   (#545, #552). The switch stays set under them, for the day the coach picks
-   another strategy. The carryover reaches the solver only when this holds
+   whose choice is Earlier today or the season so far -- except on By hand,
+   Order and Platoon, which set their own targets or fives and so cannot make
+   up anyone's minutes (#545, #552, #581). The choice stays set under them, for
+   the day the coach picks another strategy. The carryover reaches the solver only when this holds
    (#553). */
-export const evensOutDay = (g, i) => i > 0 && g.useCarryover && !fivesAreSet(g.strategy);
+export const evensOutDay = (g, i) => i > 0 && g.useCarryover && usesMakeUp(g);
 
 /* The one way a list of games is named in a coach-facing line: "2:30 PM and
    Owls" (tip-off, else opponent), or null when any of them has neither, so the
@@ -1926,7 +1951,7 @@ function seasonTargetsFor(g, avail, deficitOf) {
   const note = (reason, extra) => (seasonAdjust[g.id] = { on: true, reason, even, ...extra }, null);
 
   if (!g.useSeasonTargets) { delete seasonAdjust[g.id]; return null; }
-  if (g.strategy === 'minutes' || fivesAreSet(g.strategy)) return note('strategy');
+  if (!usesMakeUp(g)) return note('strategy');
   if (!avail.length) return note('nobody');
 
   const locked = (g.constraints.lockedTargets || []).filter(id => avail.includes(id));

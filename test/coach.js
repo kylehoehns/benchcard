@@ -732,6 +732,20 @@ export class Coach {
     return evalIn(this.c, `(document.querySelector(${JSON.stringify(sel)})?.innerText || '').replace(/\\s+/g, ' ').trim()`);
   }
 
+  /** The Plan sheet's "Make up minutes from" group as a coach sees it: its
+      heading, its rows top to bottom with which one is checked, and the line
+      under them. Null when the group is not showing. */
+  makeUpRow() {
+    return evalIn(this.c, `(() => {
+      const host = document.querySelector('#planDay');
+      if (!host || !host.getClientRects().length) return null;
+      const rows = [...host.querySelectorAll('.pgrp .prow')].map(b => ({
+        label: b.querySelector('.prow-t').textContent.trim(), on: b.getAttribute('aria-pressed') === 'true' }));
+      const clean = e => e?.textContent.replace(/\\s+/g, ' ').trim() ?? null;
+      return { heading: clean(host.querySelector('.pgrp-h')), rows, footnote: clean(host.querySelector(':scope > .pgrp-f')) };
+    })()`);
+  }
+
   /** The gray lines under the groups of rows on the screen or sheet a coach
       is looking at, top to bottom. */
   footnotes() {

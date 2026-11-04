@@ -59,9 +59,9 @@ export function renderStrategy() {
    Empty and hidden under Even and Closers. The league minimum still holds
    under Platoon and Order, so the line says how, only when one is set. */
 const SKIPS = {
-  platoon: "Platoon plays whole groups, so Players changing at once, Everyone plays in, full periods and evening out other games don't apply.",
-  order: "The order decides who plays, so Everyone plays in, full periods and the two Even out switches don't apply.",
-  minutes: "By hand plays the minutes you set, so evening out the season doesn't apply.",
+  platoon: "Platoon plays whole groups, so Players changing at once, Everyone plays in, full periods and making up minutes from other games don't apply.",
+  order: "The order decides who plays, so Everyone plays in, full periods and making up minutes from other games don't apply.",
+  minutes: "By hand plays the minutes you set, so making up minutes from other games doesn't apply.",
 };
 
 function leagueClause(g) {

@@ -42,7 +42,7 @@ lost. Now the lock is raised to the minimum, and the plan says so.
 | Odd minutes and any minimum, cap, lock or hand-set number | The minimum, cap, lock or number. The odd minutes go to whoever the tie-break favors among the rest. | The spread note names who pays. | "The stance on that tie is the coach's"; "Somebody has to play the odd stint" |
 | Everyone plays before halftime and the change limit | The change limit governs the early minutes. A number the coach set by hand is not overridden. | `HALF_LATE` names who is still waiting and which limit bound. | "Everyone plays before halftime, and it is a default rather than a setting" |
 | A kid who plays before halftime and never after | The plan as built. No cost term. | Warning `HALF_EARLY` names them. | "Somebody who plays before halftime and never after is named (#448)" |
-| A hand-set number or a lock and the season evening-out switch | The hand-set number or the lock. The switch writes a target only where there is none. | The switch's own lines under it. | "And it can plan the next game" |
+| A hand-set number or a lock and the season choice | The hand-set number or the lock. The choice writes a target only where there is none. | The row's own lines under it. | "And it can plan the next game" |
 | A long sit and the change limit | The change limit. The long-sit charge never breaks it to shorten a sit. | Nothing. | "Long sits cost more than short ones, up to the change limit" |
 
 ### Cost weights
@@ -345,8 +345,8 @@ text left open, and a future reader needs them to read the plan.
   `test/leak.test.js`**: this is the one file that gets forwarded, so a column
   added "for completeness" fails the build rather than shipping a child's
   level to their parents.
-- **And it can plan the next game.** *Even out the season so far*, a switch in
-  the Plan sheet's Across the season group (#28), opens each player's minute
+- **And it can plan the next game.** *The season so far*, a choice in
+  Make up minutes from (#563), opens each player's minute
   target adjusted by how far off their share of the season they are. It is an
   **input, not solver machinery**:
   everything it produces arrives as `constraints.targetMinutes`, which the
@@ -358,10 +358,10 @@ text left open, and a future reader needs them to read the plan.
   time, paid for by the kids who turned up; attendance is not a debt. What the
   weighting leaves is the unfairness the app itself creates: the remainder
   minutes stint arithmetic has to drop on somebody, week after week.
-  It is **off by default, per game, and not inherited by a new game** — a coach
-  who has never finished a game never sees the switch at all. Nothing is
-  written to the record but the one boolean: the targets are re-derived on
-  every `computeAll`, so turning it off restores the previous plan exactly.
+  It is a choice on the **Make up minutes from** row
+  ([#563](design-decisions-make-up.md)), offered once a game is filed. Only the
+  flags are stored: targets are re-derived on every `computeAll`, so turning it
+  off restores the previous plan exactly.
   A **hand-set target and a lock are untouchable by construction**: it writes a
   target only where there is not one already, so the By hand strategy gets
   nothing (those sliders *are* the coach's targets), Platoon gets nothing (the
@@ -376,7 +376,7 @@ text left open, and a future reader needs them to read the plan.
   games** (played minutes once a game has started, #572, else planned; after
   overtime, effective minutes, #368), or game 2 of a
   tournament would pay off a debt game 1 has already cleared.
-  And it **says what it did**, under the switch: the even share, then one line
+  And it **says what it did**, under the row: the even share, then one line
   per player who is off it — *Marcus Webb opens at 24 min — 8 down on the
   season* — with *plays 8* beside the ask when whole stints cannot hit it. A
   number that moves with nothing joining it to a reason is the thing that makes
@@ -634,7 +634,7 @@ text left open, and a future reader needs them to read the plan.
   games 1..N-1, so a kid who sat out game one gets caught up. The
   credit is clamped to +/- 2 stints so one absence cannot hand someone an entire
   later game. Platoon and Order fix their fives, so earlier games do not reach
-  them, even with the switch on.
+  them, even with Earlier today on.
 - **Carryover suppresses the fairness messaging.** With carryover on, an uneven
   game is the point -- the target is an even day, not an even game -- so the
   single-game "best possible spread" benchmark is wrong and gets replaced by an

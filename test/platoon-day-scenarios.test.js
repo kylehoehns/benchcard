@@ -31,22 +31,20 @@ describe('Platoon: a second game the same day', { skip }, () => {
   }
   const gameTwoOnPlatoon = () => gameTwo({ out: [], strategy: 'platoon' });
 
-  test('1. its summary and sentence do not say it evens out the day, and its switch is not on screen', async () => {
+  test('1. its summary and sentence do not say it evens out the day, and its row is not on screen', async () => {
     await gameTwoOnPlatoon();
     assert.ok(lacks(await coach.text('body'), 'Evens out the'), 'the page says Platoon evens out the day');
     assert.ok(lacks(await coach.text('body'), 'evens out the day'), 'the page says Platoon evens out the day');
     await coach.tap('Plan, fixed fives');
-    assert.equal(await coach.sees('Even out earlier games'), false);
+    assert.equal(await coach.makeUpRow(), null);
     assert.equal(await coach.text('#planDay'), '');
   });
 
-  test('2. switched to Even it evens out the day again, with the switch showing, enabled and still on', async () => {
+  test('2. switched to Even it evens out the day again, with the row showing and still on Earlier today', async () => {
     await gameTwoOnPlatoon();
     await coach.tap('Plan, fixed fives');
     await coach.tap('Even');
-    assert.equal(await coach.sees('Even out earlier games'), true);
-    assert.equal(await coach.isDisabled('Even out earlier games'), false);
-    assert.equal(await coach.isOn('Even out earlier games'), true);
+    assert.deepEqual((await coach.makeUpRow()).rows.filter(r => r.on).map(r => r.label), ['Earlier today']);
     await coach.tap('Close');
     assert.match(await coach.text('body'), /Evens out the 9:00 AM game./);
   });

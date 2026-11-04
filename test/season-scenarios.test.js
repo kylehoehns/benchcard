@@ -66,7 +66,7 @@ describe('a coach reads the season', { skip }, () => {
     assert.ok(least(before, behind) <= most(before, ahead), `before the switch the players behind do not all play more: ${JSON.stringify(before)}`);
 
     await coach.tap('Plan, even minutes');
-    await coach.tap('Even out the season so far');
+    await coach.tap('The season so far');
     await coach.tap('Close');
 
     const after = await minutes();

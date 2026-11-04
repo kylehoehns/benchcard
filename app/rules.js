@@ -1,7 +1,7 @@
 /* The Rules group, and the switch groups beside it, inside the Plan sheet
  * (#28). `renderConstraints` paints level 1: the Rules rows (from the pure
  * `ruleItems(g)` in state.js), the "Add a rule" row, and the three switch
- * groups that are not really rules (`#planPairs`, `#planDay`, `#planSeason`).
+ * groups that are not really rules (`#planPairs`, `#planDay`, the Make up minutes from group).
  * It never repaints an open level-2 page.
  *
  * The two level-2 pages this file owns -- a rule's detail, and Add a rule --
@@ -16,14 +16,15 @@
  */
 import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
-import { fmtMinutes, fivesAreSet } from './engine.js';
+import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
          ruleItems, runHint, runMinutesText, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
-         EVEN_OUT_DAY_LABEL, dayIsToday, evensOutDay } from './state.js';
+         dayIsToday, makeUpOffers, makeUpShown, makeUpOf, setMakeUp } from './state.js';
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow, paintChoiceRows, onPlanOpen } from './game-setup.js';
 import { gameStarted } from './live.js';
+import { MAKE_UPS } from './storage.js';
 import { popPane } from './trap.js';
 import { undoable, showUndo } from './toast.js';
 
@@ -69,8 +70,7 @@ export function renderConstraints(itemsIn) {
   else if (!items.length) wrap.append(el('p', 'pgrp-f', 'No rules yet. The plan just evens out the minutes.'));
 
   renderPairsGroup(c);
-  renderDayGroup(g);
-  renderSeasonGroup(g);
+  renderMakeUpGroup(g);
   renderCopyGroup(g);
   renderSeasonAdjust();
 }
@@ -84,9 +84,7 @@ function ruleRow(item, idx) {
   return b;
 }
 
-/* Exported for #32 step 3, which shows the same "Even out earlier games"
-   switch inside the Add-a-game flow. One switch builder, two callers. */
-export function switchRow(label, checked, disabled, onChange, fk) {
+function switchRow(label, checked, disabled, onChange) {
   // #221: prow-toggle (app.css) wraps this row's label onto its own line at
   // 320px/32px text instead of letting it squeeze and paint under the switch.
   const row = el('label', 'prow prow-toggle');
@@ -95,7 +93,6 @@ export function switchRow(label, checked, disabled, onChange, fk) {
   input.setAttribute('switch', '');
   input.checked = checked;
   input.disabled = disabled;
-  if (fk) input.dataset.fk = fk;
   input.onchange = () => onChange(input.checked);
   // The label sits on the left, the switch at the row's right end (the
   // prototype's layout) -- the row itself is still the whole target either
@@ -118,50 +115,45 @@ function renderPairsGroup(c) {
   wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximizes their shared floor time and reports it.'));
 }
 
-function renderDayGroup(g) {
+/* #563: the one "Make up minutes from" group, in place of the two even-out
+   switches. Only Even and Closers use it, and it offers only the choices that
+   would change this game's plan (`makeUpOffers`); fewer than two and the group
+   is hidden. Showing never writes: a saved choice that is not offered is
+   drawn as what it does (`makeUpShown`), and only a tap saves anything. */
+const MAKE_UP_LABELS = { game: 'This game only', day: null, season: 'The season so far' };
+
+function renderMakeUpGroup(g) {
   const wrap = $('#planDay');
   if (!wrap) return;
   wrap.textContent = '';
-  // #562: the fives (Platoon) or the order decide who plays, so the switch does nothing there
-  wrap.hidden = fivesAreSet(g.strategy);
+  const i = state.activeGame;
+  const offers = makeUpOffers(g, i);
+  wrap.hidden = !offers.length;
   if (wrap.hidden) return;
-  wrap.append(el('div', 'pgrp-h', 'Across the day'));
-  const box = el('div', 'pgrp');
-  const first = state.activeGame === 0;
-  box.append(switchRow(EVEN_OUT_DAY_LABEL, evensOutDay(g, state.activeGame), first, v => {
-    g.useCarryover = v; renderConstraints(); edit('dayCarryover');
-  }));
-  wrap.append(box);
   // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
-  const when = dayIsToday(state.day) ? 'today' : 'that day';
-  wrap.append(el('p', 'pgrp-f', first
-    ? `This is the first game ${when}, so there's nothing to even out.`
-    : `Players who got fewer minutes earlier ${when} get more here.`));
-}
-
-function renderSeasonGroup(g) {
-  const wrap = $('#planSeason');
-  if (!wrap) return;
-  // #562: By hand, Platoon and Order set their own targets, so the switch does nothing there
-  const shown = (state.season?.games || []).length > 0 && g.strategy !== 'minutes' && !fivesAreSet(g.strategy);
-  wrap.hidden = !shown;
-  wrap.textContent = '';
-  if (!shown) return;
-  wrap.append(el('div', 'pgrp-h', 'Across the season'));
+  const dayLabel = dayIsToday(state.day) ? 'Earlier today' : 'Earlier that day';
+  const shown = makeUpShown(g, i, offers);
+  const keys = MAKE_UPS.filter(key => offers.includes(key)).map(key => [key, MAKE_UP_LABELS[key]]);
+  let tapped = 0;
   const box = el('div', 'pgrp');
-  box.append(switchRow('Even out the season so far', g.useSeasonTargets, false, v => {
-    g.useSeasonTargets = v;
-    // Its consequence comes from a solve, so it waits for one rather than
-    // repainting immediately -- `data-fk` rides the checkbox's own identity
-    // back through that repaint (`withFocus`, trap.js).
-    edit('seasonCarryover');
-  }, 'seasoncarry'));
-  wrap.append(box);
-  wrap.append(el('p', 'pgrp-f', 'Opens each player’s minutes ahead or behind by how far they are off their share '
-    + 'of the season. At most two stints either way, and never over a limit or a locked number.'));
-  const host = el('div', 'seasonadj');
-  host.id = 'seasonadj';
-  wrap.append(host);
+  /* The edit repaints this whole group, so the row that was tapped is gone by
+     the time `paintChoiceRows` would put focus back; it goes to the same row
+     of the new group instead. */
+  paintChoiceRows(box, keys.map(([key, label], idx) => [label || dayLabel, key === shown, () => {
+    tapped = idx;
+    // the row already saved is a no-op; a row checked only as a fallback still saves
+    if (key === makeUpOf(g)) return;
+    setMakeUp(g, key, state.settings);
+    edit('makeUp');
+  }]), () => $('#planDay .pgrp')?.children[tapped]?.focus({ preventScroll: true }));
+  wrap.append(el('div', 'pgrp-h', 'Make up minutes from'), box,
+    el('p', 'pgrp-f', 'Kids who played less get a little more here, and kids who played more get a little less. '
+      + 'Never more than a sub or two either way.'));
+  if (shown === 'season') {
+    const host = el('div', 'seasonadj');
+    host.id = 'seasonadj';
+    wrap.append(host);
+  }
 }
 
 /* #548: the last group, one row that opens Copy from another game. Only
@@ -246,7 +238,7 @@ function commitCopy(source, parts) {
  * because the rule editor holds a select and two number inputs the coach may
  * be part-way through. It contains no focusable control, so rebuilding it in
  * place is safe. Only its host's DOM location moved (#28): it now sits inside
- * `#planSeason` rather than the old `.rule-switches` block. */
+ * `#planDay` rather than the old `.rule-switches` block. */
 export function renderSeasonAdjust() {
   const host = document.querySelector('#seasonadj');
   if (!host) return;

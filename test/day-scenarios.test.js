@@ -115,7 +115,7 @@ describe('a coach shapes the day', { skip }, () => {
     await coach.tap('Ravens, 11:30 AM, planned');
     assert.equal(await coach.sees('Evening out the day, Evens out the 9:00 AM game.'), false, 'off before the coach turns it on');
     await coach.tap('Plan, even minutes');
-    await coach.tap('Even out earlier games');
+    await coach.tap('Earlier today');
     await coach.tap('Close');
 
     assert.ok(await coach.sees('Evening out the day, Evens out the 9:00 AM game.'));

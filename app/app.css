@@ -3242,12 +3242,6 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    -- reuse the fix rather than a new row type. */
 #view-settings .pgrp .prow { flex-wrap: wrap; }
 #view-settings .pgrp .prow-t { flex-basis: auto; }
-/* "Fair on its own" / "Evening out the season" are longer than the other
-   .seg.wide rows' own labels. Equal halves left "Evening out the season"
-   3px to spare at 390px on macOS, and CI's wider Linux fonts wrapped it.
-   Sizing each button to its label (flex: 1 1 auto, spare room shared
-   evenly) gives the long one about 26px to spare instead. */
-#seasonDefSeg button { flex: 1 1 auto; }
 /* #567: "Kids behind on minutes" is longer than "Best players"; each button is sized to its label so neither wraps. */
 #tieBreakSeg button { flex: 1 1 auto; }
 /* Two kids wearing one number: mark the number, quietly. The row is not
@@ -3261,6 +3255,10 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 .prow-danger { color: var(--err); font-weight: 600; }
 .prow-icon { color: var(--muted); }
 .prow.add-rule .prow-t { color: inherit; }
+/* A rule row names players ("Featherstonehaugh and Hana together"): at
+   320px/32px a one-word surname is wider than the label column, so it breaks
+   anywhere, as .who-row and .sn-nm names do (#563 first measured it). */
+#constraints .prow-t { overflow-wrap: anywhere; }
 
 /* The identity block the prototype's own player sheet opens with (a 56px
    badge, a 24px/700 name, a 15px muted level line) above the Number/

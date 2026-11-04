@@ -32,7 +32,7 @@ describe('a coach checks the app against the game', { skip }, () => {
   const evenOutRavens = async () => {
     await coach.tap('Ravens, 11:30 AM, planned');
     await coach.tap('Plan, even minutes');
-    await coach.tap('Even out earlier games');
+    await coach.tap('Earlier today');
     await coach.tap('Close');
     await coach.tap('Back to Smoke Test');
   };
@@ -107,7 +107,7 @@ describe('a coach shares the card image to print it', { skip }, () => {
   const evenOutRavens = async () => {
     await coach.tap('Ravens, 11:30 AM, planned');
     await coach.tap('Plan, even minutes');
-    await coach.tap('Even out earlier games');
+    await coach.tap('Earlier today');
     await coach.tap('Close');
     await coach.tap('Back to Smoke Test');
   };

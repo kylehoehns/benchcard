@@ -418,7 +418,6 @@ const splitState = c => evalJSON(c, `(async () => {
     })),
     descriptions: Object.values(STRATEGIES),
     switchLabel: sw ? (sw.closest('label')?.textContent || '').replace(/\\s+/g, ' ').trim() : null,
-    switchOn: sw ? sw.checked : null,
   });
 })()`);
 
@@ -446,9 +445,7 @@ async function stepThreeReads(c, ck) {
   });
   const on = sp.options.filter(o => o.checked).length;
   ck(on === 1, `${on} of the five options are marked aria-checked, want exactly 1`);
-  ck(sp.switchLabel === 'Even out earlier games',
-    `the switch under the options is labeled "${sp.switchLabel}", want "Even out earlier games"`);
-  ck(sp.switchOn === true, 'the "Even out earlier games" switch is off on a second game of the day, want it on');
+  ck(sp.switchLabel === null, `step 3 still carries a switch ("${sp.switchLabel}"), want none: the Plan sheet owns the make-up choice (#563)`);
 }
 
 // Where the app is looking, and which game it thinks is open.
@@ -500,7 +497,6 @@ async function stepThreeCommits(c, ck) {
   const want = await evalJSON(c, `(() => JSON.stringify({
     strat: [...document.querySelectorAll('#stratseg button[data-strat]')][2].dataset.strat }))()`);
   await realTap(c, '#agBody [role=radiogroup] [role=radio]:nth-child(3)');
-  await realTap(c, '#agBody input[switch]');  // evening out, off
   await realTap(c, '#agNext');
   if (!ck(await waitClosed(c, '#addGameFlow'), '"Add game" did not close the flow')) return;
 
@@ -510,7 +506,7 @@ async function stepThreeCommits(c, ck) {
   const made = after.at(-1);
   ck(made.strategy === want.strat,
     `the new game's strategy is "${made.strategy}", want the "${want.strat}" option that was tapped`);
-  ck(made.useCarryover === false, 'turning the "Even out earlier games" switch off did not reach the game');
+  ck(made.useCarryover === true, `a second game of the day starts on Earlier today, but useCarryover is ${made.useCarryover}`);
   ck(made.out.includes(players[0].id),
     `${players[0].name} was tapped absent on step 2 but is not in the new game's out list`);
   const v = await viewState(c);

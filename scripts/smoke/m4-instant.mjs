@@ -11,19 +11,17 @@ import { evalJSON, openAddGameFlow, realTap, waitClosed } from './sheet-drive.mj
  * spec's own Proof line.
  *
  * Step 2 of the Add-a-game flow ("Who's here?") carries the roster's `.plr`
- * picker tiles, and step 3 ("How should minutes split?") carries the "Even
- * out earlier games" switch (`switchRow`, rules.js, shared with
- * `#showMinutes`) -- so this check walks the same flow forward through both
- * rather than opening two separate sheets. Neither read types or toggles
- * anything, so closing with `#agClose` afterwards does not trigger the
- * discard ask (see add-game-flow.mjs's own "nothing typed" comment).
+ * picker tiles. The switch knob is read off `#showMinutes`, a static switch
+ * in index.html (step 3 lost its switch in #563, so no switch is left in the
+ * flow). Neither read types or toggles anything, so closing with `#agClose`
+ * afterwards does not trigger the discard ask (see add-game-flow.mjs's own "nothing typed" comment).
  *
  * `input[switch]::after` is a pseudo-element, so its computed style is read
  * with `getComputedStyle(el, '::after')`, the only way to ask the browser
  * for a pseudo-element's paint -- `computedStyle` (dom.mjs) only reads real
  * elements, so this one probe is inline rather than routed through it. */
 const KNOB_PROBE = `JSON.stringify((() => {
-  const el = document.querySelector('#agBody input[switch]');
+  const el = document.querySelector('#showMinutes');
   if (!el) return null;
   const cs = getComputedStyle(el, '::after');
   return { transitionDuration: cs.transitionDuration, transitionProperty: cs.transitionProperty };
@@ -43,10 +41,9 @@ export async function m4InstantPass(c, origin, rec) {
       + `and transitionDuration "${av.transitionDuration}", want "none" or every duration 0s`);
   }
 
-  await realTap(c, '#agNext'); // step 2 -> step 3: "How should minutes split?"
   const knob = await evalJSON(c, KNOB_PROBE);
   if (!knob) {
-    rec.fail('#agBody input[switch] was not found on step 3 -- nothing to measure there');
+    rec.fail('#showMinutes was not found -- nothing to measure there');
   } else {
     rec.check(instant(knob), `the switch knob's ::after has transitionProperty "${knob.transitionProperty}" `
       + `and transitionDuration "${knob.transitionDuration}", want "none" or every duration 0s`);

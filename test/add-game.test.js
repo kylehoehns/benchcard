@@ -177,13 +177,6 @@ test('with no days the draft is newGame(0, null, settings), dated today, and off
 const APP = new URL('../app/', import.meta.url);
 const MODULES = readdirSync(APP).filter(f => f.endsWith('.js'));
 
-test('rules.js exports switchRow, so a second caller can reuse it', async () => {
-  const R = await import('../app/rules.js');
-  assert.equal(typeof R.switchRow, 'function',
-    'app/rules.js does not export switchRow -- #32 step 3 needs the one switch builder, '
-    + 'not a second copy of it (docs/specs/32-add-a-game.md, Constraints)');
-});
-
 test('exactly one module in app/ builds an input[switch]', () => {
   assert.ok(MODULES.length > 20, `scanned ${MODULES.length} module(s) in app/; the read is wrong`);
   const builders = MODULES.filter(f =>
@@ -191,11 +184,4 @@ test('exactly one module in app/ builds an input[switch]', () => {
   assert.deepEqual(builders, ['rules.js'],
     `${builders.length} module(s) build a switch (${builders.join(', ') || 'none'}); `
     + 'there must be exactly one, rules.js, and every other caller imports switchRow from it');
-});
-
-test('teams-view.js takes the switch from rules.js rather than rolling its own', () => {
-  const src = stripComments(readFileSync(new URL('teams-view.js', APP), 'utf8'));
-  assert.ok(src.length > 1000, 'read no teams-view.js source; this guard is measuring nothing');
-  assert.match(src, /import\s*\{[^}]*\bswitchRow\b[^}]*\}\s*from\s*'\.\/rules\.js'/,
-    "teams-view.js does not import switchRow from './rules.js'");
 });

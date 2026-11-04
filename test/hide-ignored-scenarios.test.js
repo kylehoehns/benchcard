@@ -1,6 +1,7 @@
-/* #562: the Plan sheet hides each switch the strategy ignores, and one line
+/* #562: the Plan sheet hides each control the strategy ignores, and one line
    under the strategy segment says which team settings it skips. Display only:
-   the hidden switches keep what the coach left. Driven through test/coach.js
+   the hidden controls keep what the coach left. (#563: the two even-out
+   switches became the one Make up minutes from row.) Driven through test/coach.js
    on game 2 of a day with a season filed and levels set. Skipped where there
    is no Chrome. */
 
@@ -13,8 +14,7 @@ const skip = !(await hasChrome()) && 'no Chrome on this machine';
 const ROSTER = ['Avery', 'Blake', 'Casey', 'Drew', 'Emery', 'Finley', 'Gray', 'Harper', 'Indy', 'Alexandria Montgomery-Okafor'];
 const UNITS = [['p0', 'p1', 'p2', 'p3', 'p4'], ['p5', 'p6', 'p7', 'p8', 'p9']];
 const BALANCE = 'Lineup balance Start strong';
-const DAY = 'Even out earlier games';
-const SEASON = 'Even out the season so far';
+const MAKE_UP = 'Make up minutes from';
 
 describe('The Plan sheet shows only the switches the strategy uses', { skip }, () => {
   let coach;
@@ -22,7 +22,7 @@ describe('The Plan sheet shows only the switches the strategy uses', { skip }, (
   after(async () => { await coach?.close(); });
   afterEach(() => { assert.deepEqual(coach.errors, [], 'the page logged an error'); });
 
-  /* Game 2 (Ravens) is on `strategy`, both evening-out switches on and the
+  /* Game 2 (Ravens) is on `strategy`, the season so far chosen and the
      shape on Start strong; a season of filed games; `settings` laid over the team's. */
   async function gameTwo(strategy, settings = {}, extra = {}) {
     await coach.onGameDayShaped(team => {
@@ -43,13 +43,14 @@ describe('The Plan sheet shows only the switches the strategy uses', { skip }, (
   }
   const shown = async () => {
     const c = await coach.controls();
-    return [BALANCE, DAY, SEASON].filter(n => c.includes(n));
+    return [...[BALANCE].filter(n => c.includes(n)), ...((await coach.makeUpRow()) ? [MAKE_UP] : [])];
   };
+  const choice = async () => (await coach.makeUpRow()).rows.filter(r => r.on).map(r => r.label);
 
   for (const [strategy, want] of [
-    ['balanced', [BALANCE, DAY, SEASON]],
-    ['closers', [BALANCE, DAY, SEASON]],
-    ['minutes', [BALANCE, DAY]],
+    ['balanced', [BALANCE, MAKE_UP]],
+    ['closers', [BALANCE, MAKE_UP]],
+    ['minutes', [BALANCE]],
     ['platoon', []],
     ['order', []],
   ]) {
@@ -66,9 +67,9 @@ describe('The Plan sheet shows only the switches the strategy uses', { skip }, (
   });
 
   const skipLine = () => coach.text('#stratskip');
-  const PLATOON = "Platoon plays whole groups, so Players changing at once, Everyone plays in, full periods and evening out other games don't apply.";
-  const ORDER = "The order decides who plays, so Everyone plays in, full periods and the two Even out switches don't apply.";
-  const BY_HAND = "By hand plays the minutes you set, so evening out the season doesn't apply.";
+  const PLATOON = "Platoon plays whole groups, so Players changing at once, Everyone plays in, full periods and making up minutes from other games don't apply.";
+  const ORDER = "The order decides who plays, so Everyone plays in, full periods and making up minutes from other games don't apply.";
+  const BY_HAND = "By hand plays the minutes you set, so making up minutes from other games doesn't apply.";
 
   test('3. with no league minimum the line names what each strategy skips, and Even and Closers have none', async () => {
     await gameTwo('platoon', { minMinutes: 0 });
@@ -106,19 +107,16 @@ describe('The Plan sheet shows only the switches the strategy uses', { skip }, (
     assert.equal(await skipLine(), BY_HAND);
   });
 
-  test('5. on Platoon with both evening-out switches on, Even shows every switch as left, and so after a reopen', async () => {
+  test('5. on Platoon with the season so far chosen, Even shows the row as left, and so after a reopen', async () => {
     await gameTwo('platoon');
     assert.deepEqual(await shown(), []);
     await coach.tap('Even');
-    assert.deepEqual(await shown(), [BALANCE, DAY, SEASON]);
-    assert.equal(await coach.isOn(DAY), true);
-    assert.equal(await coach.isOn(SEASON), true);
+    assert.deepEqual(await shown(), [BALANCE, MAKE_UP]);
+    assert.deepEqual(await choice(), ['The season so far']);
     await coach.tap('Platoon');
     assert.deepEqual(await shown(), []);
     await coach.tap('Even');
-    assert.deepEqual(await shown(), [BALANCE, DAY, SEASON]);
-    assert.equal(await coach.isOn(DAY), true);
-    assert.equal(await coach.isOn(SEASON), true);
+    assert.deepEqual(await choice(), ['The season so far']);
 
     await coach.tap('Platoon');
     await coach.tap('Close');
@@ -128,8 +126,7 @@ describe('The Plan sheet shows only the switches the strategy uses', { skip }, (
     const { useCarryover, useSeasonTargets, balance } = (await coach.savedDays())[0].games[1];
     assert.deepEqual({ useCarryover, useSeasonTargets, balance }, { useCarryover: true, useSeasonTargets: true, balance: 'start' }, 'hiding wrote nothing');
     await coach.tap('Even');
-    assert.deepEqual(await shown(), [BALANCE, DAY, SEASON]);
-    assert.equal(await coach.isOn(DAY), true);
-    assert.equal(await coach.isOn(SEASON), true);
+    assert.deepEqual(await shown(), [BALANCE, MAKE_UP]);
+    assert.deepEqual(await choice(), ['The season so far']);
   });
 });

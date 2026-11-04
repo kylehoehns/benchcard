@@ -154,7 +154,7 @@ export const FEATURES = [
   { key: 'bench:rest', ships: 'Takes their minutes', src: 'gamemode.js', term: ['takes their minutes'], text: ['takes their minutes'] },
   { key: 'bench:rebalance', ships: 'Sits the rest of the game', src: 'gamemode.js', term: ['sits the rest of the game'], text: ['sits the rest of the game'] },
 
-  { key: 'season:carryover', src: 'rules.js useSeasonTargets', term: ['even out the season so far'], text: ['even out the season so far'] },
+  { key: 'season:carryover', src: 'rules.js MAKE_UP_ROWS', term: ['make up minutes from'], text: ['make up minutes from'] },
   { key: 'league:minimum', src: 'state.js leagueMinutes', text: ['everyone plays at least'] },
 
   { key: 'card:pocket', src: 'index.html #cardSize', text: ['pocket size', 'pocket 3.45'] },
