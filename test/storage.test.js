@@ -15,7 +15,7 @@ const THEMED = ['index.html', 'about.html', '404.html', ...CHARTS.map(c => c.fil
 
 const emptyConstraints = () => ({
   minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [],
-  openingFive: [], lastPeriodFive: [], hardPairs: false, maxConsecutive: 0,
+  openingFive: [], lastPeriodFive: [], maxConsecutive: 0,
   targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [],
 });
 const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8,

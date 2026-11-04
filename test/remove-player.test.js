@@ -16,7 +16,7 @@ const team = () => ({
         ...emptyConstraints(),
         minMinutes: { p1: 8, p2: 6 }, maxMinutes: { p1: 20, p2: 18 },
         targetSlots: { p1: 3, p2: 2 }, lockedTargets: ['p1', 'p2'],
-        pairs: [['p1', 'p2'], ['p2', 'p3']], avoids: [['p1', 'p3'], ['p2', 'p3']],
+        pairs: [['p1', 'p2', true], ['p2', 'p3', true]], avoids: [['p1', 'p3'], ['p2', 'p3']],
         openingFive: ['p1', 'p2', 'p3', 'p4', 'p5'],
         lastPeriodFive: ['p1', 'p2', 'p3', 'p4', 'p5'],
         closing: { stints: 2, players: ['p1', 'p2'] },
@@ -40,7 +40,7 @@ test('removePlayer leaves the id nowhere in the team, and the others\' entries a
   assert.deepEqual(t.players, [{ id: 'p2' }]);
   assert.deepEqual(g.out, ['p2']);
   assert.deepEqual(g.constraints.minMinutes, { p2: 6 });
-  assert.deepEqual(g.constraints.pairs, [['p2', 'p3']]);
+  assert.deepEqual(g.constraints.pairs, [['p2', 'p3', true]]);
   assert.deepEqual(g.constraints.closing.players, ['p2']);
   assert.deepEqual(g.constraints.keepOnFloor, [['p2', 'p3']]);
   assert.deepEqual(g.constraints.units, [['p2', 'p3'], ['p4', 'p5']]);
@@ -61,7 +61,7 @@ test('every constraint field is classified here as holding ids or not', () => {
   for (const f of holdsIds) {
     assert.ok(JSON.stringify(fixed[f]).includes('"p1"'), `fixture field ${f} does not name p1`);
   }
-  const noIds = ['hardPairs', 'maxConsecutive', 'maxBench'];
+  const noIds = ['maxConsecutive', 'maxBench'];
   const known = new Set([...holdsIds, ...noIds]);
   const surprises = Object.keys(emptyConstraints()).filter(f => !known.has(f));
   assert.deepEqual(surprises, [],

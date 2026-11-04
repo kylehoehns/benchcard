@@ -1309,10 +1309,10 @@ test('378: 4x10 perPeriod 3 with a 10-minute minimum is not off a stint boundary
 
 const hardPairPlan = (format, granularity, seed) => generatePlan({
   players: roster(10), availableIds: ids(10), format, granularity, seed,
-  constraints: { pairs: [['p0', 'p1']], hardPairs: true },
+  constraints: { pairs: [['p0', 'p1', true]] },
 });
 
-test('438: Force Together on 4x8 every 4 with 10 players is even and never splits the pair', () => {
+test('438: Always on 4x8 every 4 with 10 players is even and never splits the pair', () => {
   for (let seed = 1; seed <= 20; seed++) {
     const r = hardPairPlan(QUARTERS, EVERY_4, seed);
     assert.equal(r.spread, 0, `seed ${seed}`);
@@ -1321,7 +1321,7 @@ test('438: Force Together on 4x8 every 4 with 10 players is even and never split
   }
 });
 
-test('438: Force Together on 2x20 every 5 keeps the pair within one stint of the even 20', () => {
+test('438: Always on 2x20 every 5 keeps the pair within one stint of the even 20', () => {
   for (let seed = 1; seed <= 20; seed++) {
     const r = hardPairPlan({ periods: 2, periodMinutes: 20 }, { mode: 'everyN', value: 5 }, seed);
     for (const id of ['p0', 'p1']) {
@@ -1332,21 +1332,21 @@ test('438: Force Together on 2x20 every 5 keeps the pair within one stint of the
   }
 });
 
-test('438: Force Together on 4x10 every 2 (20 stints) never splits the pair', () => {
+test('438: Always on 4x10 every 2 (20 stints) never splits the pair', () => {
   const splits = [];
   for (const n of [12, 15]) for (let seed = 1; seed <= 10; seed++) {
     const r = generatePlan({ players: roster(n), availableIds: ids(n), format: { periods: 4, periodMinutes: 10 },
       granularity: { mode: 'everyN', value: 2 }, seed,
-      constraints: { pairs: [['p0', 'p1']], hardPairs: true } });
+      constraints: { pairs: [['p0', 'p1', true]] } });
     if (r.stints.some(s => s.onFloor.includes('p0') !== s.onFloor.includes('p1'))) splits.push(`${n} players seed ${seed}`);
   }
   assert.deepEqual(splits, []);
 });
 
-test('438: a hard pair with an Apart pair on the bench and a pinned player keeps all three', () => {
+test('438: an Always pair with an Apart pair on the bench and a pinned player keeps all three', () => {
   for (let seed = 1; seed <= 10; seed++) {
     const r = generatePlan({ players: roster(10), availableIds: ids(10), format: QUARTERS, granularity: EVERY_4, seed,
-      constraints: { pairs: [['p0', 'p1']], hardPairs: true, avoids: [['p5', 'p6'], ['p2', 'p7']],
+      constraints: { pairs: [['p0', 'p1', true]], avoids: [['p5', 'p6'], ['p2', 'p7']],
         openingFive: ['p3', 'p0', 'p1'] } });
     r.stints.forEach((s, i) => {
       assert.equal(s.onFloor.includes('p0'), s.onFloor.includes('p1'), `seed ${seed} stint ${i} split`);
@@ -1709,24 +1709,24 @@ test('#446 Apart on a 6-player bench says Apart, not the clock', () => {
   assert.deepEqual([...n.playerIds].sort(), ['p0', 'p1']);
 });
 
-test('#446 Force Together with a capped partner names the partner and the cap', () => {
-  const p = clash(10, { constraints: { pairs: [['p0', 'p1']], hardPairs: true, maxMinutes: { p0: 8 } } });
+test('#446 an Always pair with a capped partner names the partner and the cap', () => {
+  const p = clash(10, { constraints: { pairs: [['p0', 'p1', true]], maxMinutes: { p0: 8 } } });
   assert.equal(noteOf(p, 'SPREAD_FLOOR'), undefined);
   const n = noteOf(p, 'SPREAD_RULE');
-  assert.match(n.message, /Force Together/);
-  assert.match(n.message, /capped at 8/);
+  assert.match(n.message, /set Always together with A/);
+  assert.match(n.message, /capped at 8 min/);
   assert.match(n.message, /\bB\b/);
 });
 
-test('#446 Force Together with a partner who has a minimum says minimum', () => {
-  const p = clash(10, { constraints: { pairs: [['p0', 'p1']], hardPairs: true, minMinutes: { p0: 28 } } });
+test('#446 an Always pair with a partner who has a minimum says minimum', () => {
+  const p = clash(10, { constraints: { pairs: [['p0', 'p1', true]], minMinutes: { p0: 28 } } });
   const n = noteOf(p, 'SPREAD_RULE');
-  assert.match(n.message, /Force Together/);
-  assert.match(n.message, /minimum 28/);
+  assert.match(n.message, /set Always together with A/);
+  assert.match(n.message, /minimum 28 min/);
 });
 
-test('#446 Force Together that ties two Apart players is refused, naming them', () => {
-  const constraints = { pairs: [['p0', 'p1'], ['p0', 'p2']], avoids: [['p1', 'p2']], hardPairs: true };
+test('#446 Always pairs that tie two Apart players is refused, naming them', () => {
+  const constraints = { pairs: [['p0', 'p1', true], ['p0', 'p2', true]], avoids: [['p1', 'p2']] };
   const p = clash(10, { constraints });
   assert.equal(p.ok, false);
   const e = noteOf(p, 'PAIR_CHAIN_APART');
@@ -1736,8 +1736,8 @@ test('#446 Force Together that ties two Apart players is refused, naming them', 
   assert.deepEqual([...e.playerIds].sort(), ['p1', 'p2']);
 });
 
-test('#446 the same rules with Force Together off are not refused', () => {
-  const p = clash(10, { constraints: { pairs: [['p0', 'p1'], ['p0', 'p2']], avoids: [['p1', 'p2']], hardPairs: false } });
+test('#446 the same rules as As much as possible are not refused', () => {
+  const p = clash(10, { constraints: { pairs: [['p0', 'p1'], ['p0', 'p2']], avoids: [['p1', 'p2']] } });
   assert.equal(p.ok, true);
 });
 
@@ -1804,12 +1804,11 @@ test('#446 a minimum off the stint grid keeps the clock wording', () => {
   assert.match(m.message, /The clock does not divide to hit it exactly\./);
 });
 
-test('#446 a Force Together group too big to sit plays every minute, and says so', () => {
-  const p = clash(7, { constraints: { pairs: [['p0', 'p1'], ['p1', 'p2']], hardPairs: true } });
+test('#446 an Always group too big to sit plays every minute, and says so', () => {
+  const p = clash(7, { constraints: { pairs: [['p0', 'p1', true], ['p1', 'p2', true]] } });
   assert.equal(noteOf(p, 'SPREAD_FLOOR'), undefined);
   const n = noteOf(p, 'SPREAD_RULE');
-  assert.match(n.message, /Force Together/);
-  assert.match(n.message, /every minute/);
+  assert.equal(n.message, 'A, B and C play every minute because 3 players are set Always together and only 2 can sit.');
   assert.deepEqual([...n.playerIds].sort(), ['p0', 'p1', 'p2']);
 });
 
@@ -2052,3 +2051,79 @@ function describe448() {
     assert.ok(moved(first, warm) <= 8, `warm moved ${moved(first, warm)} of 40 seats`);
   });
 }
+
+/* ---------------- #568: each Together rule has its own strength ---------------- */
+
+const NAMES_568 = ['Avery', 'Blake', 'Casey', 'Drew', 'Emery', 'Finley', 'Gray', 'Harper', 'Indy', 'Jules'];
+const named = n => NAMES_568.slice(0, n).map((name, i) => ({ id: `p${i}`, name }));
+const together = (n, over = {}) => generatePlan({
+  players: named(n), availableIds: named(n).map(p => p.id),
+  format: QUARTERS, granularity: EVERY_4, seed: 1, ...over,
+});
+const splitStints = (r, a, b) => r.stints.filter(s => s.onFloor.includes(a) !== s.onFloor.includes(b)).length;
+
+test('568: of two Together pairs the Always one never splits and the As much as possible one can', () => {
+  let softSplits = 0;
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = together(10, { seed, constraints: { pairs: [['p0', 'p1', true], ['p2', 'p3']], minMinutes: { p0: 20 }, maxMinutes: { p2: 8 } } });
+    assert.equal(splitStints(r, 'p0', 'p1'), 0, `seed ${seed} Always pair split`);
+    softSplits += splitStints(r, 'p2', 'p3');
+  }
+  assert.ok(softSplits > 0, 'the As much as possible pair is never split, so it is being held as hard');
+});
+
+test('568: swapping the strengths flips which pair never splits', () => {
+  let softSplits = 0;
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = together(10, { seed, constraints: { pairs: [['p0', 'p1'], ['p2', 'p3', true]], minMinutes: { p2: 20 }, maxMinutes: { p0: 8 } } });
+    assert.equal(splitStints(r, 'p2', 'p3'), 0, `seed ${seed} Always pair split`);
+    softSplits += splitStints(r, 'p0', 'p1');
+  }
+  assert.ok(softSplits > 0, 'the As much as possible pair is never split, so it is being held as hard');
+});
+
+test('568: a game whose only Together rule is As much as possible plans as it did with Force Together off', () => {
+  const bare = together(10, { constraints: { pairs: [['p0', 'p1']] } });
+  const none = together(10, { constraints: { pairs: [['p0', 'p1', false]] } });
+  assert.deepEqual(bare.stints.map(s => s.onFloor), none.stints.map(s => s.onFloor));
+});
+
+test('568: two Always links with the two ends set Apart are refused, naming all three', () => {
+  const p = together(10, { constraints: { pairs: [['p0', 'p1', true], ['p0', 'p2', true]], avoids: [['p1', 'p2']] } });
+  assert.equal(p.ok, false);
+  const e = noteOf(p, 'PAIR_CHAIN_APART');
+  assert.equal(e.severity, 'error');
+  assert.equal(e.message, 'Blake and Casey are set Apart, but both are set Always together with Avery, so they would always be on together. Drop one of the rules.');
+  assert.deepEqual([...e.playerIds].sort(), ['p1', 'p2']);
+});
+
+test('568: a chain with either link As much as possible is not refused', () => {
+  const avoids = [['p1', 'p2']];
+  for (const pairs of [[['p0', 'p1', true], ['p0', 'p2']], [['p0', 'p1'], ['p0', 'p2', true]], [['p0', 'p1'], ['p0', 'p2']]]) {
+    const p = together(10, { constraints: { pairs, avoids } });
+    assert.equal(noteOf(p, 'PAIR_CHAIN_APART'), undefined, JSON.stringify(pairs));
+    assert.equal(p.ok, true, JSON.stringify(pairs));
+  }
+});
+
+test('568: an Always Together pair that is also Apart is only the direct conflict', () => {
+  const p = together(10, { constraints: { pairs: [['p0', 'p1', true]], avoids: [['p0', 'p1']] } });
+  assert.equal(p.ok, false);
+  assert.ok(noteOf(p, 'PAIR_AVOID_CONFLICT'));
+  assert.equal(noteOf(p, 'PAIR_CHAIN_APART'), undefined);
+});
+
+test('568: the capped-partner note fires for an Always pair, in plain words, and not for As much as possible', () => {
+  const always = together(10, { constraints: { pairs: [['p0', 'p1', true]], maxMinutes: { p0: 8 } } });
+  assert.equal(noteOf(always, 'SPREAD_RULE').message, 'Blake plays 8 min because they are set Always together with Avery (capped at 8 min).');
+  const soft = together(10, { constraints: { pairs: [['p0', 'p1']], maxMinutes: { p0: 8 } } });
+  assert.equal(noteOf(soft, 'SPREAD_RULE'), undefined);
+});
+
+test('568: the too-big-to-sit note fires for an Always group, not when a link is As much as possible', () => {
+  const always = together(7, { constraints: { pairs: [['p0', 'p1', true], ['p1', 'p2', true]] } });
+  assert.equal(noteOf(always, 'SPREAD_RULE').message,
+    'Avery, Blake and Casey play every minute because 3 players are set Always together and only 2 can sit.');
+  const mixed = together(7, { constraints: { pairs: [['p0', 'p1', true], ['p1', 'p2']] } });
+  assert.equal(noteOf(mixed, 'SPREAD_RULE'), undefined);
+});

@@ -67,7 +67,6 @@ export const EDITS = {
   unitCount: { keys: [...AFTER_EDIT] },                 // add/remove a platoon unit
 
   // rules.js
-  pairs: { keys: [...PLAN_ONLY] },                      // force-together pairs switch
   makeUp: { keys: ['constraints', ...PLAN_ONLY], now: true }, // Make up minutes from: re-solves, and the team's last choice is saved with it
   rule: { keys: [...PLAN_ONLY] },                       // add or remove a rule
   copySetup: { keys: 'all', now: true },                // Copy from another game, and its Undo

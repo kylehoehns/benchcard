@@ -40,16 +40,20 @@ describe('plain words on the Plan sheet', { skip }, () => {
     assert.equal(await coach.text('#planKindBody .pickhd'), 'Pick two players 0 of 2');
   });
 
-  test('the Force Together switch says what it does without the word stint', async () => {
+  test('the Together strength says what it does without the word stint', async () => {
     await openRules();
     await coach.tap('Add a rule');
     await coach.tap('Together');
+    const group = await coach.strengthRows();
+    assert.ok(group, 'the strength group shows under the two-player picker');
+    assert.equal(/stint/i.test(JSON.stringify(group)), false, JSON.stringify(group));
     await coach.tap('Marcus Williams');
     await coach.tap('Devon Ellis');
+    await coach.tap('Always');
     await coach.tap('Add rule');
     const names = await coach.controls();
-    assert.ok(names.includes('Force Together keeps each pair on the floor at the same time'), JSON.stringify(names));
-    assert.equal(names.some(n => /every stint/.test(n)), false);
+    assert.ok(names.includes('Marcus and Devon always together'), JSON.stringify(names));
+    assert.equal(names.some(n => /stint|Force Together/.test(n)), false);
   });
 
   test('a minimum rule mentions a locked By hand number only when the plan is By hand', async () => {

@@ -19,8 +19,8 @@ const source = () => bareGame({
   overtime: [2], seed: 99, id: 'src',
   constraints: {
     ...S.emptyConstraints(),
-    minMinutes: { a: 10 }, maxMinutes: { b: 20 }, pairs: [['a', 'b']], avoids: [['b', 'c']],
-    keepOnFloor: [['a', 'c']], openingFive: ['a', 'b'], lastPeriodFive: ['c'], hardPairs: true,
+    minMinutes: { a: 10 }, maxMinutes: { b: 20 }, pairs: [['a', 'b', true]], avoids: [['b', 'c']],
+    keepOnFloor: [['a', 'c']], openingFive: ['a', 'b'], lastPeriodFive: ['c'],
     maxConsecutive: 3, maxBench: 2,
     targetSlots: { a: 4 }, lockedTargets: ['a'], closing: { stints: 3, players: ['b'] },
     units: [['a', 'b', 'c']],
@@ -32,18 +32,17 @@ const target = () => bareGame({
   constraints: { ...S.emptyConstraints(), minMinutes: { c: 5 }, targetSlots: { c: 1 } },
 });
 
-test('rules alone copies the ten rule keys and nothing else', () => {
+test('rules alone copies the nine rule keys and nothing else', () => {
   const to = target(), from = source();
   S.copySetup(to, from, only('rules'));
   const c = to.constraints;
   assert.deepEqual(c.minMinutes, { a: 10 });
   assert.deepEqual(c.maxMinutes, { b: 20 });
-  assert.deepEqual(c.pairs, [['a', 'b']]);
+  assert.deepEqual(c.pairs, [['a', 'b', true]]);
   assert.deepEqual(c.avoids, [['b', 'c']]);
   assert.deepEqual(c.keepOnFloor, [['a', 'c']]);
   assert.deepEqual(c.openingFive, ['a', 'b']);
   assert.deepEqual(c.lastPeriodFive, ['c']);
-  assert.equal(c.hardPairs, true);
   assert.equal(c.maxConsecutive, 3);
   assert.equal(c.maxBench, 2);
   assert.deepEqual(c.targetSlots, { c: 1 }, 'the strategy settings stay');
@@ -111,7 +110,7 @@ test('what is copied is a copy: editing the source afterwards leaves the target 
   from.constraints.pairs[0].push('z');
   from.order.push('z');
   from.out.push('z');
-  assert.deepEqual(to.constraints.pairs, [['a', 'b']]);
+  assert.deepEqual(to.constraints.pairs, [['a', 'b', true]]);
   assert.deepEqual(to.order, ['b', 'a', 'c']);
   assert.deepEqual(to.out, ['c']);
 });

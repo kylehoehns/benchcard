@@ -214,7 +214,7 @@ export const APP_LARGE_TEXT_STATES = [
   ...['help sheet', 'shortcuts sheet',
       ...Array.from({ length: TOUR_STEP_COUNT }, (_, i) => `tour, step ${i + 1} of ${TOUR_STEP_COUNT}`),
       'team color picker', "who's here sheet",
-      'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, with a pair', 'plan sheet, add a rule', 'plan sheet, copy from another game', 'plan sheet, a cap rule', 'plan sheet, a pair rule',
+      'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'plan sheet, copy from another game', 'plan sheet, a cap rule', 'plan sheet, a pair rule',
       'card sheet open', 'hand off sheet open']
     .map(n => STATES.find(s => s.name === n)),
   // #143: no name above forces a mid-word break; this one does (row-stack.mjs).

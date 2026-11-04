@@ -14,7 +14,7 @@ export const emptyConstraints = () => ({
   // `keepOnFloor` is the third pair relation: never BOTH off. Absent is empty,
   // which is what every record written before it says -- so no version bump.
   minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], keepOnFloor: [],
-  openingFive: [], lastPeriodFive: [], hardPairs: false,
+  openingFive: [], lastPeriodFive: [],
   maxConsecutive: 0, maxBench: 0,
   targetSlots: {}, lockedTargets: [],
   closing: { stints: 2, players: [] },

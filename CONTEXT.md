@@ -259,9 +259,12 @@ A rule that a player plays at most a number of minutes.
 _Avoid_: maximum, ceiling, limit
 
 **Together**:
-A rule that two players share the floor as much as the plan allows, and in every
-stint when the game's rules force it.
-_Avoid_: pair, play together, always together
+A rule that two players share the floor. Each Together rule has its own
+strength: **As much as possible** (the default; the plan keeps them on together
+when it can) or **Always** (they are never split; its sentence reads "always
+together").
+_Avoid_: pair, play together
+_In code_: `pairs` entries, `[a, b]` or `[a, b, true]` for Always
 
 **Apart**:
 A rule that two players are never on the floor at the same time.

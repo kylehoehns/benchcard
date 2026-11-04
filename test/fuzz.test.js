@@ -62,7 +62,7 @@ function scenario(n) {
   const carryover = r() < 0.25
     ? Object.fromEntries(all.map(id => [id, int(0, 40)])) : null;
 
-  if (r() < 0.25) c.hardPairs = true;
+  if (r() < 0.25) c.pairs = c.pairs.map(([a, b]) => [a, b, true]);
 
   /* Until now every one of these scenarios ran the default strategy, so
      closers, platoon and hand-set minutes had never been fuzzed at all -- the
@@ -494,7 +494,7 @@ test('property #438: a hard pair is never less even than a soft plan that alread
     const together = soft.stints.every(s => s.onFloor.includes(a) === s.onFloor.includes(b));
     if (!together || soft.issues.some(i => i.severity !== 'info')) continue;
     checked++;
-    const hard = generatePlan({ ...base, constraints: { pairs: [[a, b]], hardPairs: true } });
+    const hard = generatePlan({ ...base, constraints: { pairs: [[a, b, true]] } });
     assert.ok(hard.spread <= soft.spread + 1e-9,
       `input ${k} (${periods}x${periodMinutes} every ${every}, ${n} players): hard ${hard.spread} vs soft ${soft.spread}`);
   }

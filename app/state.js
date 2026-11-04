@@ -138,7 +138,7 @@ const gameFormat = g => ({ periods: g.periods, periodMinutes: g.periodMinutes, o
 
 /* #548: the one routine that copies a game's setup onto another, behind both
    the Same as card (`newGame`, all four parts) and "Copy from another game".
-   `parts` are the four switches: `rules` (the ten keys below), `plan` (the
+   `parts` are the four switches: `rules` (the nine keys below), `plan` (the
    strategy, the order, and every other constraints key -- the strategy's own
    settings, and any added later by default), `format` (periods, minutes, sub
    interval) and `here` (out and late). Never touched: label, tip-off, date,
@@ -147,7 +147,7 @@ const gameFormat = g => ({ periods: g.periods, periodMinutes: g.periodMinutes, o
    A key the source lacks is removed from the target, so all four parts leave
    the constraints equal to the source's. */
 const RULE_KEYS = ['minMinutes', 'maxMinutes', 'pairs', 'avoids', 'keepOnFloor', 'openingFive',
-  'lastPeriodFive', 'hardPairs', 'maxConsecutive', 'maxBench'];
+  'lastPeriodFive', 'maxConsecutive', 'maxBench'];
 
 export function copySetup(to, from, { rules, plan, format, here }) {
   const wanted = k => (RULE_KEYS.includes(k) ? rules : plan);
@@ -608,7 +608,7 @@ export function ruleItems(g) {
     items.push({ kind: 'cap', text: `${nm(id)} plays at most ${v} min`, removable: true, id });
   }
   for (const pair of c.pairs) {
-    items.push({ kind: 'together', text: `${joinNames(pair.map(nm))} together`, removable: true, pair });
+    items.push({ kind: 'together', text: `${joinNames(pair.slice(0, 2).map(nm))} ${pair[2] === true ? 'always ' : ''}together`, removable: true, pair });
   }
   for (const pair of c.avoids) {
     items.push({ kind: 'apart', text: `${joinNames(pair.map(nm))} apart`, removable: true, pair });
@@ -717,7 +717,7 @@ export function replaceRule(c, item, draft) {
       const i = list.findIndex(samePairAs(item.pair));
       if (i < 0) return false;
       if (list.some((pr, idx) => idx !== i && samePairAs([draft.a, draft.b])(pr))) return false;
-      list[i] = [draft.a, draft.b];
+      list[i] = item.kind === 'together' && draft.always === true ? [draft.a, draft.b, true] : [draft.a, draft.b];
       return { kind: item.kind, pair: list[i] };
     }
     case 'starts': c.openingFive = [...draft.ids]; return { kind: 'starts' };

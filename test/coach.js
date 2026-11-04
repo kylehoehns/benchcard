@@ -746,6 +746,35 @@ export class Coach {
     })()`);
   }
 
+  /** Add a rule's kinds as a coach sees them: each heading with the kind chips
+      under it, top to bottom, `[{ heading, name, kinds: [{ label, on }] }]`
+      (`name` is the chip row's accessible name). */
+  addRuleKinds() {
+    return evalIn(this.c, `[...document.querySelectorAll('#planSub .chips.plan-kinds')].map(row => ({
+      heading: row.previousElementSibling?.classList.contains('pgrp-h') ? row.previousElementSibling.textContent.trim() : null,
+      name: row.getAttribute('role') === 'group' ? row.getAttribute('aria-label') : null,
+      kinds: [...row.querySelectorAll('button')].map(b => ({ label: b.textContent.trim(), on: b.getAttribute('aria-pressed') === 'true' })) }))`);
+  }
+
+  /** The line under the heading-and-chips on Add a rule: what the picked kind does. */
+  kindLine() {
+    return this.text('#planKindBody > .pgrp-f');
+  }
+
+  /** The "Keep them on together" group on Add a rule or a Together rule's page:
+      its heading, its rows with which one is checked, and the line under them.
+      Null when it is not showing. */
+  strengthRows() {
+    return evalIn(this.c, `(() => {
+      const h = [...document.querySelectorAll('#planSub .pgrp-h')].find(e => e.textContent.trim() === 'Keep them on together');
+      if (!h || !h.getClientRects().length) return null;
+      const box = h.nextElementSibling;
+      const rows = [...box.querySelectorAll('.prow')].map(b => ({
+        label: b.querySelector('.prow-t').textContent.trim(), on: b.getAttribute('aria-pressed') === 'true' }));
+      return { heading: h.textContent.trim(), rows, footnote: box.nextElementSibling?.textContent.replace(/\\s+/g, ' ').trim() ?? null };
+    })()`);
+  }
+
   /** Add a game's step counter and progress as a coach sees them: the words
       ("1 of 2"), how many progress segments there are, and the label on the
       button that moves on. Null when the flow is not open. */

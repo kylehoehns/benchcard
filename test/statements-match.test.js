@@ -201,7 +201,7 @@ test('equal minutes read as one number in the pass summary range', () => {
 /* Item 8: the printed stamp is saved with the game and is not handed off. */
 const NINE = Array.from({ length: 9 }, (_, i) => `p${i}`);
 const emptyConstraints = () => ({ minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], openingFive: [],
-  lastPeriodFive: [], hardPairs: false, maxConsecutive: 0, targetSlots: {}, lockedTargets: [],
+  lastPeriodFive: [], maxConsecutive: 0, targetSlots: {}, lockedTargets: [],
   closing: { stints: 2, players: [] }, units: [] });
 const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8, granMode: 'everyN',
   granValue: 4, out: [], useCarryover: false, strategy: 'balanced', balance: 'even',

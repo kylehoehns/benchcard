@@ -3289,7 +3289,7 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    Closing-window one, which renders into #stratbody -- this same sheet.
    This scopes the sheet's own padding, since the chips sit inside a group's
    edge rather than a page's. */
-.plan-kinds { padding: 1rem 1rem 0; }
+.plan-kinds { padding: 0 1rem; }
 /* "One of two always on" was the longest kind label and, at a 32px root in
    a 320px viewport, wider than the sheet itself; .chip's own white-space:
    nowrap is what every other, shorter chip wants, but here it is what
