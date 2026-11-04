@@ -114,7 +114,7 @@ not counted: only the `.js` files `app/` serves are.
 | `#gmOpen is filled and full width at 840/1280, hidden below 840` | `scripts/smoke/gm-open.mjs` | RICH |
 | `bench mode matches the prototype` | `scripts/smoke/bench-look.mjs` | RICH |
 | `bench mode: next change, scope control, no spill, reachable rows, Leave` | `scripts/smoke/bench-details.mjs` | RICH |
-| `add a game: three steps` | `scripts/smoke/add-game-flow.mjs` | RICH |
+| `add a game: two steps` | `scripts/smoke/add-game-flow.mjs` | RICH |
 | `M4: the switch knob and a player chip avatar change state instantly` | `scripts/smoke/m4-instant.mjs` | RICH |
 | `heading outline: one h1 per screen, no skipped levels, dialogs start at h2` | `scripts/smoke/heading-outline.mjs` | RICH |
 | `forced colors: selected/on differs from unselected, timeline blocks keep a border` | `scripts/smoke/forced-colors.mjs` | RICH |

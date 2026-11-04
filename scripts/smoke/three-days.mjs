@@ -141,7 +141,6 @@ export async function threeDaysPass(c, origin, rec) {
   await typeIn(c, '#agBody input[type=date]', addDays(1));
   await realTap(c, '#agNext');
   await realTap(c, '#agNext');
-  await realTap(c, '#agNext');
   if (await waitClosed(c, '#addGameFlow')) {
     await tap(c, `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`);
     const after = await dayGroups(c);

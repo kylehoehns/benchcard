@@ -253,25 +253,19 @@ export const APP_LARGE_TEXT_STATES = [
            document.querySelector('#tabledetails').open = true`,
     close: `document.querySelector('#tabledetails').open = false;
             document.querySelector('#backBtn').click()` },
-  /* #32 item 10: the three steps of the Add-a-game flow, at the cell the
+  /* #32 item 10: the two steps of the Add-a-game flow, at the cell the
      acceptance criterion names. A full-screen dialog with its own bar,
      scrolling body and fixed footer -- no state above this one has ever put
      one on screen, and the footer's primary is the control the claim is
      really about: it has to stay whole and on screen with the body at a 32px
      root. One state per step, because each body is a different layout (two
-     fields and a card; a grid of eleven tiles; four option cards and a
-     switch), which is the same argument `bench mode, swap picker` above
+     fields and a card; a grid of eleven tiles), which is the same argument `bench mode, swap picker` above
      makes for its second entry. */
   { name: 'add a game, step 1',
     open: `${TODAY_HOME}; document.querySelector('#todayAddGame').click()`,
     close: `document.querySelector('#addGameFlow').close()` },
   { name: 'add a game, step 2',
     open: `${TODAY_HOME}; document.querySelector('#todayAddGame').click();
-           document.querySelector('#agNext').click()`,
-    close: `document.querySelector('#addGameFlow').close()` },
-  { name: 'add a game, step 3',
-    open: `${TODAY_HOME}; document.querySelector('#todayAddGame').click();
-           document.querySelector('#agNext').click();
            document.querySelector('#agNext').click()`,
     close: `document.querySelector('#addGameFlow').close()` },
   /* #134 item 6: the "Rotation changed." Undo toast that ticket's own guard
@@ -708,15 +702,15 @@ export async function tryLanding(c, origin, n, want = {}) {
    ticket's surface, and adding an assertion nobody asked to a screen nobody
    changed is exactly the "while I am in here" `AGENTS.md` rules out. */
 const DIALOG_CHECKED_STATES = new Set(['plan sheet', 'plan sheet, add a rule',
-  /* #32 item 10: the same two probes for the three flow steps. The
+  /* #32 item 10: the same two probes for the two flow steps. The
      dialog-relative one earns its place twice over here: the flow's body
      scrolls (`.flow-body` is `overflow-y: auto`, which computes overflow-x
      to `auto` as well), and the viewport probe above deliberately forgives
-     anything inside a scroll container -- so without this probe the tiles,
-     the option cards and the two fields would be measured by nothing. It
+     anything inside a scroll container -- so without this probe the tiles
+     and the two fields would be measured by nothing. It
      also carries rule 2a for these rows: if the flow never opens, `dialog:
      false` fails the state instead of quietly measuring Today. */
-  'add a game, step 1', 'add a game, step 2', 'add a game, step 3']);
+  'add a game, step 1', 'add a game, step 2']);
 
 // #147 item 4/#167: the one state with a player pick on screen.
 const GM_BODY_CHECKED_STATES = new Set(['bench mode, swap picker']);

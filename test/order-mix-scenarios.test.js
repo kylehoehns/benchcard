@@ -157,7 +157,6 @@ describe('Rotation order: mix the fives', { skip }, () => {
     await coach.tap('Add a game');
     await coach.fill('Opponent', 'Owls');
     await coach.tap('Next');
-    await coach.tap('Next');
     await coach.tap('Add game');
     await coach.tap('Plan, rotation order');
     // the new game starts like Hawks; put it back on Best players, so the copy has something to change

@@ -93,8 +93,7 @@ const TOUCH_STATES = [
            document.querySelector('#phraseStrategy').click();
            document.querySelector('.add-rule').click()` },
   /* #32 item 10: every button in the Add-a-game flow is a touch target --
-     the ✕, "‹ Back", the primary, "Use it", eleven player tiles and four
-     option cards, none of which any state above this one draws. Last in the
+     the ✕, "‹ Back", the primary, "Use it", eleven player tiles, none of which any state above this one draws. Last in the
      list, and the shared `close` below closes the dialog: a modal covers
      everything, so a state after it would be measuring the flow again. */
   { name: 'add a game, step 1',
@@ -103,10 +102,8 @@ const TOUCH_STATES = [
            document.querySelector('#todayAddGame').click()` },
   { name: 'add a game, step 2',
     open: `document.querySelector('#agNext').click()` },
-  { name: 'add a game, step 3',
-    open: `document.querySelector('#agNext').click()` },
-  /* #36: the three first-run steps, appended after the Add-a-game trio and
-     resetting from it the way that trio itself resets from whatever ran
+  /* #36: the three first-run steps, appended after the Add-a-game pair and
+     resetting from it the way that pair itself resets from whatever ran
      before it -- `close` (below, shared by every state here) runs once, at
      the end of this whole array, not after each state (`widthSweep`'s own
      contract), so `#addGameFlow` would otherwise still be open here. Opened

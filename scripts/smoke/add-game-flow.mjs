@@ -3,16 +3,16 @@ import { richWith } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { closedWithFocus, evalJSON, key, openAddGameFlow as openFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
 import { addGameFitChecks } from './add-game-fit.mjs';
-import { checkedTileHasNoRing, exactlyOneTintFill, stepThreeVisuals } from './add-game-visuals.mjs';
+import { checkedTileHasNoRing, exactlyOneTintFill } from './add-game-visuals.mjs';
 
 /* #32's own guard (docs/specs/32-add-a-game.md, Proof seam 4): "add a game:
-   three steps", RICH fixture, 390x844. It settles the acceptance items that
+   two steps", RICH fixture, 390x844. It settles the acceptance items that
    are claims about the real screen -- 1 (full screen, step count, ✕), 2
-   (Android back), 3 (step 1), 4 ("Add game" copies), 5 (step 2), 6 (step 3), 7
+   (Android back), 3 (step 1), 4 ("Add game" copies), 5 (step 2), 6 (Add game commits), 7
    (the discard ask) and 9 (the game lands on Today) -- by driving the app
    with real buttons and real keys, the shape `team-screen.mjs` already uses.
 
-   Every expected string here is the spec's own ("Add a game", "1 of 3", "Who
+   Every expected string here is the spec's own ("Add a game", "1 of 2", "Who
    are you playing?", "11 players, 4 × 8, even minutes", "Out", "Add game"),
    never a second computation of what the app does. The numbers that are the
    fixture's rather than the spec's -- eleven players, two games already in
@@ -96,8 +96,8 @@ const sameAsText = c => evalJSON(c, `(async () => {
   return JSON.stringify(last.tipoff ? \`Same as \${tipoffLabel(last.tipoff)}?\` : 'Same as the last game?');
 })()`);
 
-/* Item 1: full screen over the chrome, "Add a game", "1 of 3", a ✕ named
-   "Close" as the first control, and a three-segment progress bar with one
+/* Item 1: full screen over the chrome, "Add a game", "1 of 2", a ✕ named
+   "Close" as the first control, and a two-segment progress bar with one
    segment on. */
 async function opensFullScreen(c, ck) {
   await openFlow(c);
@@ -110,10 +110,10 @@ async function opensFullScreen(c, ck) {
     + `(${Math.round(s.box.left)}, ${Math.round(s.box.top)}), want the whole ${WIDTH}×${HEIGHT} viewport (C10)`);
   ck(s.overBar === true, 'the app chrome (.bar) is still taking taps with the flow open -- it is not covering it (C10)');
   ck(s.title === 'Add a game', `the flow's header reads "${s.title}", want "Add a game"`);
-  ck(s.step === '1 of 3', `the step count reads "${s.step}", want "1 of 3"`);
+  ck(s.step === '1 of 2', `the step count reads "${s.step}", want "1 of 2"`);
   ck(s.firstControl === 'Close',
     `the first control in the flow is named "${s.firstControl}", want "Close" (N8/C10: ✕ top left)`);
-  ck(s.segments === 3, `the progress bar has ${s.segments} segment(s), want 3`);
+  ck(s.segments === 2, `the progress bar has ${s.segments} segment(s), want 2`);
   ck(s.segmentsOn === 1, `${s.segmentsOn} progress segment(s) are marked on, want exactly 1`);
   ck(s.onIndex === 0, `segment ${s.onIndex + 1} is marked on at step 1, want the first`);
   return true;
@@ -238,29 +238,23 @@ async function backFromStep(c) {
    close request with nothing touched in between gets no such activation:
    Chrome force-closes the dialog outright rather than landing on the step
    before it, and no code here can veto that (I1's own finding). So this
-   walks 3 -> 2 with the leftover activation from the second Next, taps to
-   refresh it, steps 2 -> 1 the same way, and then proves the real (unprimed)
-   sequence: a second press right behind the first force-closes rather than
-   landing on step 1 -- and nothing is added to the day either way. */
+   walks 2 -> 1 with the leftover activation from the Next, and then proves
+   the real (unprimed) sequence: a second press right behind the first
+   force-closes rather than landing on nothing -- and nothing is added to the
+   day either way. */
 async function backStepsThrough(c, ck) {
   const before = (await dayGames(c)).length;
   ck(before === 2, `the rich fixture's day holds ${before} game(s); this check is measuring the wrong record`);
 
   await realTap(c, '#agNext');
-  await realTap(c, '#agNext');
   let s = await flowState(c);
-  if (!ck(s.step === '3 of 3', `two taps of Next left the flow on "${s.step}", want "3 of 3"`)) return;
-  ck(s.next === 'Add game', `step 3's primary button reads "${s.next}", want "Add game"`);
-  ck(s.backShown === true, 'step 3 shows no "Back" button -- the gesture has no visible twin (I3)');
+  if (!ck(s.step === '2 of 2', `a tap of Next left the flow on "${s.step}", want "2 of 2"`)) return;
+  ck(s.next === 'Add game', `the last step's primary button reads "${s.next}", want "Add game"`);
+  ck(s.backShown === true, 'the last step shows no "Back" button -- the gesture has no visible twin (I3)');
 
   await backFromStep(c);
   s = await flowState(c);
-  ck(s.open && s.step === '2 of 3', `the browser's close request from step 3 left the flow ${s.open ? `on "${s.step}"` : 'closed'}, want step 2`);
-
-  await realTap(c, '#agBody h2');
-  await backFromStep(c);
-  s = await flowState(c);
-  ck(s.open && s.step === '1 of 3', `a close request with a fresh interaction left the flow ${s.open ? `on "${s.step}"` : 'closed'}, want step 1`);
+  ck(s.open && s.step === '1 of 2', `the browser's close request from step 2 left the flow ${s.open ? `on "${s.step}"` : 'closed'}, want step 1`);
   ck(s.backShown === false, 'step 1 still shows a "Back" button -- there is nothing behind it');
 
   // The real sequence: nothing touched between this press and the last one.
@@ -319,7 +313,7 @@ const bodyState = c => evalJSON(c, `(() => {
 async function stepOneReads(c, ck) {
   await openFlow(c);
   const s = await flowState(c);
-  if (!ck(s.open && s.step === '1 of 3', 'reopening the flow did not land on step 1')) return;
+  if (!ck(s.open && s.step === '1 of 2', 'reopening the flow did not land on step 1')) return;
   ck(s.heading === 'Who are you playing?',
     `step 1 asks "${s.heading}", want "Who are you playing?"`);
   ck(s.headingFocused, 'step 1 opened without moving focus to its question -- the screen changed under the coach');
@@ -362,11 +356,11 @@ const roster = c => evalJSON(c, `(async () => {
 async function stepTwoReads(c, ck) {
   await realTap(c, '#agNext');
   const s = await flowState(c);
-  if (!ck(s.step === '2 of 3', `Next from step 1 left the flow on "${s.step}"`)) return;
+  if (!ck(s.step === '2 of 2', `Next from step 1 left the flow on "${s.step}"`)) return;
   ck(s.heading === "Who's here?", `step 2 asks "${s.heading}", want "Who's here?"`);
   // #145 item 7: the bar fills every segment up to and including step 2, not
   // step 2 alone.
-  ck(s.segmentsOn === 2, `at step 2 of 3, ${s.segmentsOn} progress segment(s) are on, want 2`);
+  ck(s.segmentsOn === 2, `at step 2 of 2, ${s.segmentsOn} progress segment(s) are on, want 2`);
 
   const players = await roster(c);
   let t = await tiles(c);
@@ -398,54 +392,6 @@ async function stepTwoReads(c, ck) {
   ck(b.text.includes('11 of 11'), `tapping the tile again did not restore the count (body reads "${b.text.slice(-80)}")`);
   ck(t[0].pressed === 'true' && !t[0].name.endsWith(', Out'),
     `tapping again left the tile "${t[0].name}" at aria-pressed="${t[0].pressed}"`);
-}
-
-/* Step 3's five cards and the switch under them. The descriptions are read
-   out of `STRATEGIES` rather than typed here: the spec names that map as the
-   single source of the wording, so a third copy written into the flow is the
-   failure this is looking for, and a copy of the map in this file would be a
-   fourth. The labels ARE typed, because the spec names those five words. */
-const splitState = c => evalJSON(c, `(async () => {
-  const { STRATEGIES } = await import('/state.js');
-  const g = document.querySelector('#agBody [role=radiogroup]');
-  const opts = g ? [...g.querySelectorAll('[role=radio]')] : [];
-  const sw = document.querySelector('#agBody input[switch]');
-  return JSON.stringify({
-    group: !!g,
-    options: opts.map(o => ({
-      text: (o.textContent || '').replace(/\\s+/g, ' ').trim(),
-      checked: o.getAttribute('aria-checked') === 'true',
-    })),
-    descriptions: Object.values(STRATEGIES),
-    switchLabel: sw ? (sw.closest('label')?.textContent || '').replace(/\\s+/g, ' ').trim() : null,
-  });
-})()`);
-
-/* Item 6: how the minutes split. */
-async function stepThreeReads(c, ck) {
-  await realTap(c, '#agNext');
-  const s = await flowState(c);
-  if (!ck(s.step === '3 of 3', `Next from step 2 left the flow on "${s.step}"`)) return;
-  ck(s.heading === 'How should minutes split?',
-    `step 3 asks "${s.heading}", want "How should minutes split?"`);
-  ck(s.next === 'Add game', `step 3's primary button reads "${s.next}", want "Add game"`);
-  // #145 item 7: every segment fills by the last step.
-  ck(s.segmentsOn === 3, `at step 3 of 3, ${s.segmentsOn} progress segment(s) are on, want 3`);
-
-  const sp = await splitState(c);
-  if (!ck(sp.group && sp.options.length === 5,
-    `step 3 draws ${sp.options.length} option(s) in ${sp.group ? 'a radiogroup' : 'no radiogroup'}, want 5`)) return;
-  ['Even', 'By hand', 'Closers', 'Platoon', 'Order'].forEach((w, i) => {
-    ck(sp.options[i].text.startsWith(w),
-      `option ${i + 1} reads "${sp.options[i].text}", want it to start with "${w}" -- #stratseg's own word`);
-  });
-  sp.descriptions.forEach((d, i) => {
-    ck(sp.options[i].text.includes(d),
-      `option ${i + 1} ("${sp.options[i].text}") does not carry its STRATEGIES line, "${d}"`);
-  });
-  const on = sp.options.filter(o => o.checked).length;
-  ck(on === 1, `${on} of the five options are marked aria-checked, want exactly 1`);
-  ck(sp.switchLabel === null, `step 3 still carries a switch ("${sp.switchLabel}"), want none: the Plan sheet owns the make-up choice (#563)`);
 }
 
 // Where the app is looking, and which game it thinks is open.
@@ -485,27 +431,25 @@ async function sameAsCardCommits(c, ck) {
     `after "Add game" the app is on "${v.view}" with game ${v.activeGame} open, want the new game on "games"`);
 }
 
-/* Items 5 (the tapped tile's id lands in the game) and 6 ("Add game" commits
-   the chosen strategy and the switch's own state). */
-async function stepThreeCommits(c, ck) {
-  const before = (await dayGames(c)).length;
+/* Items 5 and 6: the tapped tile's id lands in the game, and "Add game" on
+   Who's here commits it on the last game's strategy, with no strategy question
+   asked on the way (#565). */
+async function stepTwoCommits(c, ck) {
+  const before = await dayGames(c);
+  const prev = before.at(-1);
   const players = await roster(c);
   await openFlow(c);
   await realTap(c, '#agNext');
   await realTap(c, '#agBody .plr');          // the first player is not here today
   await realTap(c, '#agNext');
-  const want = await evalJSON(c, `(() => JSON.stringify({
-    strat: [...document.querySelectorAll('#stratseg button[data-strat]')][2].dataset.strat }))()`);
-  await realTap(c, '#agBody [role=radiogroup] [role=radio]:nth-child(3)');
-  await realTap(c, '#agNext');
   if (!ck(await waitClosed(c, '#addGameFlow'), '"Add game" did not close the flow')) return;
 
   const after = await dayGames(c);
-  if (!ck(after.length === before + 1,
-    `"Add game" left ${after.length} game(s) in the day, want ${before + 1}`)) return;
+  if (!ck(after.length === before.length + 1,
+    `"Add game" left ${after.length} game(s) in the day, want ${before.length + 1}`)) return;
   const made = after.at(-1);
-  ck(made.strategy === want.strat,
-    `the new game's strategy is "${made.strategy}", want the "${want.strat}" option that was tapped`);
+  ck(made.strategy === prev.strategy,
+    `the new game's strategy is "${made.strategy}", want the last game's "${prev.strategy}"`);
   ck(made.useCarryover === true, `a second game of the day starts on Earlier today, but useCarryover is ${made.useCarryover}`);
   ck(made.out.includes(players[0].id),
     `${players[0].name} was tapped absent on step 2 but is not in the new game's out list`);
@@ -555,7 +499,7 @@ async function askDoesNotStrandOverRepaint(c, ck) {
   await typeIn(c, '#agBody input[type=text]', 'Panthers');
   await realTap(c, '#agNext');
   let s = await flowState(c);
-  if (!ck(s.step === '2 of 3', `two-step setup left the flow on "${s.step}", want "2 of 3"`)) return;
+  if (!ck(s.step === '2 of 2', `two-step setup left the flow on "${s.step}", want "2 of 2"`)) return;
 
   await realTap(c, '#agClose');
   s = await flowState(c);
@@ -564,7 +508,7 @@ async function askDoesNotStrandOverRepaint(c, ck) {
   await realTap(c, '#agBody h2'); // a real interaction, so the back gesture below can veto
   await key(c, 'Escape', 27);
   s = await flowState(c);
-  ck(s.open && s.step === '1 of 3', `the back gesture left the flow ${s.open ? `on "${s.step}"` : 'closed'}, want step 1`);
+  ck(s.open && s.step === '1 of 2', `the back gesture left the flow ${s.open ? `on "${s.step}"` : 'closed'}, want step 1`);
   ck(!s.askShown && s.footShown,
     'the discard ask is still showing over step 1 -- it was asking about the step the back gesture just left (I2)');
 
@@ -587,14 +531,13 @@ async function tipoffSetsAndReadsAsLocaleTime(c, ck) {
   await typeIn(c, '#agBody input[type=time]', '19:30');
   await realTap(c, '#agNext');
   await realTap(c, '#agNext');
-  await realTap(c, '#agNext');
   if (!ck(await waitClosed(c, '#addGameFlow'), '"Add game" did not close the flow after setting a tip-off')) return;
 
   const after = await dayGames(c);
   if (!ck(after.length === before + 1,
     `setting a tip-off left ${after.length} game(s) in the day, want ${before + 1}`)) return;
   // Not `.at(-1)`: by this point the day also holds two untimed games from
-  // `sameAsCardCommits`/`stepThreeCommits` above, and a *timed* new game (#102's own
+  // `sameAsCardCommits`/`stepTwoCommits` above, and a *timed* new game (#102's own
   // sort) lands ahead of them, not after -- so the new game is found by its
   // own label instead of assumed to be last.
   const made = after.find(g => g.label === 'Comets');
@@ -641,17 +584,15 @@ export async function addGameFlowPass(c, origin, rec) {
     await exactlyOneTintFill(c, rec.check);
     await stepTwoReads(c, rec.check);
     await checkedTileHasNoRing(c, rec.check, 'light');
-    await stepThreeReads(c, rec.check);
-    await stepThreeVisuals(c, rec.check, 'light');
     // Nothing was typed on that walk through, so ✕ closes at once -- the
-    // last three checks each want a flow of their own.
+    // last checks each want a flow of their own.
     await realTap(c, '#agClose');
     await waitClosed(c, '#addGameFlow');
     await headingDrawsNoRing(c, rec.check);
     await focusReturnsToTrigger(c, rec.check);
     await closeChipAndBackChevron(c, rec.check);
     await sameAsCardCommits(c, rec.check);
-    await stepThreeCommits(c, rec.check);
+    await stepTwoCommits(c, rec.check);
     await tipoffSetsAndReadsAsLocaleTime(c, rec.check);
     await discardAsks(c, rec.check);
     await askDoesNotStrandOverRepaint(c, rec.check);
@@ -665,11 +606,9 @@ export async function addGameFlowPass(c, origin, rec) {
     await openFlow(c);
     await realTap(c, '#agNext');
     await checkedTileHasNoRing(c, rec.check, 'dark');
-    await realTap(c, '#agNext');
-    await stepThreeVisuals(c, rec.check, 'dark');
     await realTap(c, '#agClose');
     await waitClosed(c, '#addGameFlow');
   }
 
-  rec.ok('three steps, the back gesture and the discard ask all hold');
+  rec.ok('two steps, the back gesture and the discard ask all hold');
 }

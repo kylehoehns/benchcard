@@ -196,15 +196,15 @@ describe('Make up minutes from', { skip }, () => {
     assert.ok((await coach.footnotes()).includes("What a new game starts as. Changing A game is also changes this day's games that haven't started."));
   });
 
-  test('14. Add a game step 3 has the five strategy cards and no switch', async () => {
+  test('14. Add a game has no strategy cards and no switch on its last step', async () => {
     await planOf(1);
     await coach.tap('Close');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Add a game');
     await coach.tap('Next');
-    await coach.tap('Next');
+    assert.equal((await coach.addGameStep()).step, '2 of 2');
     const cards = (await coach.controls()).filter(n => /^(Even|By hand|Closers|Platoon|Order) /.test(n));
-    assert.equal(cards.length, 5, JSON.stringify(await coach.controls()));
+    assert.equal(cards.length, 0, JSON.stringify(await coach.controls()));
     assert.equal(await coach.sees('Even out earlier games'), false);
     assert.equal(await coach.count('#agBody input[switch]'), 0);
   });

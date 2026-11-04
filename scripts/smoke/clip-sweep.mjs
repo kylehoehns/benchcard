@@ -259,7 +259,7 @@ export const CLIP_SWEEP_ALLOW = [
  * floor check's own allow list, scoped to that one finding kind rather than
  * excluding the element from every check the way CLIP_SWEEP_ALLOW above does
  * — the `h2.flow-q` step headings in Add a game ("Who are you playing?",
- * "How should minutes split?") run 7–14px into the 32px side margin but stay
+ * "Who's here?") run 7–14px into the 32px side margin but stay
  * whole and readable (#204's Decisions: accepted). Same "stale entry fails"
  * treatment as the allow list above. */
 export const CLIP_SWEEP_FLOOR_ALLOW = [
@@ -363,7 +363,7 @@ export const CLIP_PROBE = `(() => {
   // "Cut off" means an ancestor's computed overflow-x actually clips painted
   // content, not just that a flex/grid item rendered past its own content
   // box into room a sibling isn't using (".prow-t { flex: 1; min-width: 0 }"
-  // wraps into empty space next to a switch on add-a-game step 3, fully
+  // wraps into empty space next to a switch on a Plan sheet row, fully
   // visible — scrollWidth alone can't tell that apart from a real clip). So
   // this walks up for the nearest ancestor whose overflow-x would clip,
   // falling back to the viewport.

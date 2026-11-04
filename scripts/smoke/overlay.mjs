@@ -267,7 +267,7 @@ export const STATES = [
      A full-screen `<dialog>` in the top layer, so nothing this pass has
      audited before covers its controls -- the ✕, the step count, the two
      fields and the footer pair. Closed with the dialog's own `close()`, the
-     same way every sheet above is: the close paths are `add a game: three
+     same way every sheet above is: the close paths are `add a game: two
      steps`'s job, this pass audits accessibility. */
   { name: 'add a game flow',
     open: `$('#todayAddGame').click()`, shows: '#addGameFlow[open]',

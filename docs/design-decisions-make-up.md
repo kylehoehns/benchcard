@@ -29,5 +29,5 @@ minutes from** in CONTEXT.md.
 - **The team default is `settings.makeUp`, and Settings no longer asks.**
   `seasonDefault` is gone. A new game takes The season so far when that was the
   team's last pick, otherwise Earlier today from a day's second game on, and
-  This game only for the first. Add a game's step 3 lost its switch for the same
-  reason: the Plan sheet owns the choice.
+  This game only for the first. Add a game lost its switch (#563) and then its
+  strategy step (#565): the Plan sheet owns the choice.
