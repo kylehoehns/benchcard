@@ -110,7 +110,9 @@ Everything below is relative to `app/`.
   served is in `docs/operations.md` § Deployment.
 
 Outside it: `test/*.test.js` (`node --test`) and the `scripts/` tooling, which
-includes the build (`scripts/build.mjs`) that writes `dist/`.
+includes the build (`scripts/build.mjs`) that writes `dist/`. The WebKit run
+(`scripts/webkit.mjs` and `scripts/webkit/`) is outside `npm test` and is
+described in [operations.md § Testing](../operations.md#testing).
 
 The suite includes 400-scenario property-based fuzzing of the engine (the
 README carries the test count; it is not repeated here). Generation runs

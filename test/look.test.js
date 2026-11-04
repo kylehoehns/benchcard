@@ -194,3 +194,23 @@ test('collector keeps our errors and third-party noise apart, and drain empties 
     thirdParty: ['blocked https://static.cloudflareinsights.com/beacon.min.js'] });
   assert.deepEqual(c.drain(), { consoleErrors: [], thirdParty: [] });
 });
+
+/* ---------- --engine (#597): chromium by default, webkit on request, nothing else ---------- */
+
+test('--engine defaults to chromium and reads webkit', () => {
+  assert.equal(parseArgs(['--out', 'o']).engine, 'chromium');
+  assert.equal(parseArgs(['--out', 'o', '--engine', 'chromium']).engine, 'chromium');
+  assert.equal(parseArgs(['--out', 'o', '--engine', 'webkit']).engine, 'webkit');
+});
+
+test('any other --engine is refused, naming the value and the two allowed', () => {
+  assert.throws(() => parseArgs(['--out', 'o', '--engine', 'firefox']), e => {
+    assert.match(e.message, /--engine/);
+    assert.match(e.message, /firefox/);
+    assert.match(e.message, /chromium/);
+    assert.match(e.message, /webkit/);
+    return true;
+  });
+  refused(['--out', 'o', '--engine', ''], /--engine/);
+  refused(['--out', 'o', '--engine', '--dark'], /--engine/);
+});

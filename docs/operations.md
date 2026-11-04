@@ -19,12 +19,13 @@ has the detail (#595).
 
 ## Testing
 
-`node --test` — no install step, because there are no dependencies.
+`node --test` — no install step, because there are no dependencies. (The one
+run that needs a package the repo does not ship is the WebKit check below.)
 `.github/workflows/test.yml` runs it on every push and PR against `main`, on
 Node 24, one leg. The repo is private, so the badge above only renders for
 someone signed in with access.
 
-There are **eight** CI jobs in total: the `node --test` job above, then
+There are **nine** CI jobs in total: the `node --test` job above, then
 `smoke part` (a matrix of four: the unit suite under coverage with `--shard
 suite`, and the browser rows dealt across three Chromes with `--shard 1/3` to
 `3/3`), `smoke` (the required check: `node scripts/smoke.mjs --merge` over the
@@ -34,9 +35,10 @@ floor on the whole run, and failing if any part failed or is missing; #459),
 checks the harness's evals still pass), `redirect` (`redirect-check.mjs`,
 the service worker behind Cloudflare's trailing-slash 307s), `checks that need
 history` (three steps: `check-about-date.mjs`, `check-sitemap-lastmod.mjs` and `check-whats-new.mjs`),
-and `vendor drift` (below), plus the weekly `lighthouse scores` (below that).
+and `vendor drift` (below), plus the weekly `lighthouse scores` (below that),
+and the advisory `webkit` job (its own workflow, below), which cannot block a merge.
 Three of these went unmentioned here for months while this paragraph counted
-to three; if you add a ninth, say so here.
+to three; if you add a tenth, say so here.
 
 When the unit suite fails, the `node --test` row names the tests that failed.
 Under that row each failing test prints its name, its `file:line:col` and the
@@ -92,6 +94,33 @@ README badges read. It is not a required check: it has no `push` or `pull_reques
 trigger, because a job that depends on the live site must not gate a merge. It
 runs on `workflow_dispatch`, and `test/ci-config.test.js` guards that it never
 pushes to `main`.
+
+**WebKit checks (#597).** `node scripts/webkit.mjs` runs five checks in
+Playwright's WebKit, the engine behind Safari, because every other browser check
+here is Chrome, and two bugs that showed only on an iPhone got past them. The
+checks are print, home-screen print, share image, bench mode scroll bars and add
+a game. It prints a PASS, FAIL or SKIP row for each and exits 1 on any FAIL.
+Playwright is not in `package.json`. The script loads it at run time, pinned to
+1.64.1 in `scripts/webkit/playwright.mjs`, so install it first with
+`npm install --no-save --no-package-lock playwright@1.64.1 && npx playwright@1.64.1 install webkit`.
+Without it the script prints the install line and exits 1. `npm test` and
+`npm run smoke` never import Playwright.
+
+`.github/workflows/webkit.yml` runs the same five checks on push and PR against
+`main`, and by hand, on `ubuntu-24.04`, then a look run, and uploads the shots
+as the `webkit-look` artifact. Its job has `continue-on-error: true`, so a red
+run cannot block a merge. It is its own workflow, not a job in `test.yml`,
+because `test/ci-config.test.js` pins that file's job list to branch protection.
+Making it required is a later decision.
+
+`scripts/look.mjs --engine webkit` runs the look shots in WebKit instead of
+Chrome; `--engine chromium` is the default. Look-check usage is in
+AGENTS.md § Layout.
+
+What the run can and cannot show is in two places. The browser-verify skill's
+§ 6 says why a desktop WebKit run does not clear an iPhone bug, and
+`docs/specs/597-webkit-checks.md` says what each check can and cannot reproduce.
+The home-screen row emulates the installed app; it does not run on one.
 
 `npm run flakes` reads CI history. It lists the last 30 runs of the `tests`
 workflow (`-- --limit N` changes that), then counts each failing test name,
