@@ -10,6 +10,13 @@ Serve `app/`, not the repo root: the service worker's scope, the manifest's
 `start_url` and every absolute path in it assume `app/` is `/`. ES modules are
 blocked over `file://`, so it has to be served either way.
 
+The server stops by itself, after 60 minutes or as soon as the process that
+started it exits (under `npm run serve`, npm or the shell npm starts it
+from; Ctrl-C stops both).
+For a different limit, pass minutes through npm: `npm run serve -- --ttl 30`.
+A bare `&` from a shell that then exits stops it at once; AGENTS.md § Layout
+has the detail (#595).
+
 ## Testing
 
 `node --test` — no install step, because there are no dependencies.

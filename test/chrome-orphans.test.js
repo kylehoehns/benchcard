@@ -265,7 +265,7 @@ test('the sweep never throws', async () => {
   await assert.doesNotReject(reapOrphans(join(sandbox(), 'does-not-exist')));
 });
 
-/* ---------- a real smoke run SIGKILLed, then a real launch() (items 1-3) ---------- */
+/* ---------- a real smoke run SIGKILLed; the watcher (#595) and the backstop (#510) ---------- */
 
 function startSmoke(root, extraEnv = {}) {
   const p = spawn(process.execPath, [SMOKE, '--only', 'rich fixture is live', '--timeout', '3'], {
@@ -293,23 +293,60 @@ async function nextLaunch(root) {
   await closeChrome(c.proc, c.dir);
 }
 
+/* The processes that are the dir's Chrome, judged the way Chrome is named: by
+   the `--user-data-dir=<dir>` token. The watcher carries the dir only as a
+   plain argument, so it is not one of these. */
+const chromeOf = dir => ps().filter(p => p.command.includes(`--user-data-dir=${dir}`));
+/* The watcher #595 starts beside each Chrome: found by its own command line
+   plus the folder. */
+const watcherOf = dir => ps().filter(p => p.command.includes('chrome-watcher') && p.command.includes(dir));
+
 for (const [name, reach, env] of [
   ['mid-boot', midBoot, {}],
   ['mid-page', midPage, { BENCHCARD_SMOKE_HANG: 'rich fixture is live' }],
 ]) {
-  test(`a smoke run SIGKILLed ${name} leaves no Chrome after the next launch()`, { timeout: 120_000, ...NEEDS_CHROME }, async () => {
+  test(`a smoke run SIGKILLed ${name} leaves no Chrome and no profile dir within 20s, with no further launch() (#595)`, { timeout: 120_000, ...NEEDS_CHROME }, async () => {
     const root = sandbox();
     const run = startSmoke(root, env);
     const dir = await reach(root);
     run.kill('SIGKILL');
     await new Promise(ok => run.once('exit', ok));
-    await new Promise(r => setTimeout(r, 500));
-    assert.ok(naming(dir).length, 'precondition: Chrome should outlive its SIGKILLed owner (the bug)');
-    await nextLaunch(root);
-    assert.deepEqual(naming(dir).map(p => p.command.slice(0, 80)), [], `Chrome from the SIGKILLed run (${name}) still runs after launch()`);
-    assert.ok(!existsSync(dir), `the SIGKILLed run's profile dir (${name}) was left behind`);
+    await waitFor(() => !chromeOf(dir).length && !existsSync(dir), 20_000,
+      `Chrome (${name}) and its profile dir to be gone after the owner was SIGKILLed`)
+      .catch(() => assert.fail(`after 20s: processes ${JSON.stringify(chromeOf(dir).map(p => p.command.slice(0, 80)))}, dir exists: ${existsSync(dir)}`));
   });
 }
+
+/* #510 kept: the watcher is a process too, and `killall node` could take it. Then
+   the next launch() is still the backstop. */
+test('with the watcher also SIGKILLed, Chrome outlives the owner and the next launch() reaps it (#510)', { timeout: 120_000, ...NEEDS_CHROME }, async () => {
+  const root = sandbox();
+  const run = startSmoke(root, { BENCHCARD_SMOKE_HANG: 'rich fixture is live' });
+  const dir = await midPage(root);
+  const [watcher] = await waitFor(() => { const w = watcherOf(dir); return w.length ? w : null; }, 10_000, 'the run\'s watcher to be listed');
+  pidsToKill.add(watcher.pid);
+  process.kill(watcher.pid, 'SIGKILL');
+  await waitFor(() => !alive(watcher.pid) || ps().find(p => p.pid === watcher.pid)?.command.includes('<defunct>'), 10_000, 'the watcher to die');
+  run.kill('SIGKILL');
+  await new Promise(ok => run.once('exit', ok));
+  await new Promise(r => setTimeout(r, 1500));
+  assert.ok(chromeOf(dir).length, 'precondition: Chrome should outlive its SIGKILLed owner once the watcher is dead too');
+  await nextLaunch(root);
+  assert.deepEqual(chromeOf(dir).map(p => p.command.slice(0, 80)), [], 'Chrome from the SIGKILLed run still runs after launch()');
+  assert.ok(!existsSync(dir), 'the SIGKILLed run\'s profile dir was left behind');
+});
+
+test('after a normal launch() and closeChrome(), no watcher for that folder is left within 5s (#595)', { timeout: 120_000, ...NEEDS_CHROME }, async () => {
+  const root = sandbox();
+  process.env.TMPDIR = root;
+  const c = await launch(0, false);
+  const seen = await waitFor(() => watcherOf(c.dir).length, 5_000, 'a watcher to exist while Chrome is open')
+    .catch(() => 0);
+  assert.ok(seen, 'precondition: launch() should have started a watcher for the folder');
+  await closeChrome(c.proc, c.dir);
+  await waitFor(() => !watcherOf(c.dir).length, 5_000, 'the watcher to be gone after closeChrome')
+    .catch(() => assert.fail(`a watcher for ${c.dir} is still running 5s after closeChrome: ${JSON.stringify(watcherOf(c.dir).map(p => p.command.slice(0, 120)))}`));
+});
 
 test('a smoke run still going is not disturbed by another launch()', { timeout: 120_000, ...NEEDS_CHROME }, async () => {
   const root = sandbox();

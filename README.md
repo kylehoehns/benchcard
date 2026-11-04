@@ -95,6 +95,10 @@ git clone https://github.com/kylehoehns/benchcard
 cd benchcard && npm run serve
 ```
 
+The server stops itself after 60 minutes, or when the process that started
+it exits. See
+[docs/operations.md](docs/operations.md#running-it).
+
 From the repo root:
 
 ```sh

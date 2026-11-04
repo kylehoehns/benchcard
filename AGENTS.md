@@ -162,7 +162,10 @@ Serve with `npm run serve` (port 8201), never `python3 -m http.server`. It
 redirects the way Cloudflare does: `about.html` 307s to the extensionless
 spelling, which is what every internal href, canonical tag and sitemap entry
 uses. The python server 404s on all of them, and a local server that disagrees
-with production is a class of bug nothing can see. Run tests with `npm test`
+with production is a class of bug nothing can see. It stops itself after
+60 minutes (`--ttl <minutes>`) or as soon as the process that started it
+exits, so start it in the foreground or as a background job, not with a bare
+`&` from a shell that then exits (#595). Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
 `npm run smoke` runs the browser checks (with `--no-tests`, it skips the check
@@ -196,8 +199,9 @@ Every page it opens has its clock pinned to 2026-09-12 12:00 local
 at any hour instead of failing when CI happens to cross midnight (#178). A run
 also ends on its own if it hangs: `--timeout <minutes>` (default 60) closes
 Chrome and exits 1, naming the check it was on; `Ctrl-C`/`kill` do the same.
-A run killed with SIGKILL leaves its Chrome until the next `launch()` reaps
-it (#510).
+A run killed with SIGKILL still closes its Chrome: a small watcher
+process notices the run is gone and closes it (#595); the next `launch()`
+reaps any left over if the watcher was killed too (#510).
 No `perl -e 'alarm …'` wrapper is needed.
 
 How a run spends its time (fast animations, `--timing`, when to sleep): `scripts/smoke/README.md`.

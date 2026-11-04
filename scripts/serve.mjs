@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-/* The one local server. `node scripts/serve.mjs [port]`, or `npm run serve`.
+/* The one local server. `node scripts/serve.mjs [port] [--ttl <minutes>]`, or
+ * `npm run serve`. Run directly, it stops by itself (#595): when the process
+ * that started it goes away, or after `--ttl` minutes (default 60, fractions
+ * allowed, so `--ttl 0.02` is 1.2s). A bad `--ttl` exits 2 before listening.
+ * Imported, `serve()` is unchanged and lives and dies with its caller.
  *
  * WHY THIS FILE EXISTS. There were four ways to serve `app/` locally and only
  * one of them behaved like production:
@@ -137,11 +141,35 @@ export function serve(port = 0, appDir = APP) {
   return new Promise(ok => server.listen(port, '127.0.0.1', () => ok(server)));
 }
 
-/* Run directly: serve on 8201 and say so. Imported: just the function. */
+/* Run directly: serve on 8201 (or the one positional port), say so, and stop
+   by itself (#595). The "process that started it" is the parent at start-up
+   (`process.ppid`, read once; Node's value is live, so it changes when that
+   parent dies). Polled twice a second; the timers are unref'd, so only the
+   server itself keeps the process running. Imported: just the function. */
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  const port = Number(process.argv[2]) || 8201;
-  const server = await serve(port);
+  const start = process.ppid; // before any await: a parent that dies during start-up is noticed
+  const args = process.argv.slice(2);
+  let ttl = 60;
+  let port;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--ttl' || args[i].startsWith('--ttl=')) {
+      const raw = args[i] === '--ttl' ? args[++i] : args[i].slice('--ttl='.length);
+      ttl = raw === undefined || raw.trim() === '' ? NaN : Number(raw);
+      if (!(ttl > 0) || !Number.isFinite(ttl)) {
+        console.error(`serve.mjs: --ttl needs a number of minutes above 0 (got ${raw === undefined ? 'nothing' : `"${raw}"`}), e.g. --ttl 30`);
+        process.exit(2);
+      }
+    } else if (args[i].startsWith('--')) {
+      console.error(`serve.mjs: unknown argument ${args[i]} (usage: serve.mjs [port] [--ttl <minutes>])`);
+      process.exit(2);
+    } else if (port === undefined) port = Number(args[i]) || 8201;
+  }
+  const server = await serve(port ?? 8201);
   const { port: actual } = server.address();
   console.log(`benchcard: serving app/ on http://localhost:${actual}`);
   console.log('redirects like Cloudflare does — /about.html 307s to /about');
+  console.log(`stops when its parent process exits, or in ${ttl} minute${ttl === 1 ? '' : 's'} (--ttl)`);
+  const stop = () => { server.stopHard(); process.exit(0); };
+  setTimeout(stop, Math.min(ttl * 60_000, 2 ** 31 - 1)).unref(); // a longer timer fires at once
+  setInterval(() => { if (process.ppid !== start) stop(); }, 500).unref();
 }
