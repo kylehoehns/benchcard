@@ -1,4 +1,4 @@
-/* #597: the five WebKit checks. Each opens its own page in its own context,
+/* #597: the six WebKit checks. Each opens its own page in its own context,
  * lands it the way smoke does (`land`: RICH, 390x844, 16px text, the pinned
  * clock), drives it with smoke's own drivers, reads facts off the page, and
  * hands them to a verdict function (verdicts.mjs, unit-tested). Nothing here
@@ -9,15 +9,16 @@
  * (docs/specs/597-webkit-checks.md): Playwright's WebKit is desktop WebKit, not
  * iOS Safari. The Home Screen app is emulated, and bench mode's iOS-only
  * `-webkit-overflow-scrolling` bug cannot be. */
-import { evalIn, TIMER_TRACKER, TODAY_HOME, DESCRIBE_EL } from '../smoke/dom.mjs';
+import { evalIn, SETTLE, TIMER_TRACKER, TODAY_HOME, DESCRIBE_EL } from '../smoke/dom.mjs';
 import { CLOCK_SCRIPT } from '../smoke/clock.mjs';
 import { RICH, TODAY_LANDING } from '../smoke/fixtures.mjs';
 import { land } from '../smoke/page-state.mjs';
 import { evalJSON, realTap, tap, typeIn, waitClosed, openAddGameFlow } from '../smoke/sheet-drive.mjs';
 import { PRINT_SPY, HOME_SCREEN_APP } from '../smoke/page-spies.mjs';
 import {
-  printProblems, homeScreenProblems, shareImageProblems, benchProblems, addGameProblems, rowOf,
+  printProblems, homeScreenProblems, shareImageProblems, benchProblems, addGameProblems, largeTextProblems, rowOf,
 } from './verdicts.mjs';
+import { CLIP_PROBE, SCROLL_TO_BOTTOM, findingsOf, knownIssueFor } from '../smoke/clip-sweep.mjs';
 
 const TODAY = { record: { ...RICH, view: 'today' }, ...TODAY_LANDING };
 
@@ -185,6 +186,46 @@ async function addGame(wk, origin) {
   });
 }
 
+/* #611: Today with the 32px fake and long-but-wrappable names. WebKit's fake
+ * grows the root only, which is what an iPhone with Larger Text does, so this
+ * row fails if the large-text layouts (`em` media queries) do not apply. The
+ * names are several short words: they may wrap, they must not clip. */
+const LONG_TODAY = (() => {
+  const record = JSON.parse(JSON.stringify(RICH));
+  const team = record.teams[0];
+  team.name = 'Riverside Thunder Travel';
+  team.days[0].games[0].label = 'Westfield Wildcats Blue';
+  team.days[0].games[1].label = 'Northgate Hornets Gold';
+  return { ...record, view: 'today' };
+})();
+
+const PASS_TITLES = `document.querySelectorAll('.pass-title').length`;
+
+async function todayAtLargeText(wk, origin) {
+  return onPage(wk, [], async c => {
+    const cells = [];
+    for (const width of [320, 390]) {
+      await land(c, origin, { record: LONG_TODAY, ...TODAY_LANDING, width, height: 844, textPx: 32 });
+      const unexcused = [];
+      let passTitles = 0;
+      for (const pos of ['top', 'bottom']) {
+        if (pos === 'bottom') {
+          await evalIn(c, SCROLL_TO_BOTTOM);
+          await evalIn(c, SETTLE);
+        }
+        passTitles = Math.max(passTitles, await evalIn(c, PASS_TITLES));
+        const res = JSON.parse(await evalIn(c, CLIP_PROBE));
+        for (const f of findingsOf(res, 'today', pos)) {
+          if (knownIssueFor(f) === null) unexcused.push(`${pos}: ${f.kind} ${f.el}${f.text ? ` "${f.text}"` : ''}`);
+        }
+      }
+      cells.push({ width, passTitles, unexcused });
+    }
+    return rowOf('today at large text', largeTextProblems({ cells }),
+      'Today at 320 and 390 with the 32px root, top and bottom: no cut-off text, a pass title measured in each');
+  });
+}
+
 /* The row names are the table's, in the spec's order. */
 export const CHECKS = Object.freeze([
   { name: 'print', run: print },
@@ -192,4 +233,5 @@ export const CHECKS = Object.freeze([
   { name: 'share image', run: shareImage },
   { name: 'bench mode scroll bars', run: benchScrollBars },
   { name: 'add a game', run: addGame },
+  { name: 'today at large text', run: todayAtLargeText },
 ]);

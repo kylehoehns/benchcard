@@ -330,7 +330,10 @@ rule is scoped to iOS/iPadOS WebKit — detected by `@supports (-webkit-touch-ca
 none)`, the one WebKit feature that platform pair has and desktop WebKit does not
 — because applied everywhere it would also reach macOS Safari, where
 `-apple-system-body` measured 13px in this tree's own WebKit rather than
-following the reader's setting (#24). Lay out for 200%: rows grow and side-by-side
+following the reader's setting (#24). An `em` in a media query ignores the root,
+so the app rescales its `em` media queries to the root's size (`app/text-size.js`,
+#611); write them as `em` in CSS, and wrap any `em` in a `matchMedia` string in
+`mq()`. Lay out for 200%: rows grow and side-by-side
 pieces stack. *Web: Chrome 146 release notes; Adrian Roselli, 2026. Android: font
 scaling to 200%. Benchcard: decided 2026-09-15 (#24).*
 

@@ -16,6 +16,7 @@
  * into a cycle.
  * ================================================================== */
 import { icon } from './icons.js';
+import { mq } from './text-size.js';
 import { $, on, el, clone } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
 import { clearPick } from './gamemode.js';
@@ -255,7 +256,7 @@ function liftToasts(box) {
   // changes with the stint, so it is watched while bench mode is open.
   const call = gmFoot ? $('#gmNext') : null;
   watchCall(call, box);
-  if (call && !window.matchMedia?.(GM_LANDSCAPE)?.matches) {
+  if (call && !window.matchMedia?.(mq(GM_LANDSCAPE))?.matches) {
     // ...but never so far that the toast's own top leaves the screen. On a
     // short phone at large text a long-name toast is taller than the room
     // above the call; it is then lifted only as far as it fits whole, clear

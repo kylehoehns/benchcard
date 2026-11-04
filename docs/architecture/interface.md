@@ -259,7 +259,7 @@ track, not interrupt it. When the timeline is narrow (320px with large text) the
 the player's name on the first line, the total at its right edge, and the track underneath. A name
 wraps onto as many lines as it needs instead of ending in an ellipsis (#422). The word `MOST` or
 `FEWEST`, where a row has one, sits on a line of its own under the name. At the largest text size
-(`@media (max-width: 19em)`, which every phone is under at a 32px root) the name takes the whole row
+(`@media (max-width: 19em)`, which every phone is under at a 32px root, and which `text-size.js` makes fire on an iPhone with Larger Text) the name takes the whole row
 and the total moves down onto the word's line, so every total sits at the same height above its own
 track. Once the timeline itself is about 20em wide (a container query, so a 390px phone qualifies) it
 lays out one row: name, track and total side by side, and the name keeps a one-line ellipsis, because
@@ -330,7 +330,9 @@ scale (#24): `body` and every text size in `app.css` and `timeline.css` is one
 of the seven `--fs-*` tokens `tokens.css` declares, `inherit`, or (a screen's own large
 title, inside the narrow-screen block) capped against the viewport —
 `interface-guidelines.md` T2 lists the scale and the platform gate that gets
-the root itself to follow the reader's setting. The printed card is exempt:
+the root itself to follow the reader's setting. The large-text `em` media queries
+follow it too (#611): `text-size.js` rescales them to the root, see
+[layout.md](layout.md). The printed card is exempt:
 its sizes (in `card.css`, and the ones `card.js` derives from canvas
 `measureText`) do not move with the reader's setting, only the screens around
 it do. The smoke suite verifies this in two passes: `applargetext` checks that

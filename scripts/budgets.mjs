@@ -379,8 +379,14 @@ export const NODES_BASELINE = 1_367;
    #434: `app/timeline.css` joins the cold load. The timeline rules moved out
    of app.css into a sheet About can also link, so index.html loads one more
    stylesheet and the measured count goes 44 -> 45; the pin moves 43 -> 44,
-   one under it. */
-export const REQUESTS_BASELINE = 44;
+   one under it.
+
+   #611: `app/text-size.js` joins the boot graph (app.js, trap.js and toast.js
+   import it) -- it rewrites the stylesheet's `em` media queries to the root's
+   size, so an iPhone with Larger Text gets the large-text layouts. A real
+   module on purpose: the whole ticket. The measured cold load goes 45 -> 46;
+   the pin moves 44 -> 45, one under it. */
+export const REQUESTS_BASELINE = 45;
 
 export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };
 
