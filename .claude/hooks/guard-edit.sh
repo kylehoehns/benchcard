@@ -40,7 +40,7 @@ case "$path" in
       fetch.sh | README.md)
         ;;
       *)
-        deny 'Blocked: third-party code changes only through app/vendor/fetch.sh. The vendor-drift CI job re-runs that script and fails if the tree differs by a byte, so a hand edit here is a red build later rather than a fix now. Change the pin in fetch.sh and re-run it. AGENTS.md, "Rules".'
+        deny 'Blocked: third-party code changes only through app/vendor/fetch.sh. The vendor-drift CI job re-runs that script and fails if the tree differs by a byte, so a hand edit here is a red build later rather than a fix now. Change the pin in fetch.sh and re-run it. AGENTS.md, "What is enforced".'
         ;;
     esac
     ;;
