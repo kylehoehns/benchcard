@@ -28,7 +28,7 @@ stays with that game. Nothing a coach saved plans differently.
   different minutes in different formats.
 - They are added through Add a rule (`KINDS` in `app/rules.js`, kinds `rest`
   and `bench`), edited from the rule's detail page (`replaceRule` draft,
-  `kindControls`: stepper from 1 to `restLimitMax(g)` for rest and 4 for bench,
+  `kindControls`: stepper from 1 to `min(restLimitMax(g), 4)` (`runTop`) for rest and 4 for bench,
   starting at 2, value shown as minutes with Shorter / Longer buttons), and
   removed from the detail page (`removeRule`). `RULE_KEYS` includes both, so
   `newGame` copies them from the previous game, and Copy rules copies them.
@@ -84,7 +84,7 @@ stays with that game. Nothing a coach saved plans differently.
      when it changes).
    - **Everyone plays in**: the segment as now.
    - **Plays at most**: a switch row "Limit time on the floor in a row"; when
-     on, a stepper row below it, starting at 2, from 1 to `restLimitMax(ref)`.
+     on, a stepper row below it, starting at 2, from 1 to `min(restLimitMax(ref), 4)`.
      Footnote when on: "Applies to every player."
    - **Sits at most**: a switch row "Limit time on the bench in a row"; when
      on, a stepper row, starting at 2, from 1 to 4. Footnote when on:
@@ -160,7 +160,7 @@ stays with that game. Nothing a coach saved plans differently.
    - Sits at most is off on a new team; switching it on shows the stepper at
      2, footnote "Counts across quarter breaks. Applies to every player."; the
      stepper stops at 1 and 4;
-   - Plays at most on: stepper at 2, stops at `restLimitMax`;
+   - Plays at most on: stepper at 2, stops at `min(restLimitMax, 4)`;
    - switching either on or stepping it changes the open day's unstarted
      games and not a started game or another day's game; switching off sets
      them to 0.

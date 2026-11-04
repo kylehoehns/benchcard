@@ -88,10 +88,9 @@ The reader for each team value is `teamRun` in `app/state.js`, beside
   2-period game it reads "halves of time" and "whole halves". The saved values
   (`min`, `pct`, `periods`, `full`) do not change. Alternative: rename the saved
   values too. Not done: saved teams would need a migration, and nothing the
-  coach sees needs one. The strategy skip line follows the same names. Some
-  strings outside the Settings and rule-sentence paths still say "full periods"
-  (`app/advanced.html`, and the engine's and game-mode's warning text); this
-  change does not touch them.
+  coach sees needs one. The strategy skip line follows the same names. The engine's
+  and game-mode's warning text and `app/advanced.html` use the same words, so
+  the coach never meets the old "full periods" name.
 - **The plays-in row has its own detail text.** Its page had shown the minimum's
   sentence, "Your league minimum. Change it in Settings.", which named the wrong
   rule. It now reads "Every player plays in every quarter. It's your league
