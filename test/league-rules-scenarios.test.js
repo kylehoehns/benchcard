@@ -52,14 +52,36 @@ describe('a coach sets the league rules in Settings', { skip }, () => {
     assert.deepEqual([kept.on, kept.stepper], [true, '16 min'], 'the team value is saved');
   });
 
-  test('Plays at most starts at 2 and stops one below the game\'s subs', async () => {
+  test('Plays at most starts at 2 and stops at 4, as the rule\'s own page does', async () => {
     await coach.onGameDayWith({}, undefined, { names: NAMES });
     await coach.tap('Settings');
     await coach.tap(PLAYS);
     const plays = (await coach.leagueRules()).groups[2];
     assert.deepEqual([plays.on, plays.stepper, plays.footnote], [true, '8 min', 'Applies to every player.']);
     for (let i = 0; i < 6; i++) await coach.stepRule('Plays at most', 'Longer');
-    assert.equal((await coach.leagueRules()).groups[2].stepper, '28 min', '7 of the 8 subs');
+    assert.equal((await coach.leagueRules()).groups[2].stepper, '16 min', '4 of the 8 subs');
+  });
+
+  test('tapping Longer in Settings moves the number and leaves focus on that same button', async () => {
+    await coach.onGameDayWith({}, undefined, { names: NAMES });
+    await coach.tap('Settings');
+    await coach.tap(SITS);
+    await coach.stepRule('Sits at most', 'Longer');
+    assert.equal((await coach.leagueRules()).groups[3].stepper, '12 min');
+    assert.equal(await coach.focused(), 'Longer', 'focus stays on the button just pressed');
+    await coach.stepRule('Sits at most', 'Shorter');
+    assert.equal((await coach.leagueRules()).groups[3].stepper, '8 min');
+    assert.equal(await coach.focused(), 'Shorter');
+  });
+
+  test('on a 4 x 12 game with a sub every 2 minutes, Plays at most still stops at 4 and keeps its value', async () => {
+    await coach.onGameDayWith({ periodMinutes: 12, granValue: 2 }, undefined, { names: NAMES });
+    await coach.tap('Settings');
+    await coach.tap(PLAYS);
+    for (let i = 0; i < 25; i++) await coach.stepRule('Plays at most', 'Longer');
+    assert.equal((await coach.leagueRules()).groups[2].stepper, '8 min', '4 subs of 2 minutes');
+    await coach.comeBackLaterOn('settings');
+    assert.equal((await coach.leagueRules()).groups[2].stepper, '8 min', 'saved as 4 and read back as 4');
   });
 
   test("the day's games that have not started take a team value; a started game and another day keep theirs", async () => {

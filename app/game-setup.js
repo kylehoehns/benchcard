@@ -19,7 +19,7 @@ import { riseIn } from './fx.js';
 import { $, set, el, checkMark } from './dom.js';
 import { state, game, plans, noRoster, setAvailable, save,
          sentenceParts, planSay, stepFormat, GRAN_CHOICES, distinctGranChoices, weekdayLabel,
-         initials, colorOf, runNoun, runRowLabel, runMinutesText, restLimitMax } from './state.js';
+         initials, colorOf, runNoun, runRowLabel, runMinutesText, restLimitMax, RUN_TOP } from './state.js';
 import { setLate } from './team-ops.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
 import { colorName, seasonDate } from './storage.js';
@@ -369,11 +369,13 @@ export function stepperRow(label, get, set, lo, hi, noun, afterChange, show = St
 
 /* #566: the "in a row" stepper, built once for the rule's detail page (rules.js)
    and for Settings' League rules (teams-view.js). `kind` is 'rest' (Plays at
-   most, up to one below the game's stints) or 'bench' (Sits at most, up to 4);
+   most, up to one below the game's stints) or 'bench' (Sits at most); neither goes past RUN_TOP, the
+   most `ruleComplete` takes. A rule turned on starts at RUN_START.
    `g` is the game whose stints the number counts. Minutes where the game has
    subs, the period's own name under Breaks only (#574); a step is one
    substitution spot, so no label promises one minute. */
-export const runTop = (g, kind) => (kind === 'rest' ? restLimitMax(g) : 4);
+export const RUN_START = 2;
+export const runTop = (g, kind) => (kind === 'rest' ? Math.min(restLimitMax(g), RUN_TOP) : RUN_TOP);
 export function runStepperRow(g, kind, get, set, afterChange) {
   const minutes = g.granMode !== 'breaksOnly';
   return stepperRow(runRowLabel(g), get, set, 1, runTop(g, kind),

@@ -1096,7 +1096,7 @@ const SIT_RULES = {
   FORCED_GROUP_KEEPON: 'a fixed stint leaves a One of two on pair uncovered',
   CLOSERS_TOO_MANY: 'more players are set to close than fit on the floor',
   FORCED_GROUP_TOO_BIG: 'more players are fixed to one stint than fit on the floor',
-  FULL_PERIODS_TOO_MANY: 'the full periods everyone owes no longer fit in what is left',
+  FULL_PERIODS_TOO_MANY: 'the whole periods everyone owes no longer fit in what is left',
   NOT_ENOUGH_PLAYERS: 'fewer than five players would be left available',
 };
 

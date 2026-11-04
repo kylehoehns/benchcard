@@ -3694,8 +3694,15 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      "% of game" label, and the 5px chevron sits 10-15px from the edge, so
      most of the 2rem is empty. Padding in px keeps the chevron's gap fixed
      while the text grows; max-width is the backstop so a longer label can
-     never push the row off the screen. */
-  #view-settings .minwrap select.prow-select { max-width: 100%; min-width: 0; width: 100%; text-overflow: ellipsis; padding-left: .4rem; padding-right: 28px; }
+     never push the row off the screen.
+     #566 gave the unit longer names and a select cannot wrap: "quarters of
+     time" is 259px at the body size of a 32px root against a 192px box, so
+     a cut label ended in "..." -- clipping. The select takes its own line,
+     reaches across the row's own side padding (the row is 256px, the
+     select's box 192px inside it) and uses the smallest type token, which
+     the longest label fits at. The clip sweep measures every label against the select's inner width. */
+  #view-settings .minwrap select.prow-select { width: calc(100% + 2rem); max-width: none; min-width: 0; margin-inline: -1rem;
+    padding-left: .25rem; padding-right: 24px; font-size: var(--fs-footnote); }
 
   /* "Remove this game": `#removeGame` is hidden until the day holds two
      games, so a harness that seeds one game never renders it. Measured at

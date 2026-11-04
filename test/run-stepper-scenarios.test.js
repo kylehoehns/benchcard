@@ -25,7 +25,7 @@ async function openPlan(coach) {
 describe('the run stepper (#452)', { skip, concurrency: true }, () => {
   describe('every 4 minutes', { concurrency: 1 }, () => {
     const own = chrome();
-    test('the stepper shows minutes, not stints, reaches 7 of 8 subs for Plays at most and stops at 4 for Sits at most', async () => {
+    test('the stepper shows minutes, not stints, stops at 4 subs for Plays at most and for Sits at most', async () => {
       const { coach } = own;
       await coach.onGameDayWith(g => ({ constraints: { ...g.constraints, maxConsecutive: 2, maxBench: 2 } }));
       await coach.tap('Hawks, 9:00 AM, planned');
@@ -35,10 +35,10 @@ describe('the run stepper (#452)', { skip, concurrency: true }, () => {
       assert.equal(await coach.text('#planSub .pstep-val'), '8 min');
       assert.equal(await coach.count('#planSub .pgrp-f:not([hidden])'), 1, 'only the game-only line, no N stints is X min hint');
       for (let i = 0; i < 5; i++) await coach.tap('Longer');
-      assert.equal(await coach.text('#planSub .pstep-val'), '28 min', '7 of the 8 subs');
-      assert.ok(await coach.isDisabled('Longer'), 'all 8 would be no limit');
+      assert.equal(await coach.text('#planSub .pstep-val'), '16 min', '4 of the 8 subs');
+      assert.ok(await coach.isDisabled('Longer'), 'the page stops where the game can keep the number');
       await coach.tap('Shorter');
-      assert.equal(await coach.text('#planSub .pstep-val'), '24 min');
+      assert.equal(await coach.text('#planSub .pstep-val'), '12 min');
       await coach.tap('Back to Plan');
       await coach.tap('Each player sits at most 2 stints in a row (8 min)');
       await coach.tap('Longer');

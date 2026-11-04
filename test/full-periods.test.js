@@ -42,6 +42,14 @@ test('B. 11 players cannot each play 2 full quarters: one error with 22 and 20',
   assert.ok(!p.issues.some(i => i.code === 'MINS_UNSATISFIABLE'));
 });
 
+test('E. the refusal counts whole quarters, or whole halves in a two-half game, never "full periods"', () => {
+  const q = full(11, 1).issues.find(i => i.code === 'FULL_PERIODS_TOO_MANY');
+  assert.ok(q.message.startsWith('Everyone plays 2 whole quarters needs 22 player-periods'), q.message);
+  const h = full(11, 1, { format: { periods: 2, periodMinutes: 16 } }).issues.find(i => i.code === 'FULL_PERIODS_TOO_MANY');
+  assert.ok(h.message.startsWith('Everyone plays 2 whole halves needs 22 player-periods'), h.message);
+  assert.ok(!/full period/i.test(q.message + h.message));
+});
+
 test('C. even: full periods keep the spread within one stint (4 min), seeds 1-20', () => {
   for (const n of [8, 10]) {
     for (const seed of SEEDS) {

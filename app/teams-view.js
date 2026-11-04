@@ -28,13 +28,13 @@ import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, setMakeUp, newGameMakeUp, openGame, dayHeading, addGame, removeGame,
-         hasGames, bestPlayersOffered, teamRun, setTeamRun, leagueLiveLine, minUnitLabel, benchFootnote } from './state.js';
-import { runStepperRow, runTop } from './game-setup.js';
-import { tipoffLabel } from './storage.js';
+         hasGames, bestPlayersOffered, teamRun, setTeamRun, applyToOpenDay, leagueLiveLine, minUnitLabel, benchFootnote } from './state.js';
+import { runStepperRow, runTop, RUN_START } from './game-setup.js';
+import { tipoffLabel, RUN_KEYS } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
 // it is called from -- both the paint and the tap. No cycle: gamemode.js
 // does not import teams-view.js.
-import { resumeBarAt, passStatus, gameStarted } from './live.js';
+import { resumeBarAt, passStatus } from './live.js';
 /* #35 decision 8. Two pure predicates -- no DOM, no state, just `(view, wide)`
    -- so this is a value import, not the behavior injection `renderAll` and
    `setView` get above. render.js imports this file, so the graph does close
@@ -207,8 +207,9 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
      have not started follow (`setTeamRun`). */
   for (const { sw, key, kind } of LEAGUE_RUNS) {
     on(sw, 'onchange', (e) => {
-      if (!team()?.settings) return;
-      setTeamRun(key, e.target.checked ? Math.min(2, runTop(settingsRef(), kind)) : 0);
+      if (!team()?.settings) { e.target.checked = !e.target.checked; return; }   // nothing to save, so the switch must not stay flipped
+      // `teamSetting` repaints Settings too, which the stepper under the switch needs; there is no narrower kind to choose
+      setTeamRun(key, e.target.checked ? Math.min(RUN_START, runTop(settingsRef(), kind)) : 0);
       edit('teamSetting');
     });
   }
@@ -233,13 +234,7 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
     /* #567: the games of the open day that have not started take the new
        format too; a started game, a filed one and other days keep theirs.
        Re-planned as a format edit does it. */
-    let moved = false;
-    for (const g of state.day?.games ?? []) {
-      if (!settled || gameStarted(g.live) || g[key] === v) continue;
-      g[key] = v;
-      moved = true;
-    }
-    edit(moved ? 'format' : 'teamSetting');
+    edit(settled && applyToOpenDay(g => g, key, v) ? 'format' : 'teamSetting');
   });
   fmt('#setPeriods', 'periods', 1, 8);
   fmt('#setPerMins', 'periodMinutes', 1, 40);
@@ -322,7 +317,7 @@ export function renderTeams() {
    coach is in the box (unless a handler says it just settled it): `renderAll`
    runs on every save, and rewriting the value under a caret is how a half-typed
    "1" becomes "1" again forever. The box's `max` follows the unit. */
-function paintLeagueMin(settled = false) {
+function paintLeagueMin(settled = false, ref = settingsRef()) {
   const settings = team()?.settings;
   const unit = settings?.minUnit ?? DEFAULT_SETTINGS.minUnit;
   const mm = $('#minMins');
@@ -333,7 +328,6 @@ function paintLeagueMin(settled = false) {
   const mu = $('#minUnit');
   if (mu) {
     // #566: the unit names use the game's own period word, painted from the reference game
-    const ref = settingsRef();
     for (const o of mu.options) {
       const label = minUnitLabel(ref, o.value);
       if (o.text !== label) o.text = label;
@@ -343,7 +337,7 @@ function paintLeagueMin(settled = false) {
   // the live line: written only when it changes, it is an aria-live region
   const live = $('#minLive');
   if (live) {
-    const line = leagueLiveLine(settingsRef());
+    const line = leagueLiveLine(ref);
     if (live.textContent !== line) live.textContent = line;
     live.hidden = !line;
   }
@@ -355,16 +349,17 @@ const settingsRef = () => game() ?? newGame(0, null, team()?.settings);
 
 /* The two "in a row" rules: the team key, the rule kind, and the ids of the
    switch, group and footnote in Settings. */
-const LEAGUE_RUNS = [
-  { key: 'maxConsecutive', kind: 'rest', sw: '#restOn', grp: '#restGrp', note: '#restNote' },
-  { key: 'maxBench', kind: 'bench', sw: '#benchOn', grp: '#benchGrp', note: '#benchNote' },
-];
+const RUN_IDS = {
+  rest: { sw: '#restOn', grp: '#restGrp', note: '#restNote' },
+  bench: { sw: '#benchOn', grp: '#benchGrp', note: '#benchNote' },
+};
+const LEAGUE_RUNS = Object.entries(RUN_KEYS).map(([key, kind]) => ({ key, kind, ...RUN_IDS[kind] }));
 
 /* The two "in a row" groups: the switch, the stepper under it while on, and
-   the footnote. The stepper is rebuilt only when what it shows changes -- a tap
-   on it updates its own number, and `renderAll` then finds nothing to redo. */
-function paintLeagueRuns() {
-  const ref = settingsRef();
+   the footnote. The stepper is rebuilt only when its shape changes (on or off, its
+   top, the game's format) -- never for its own value: a tap updates its own number
+   in place, so the button pressed keeps focus and `renderAll` finds nothing to redo. */
+function paintLeagueRuns(ref = settingsRef()) {
   for (const { key, kind, sw, grp, note } of LEAGUE_RUNS) {
     const v = teamRun(key);
     const box = $(grp);
@@ -373,7 +368,7 @@ function paintLeagueRuns() {
     if (toggle) toggle.checked = v > 0;
     const top = runTop(ref, kind);
     const shown = Math.min(v, top);
-    const sig = v > 0 ? [shown, top, ref.granMode, ref.granValue, ref.periods, ref.periodMinutes].join('|') : '';
+    const sig = v > 0 ? [top, ref.granMode, ref.granValue, ref.periods, ref.periodMinutes].join('|') : '';
     if (box.dataset.sig !== sig) {
       box.querySelector('.pstep-row')?.remove();
       if (v > 0) {
@@ -482,8 +477,9 @@ export function renderSettings() {
   }
 
   paintFineTune();
-  paintLeagueMin();
-  paintLeagueRuns();
+  const ref = settingsRef();   // once per paint: with no game it builds one
+  paintLeagueMin(false, ref);
+  paintLeagueRuns(ref);
 
   /* #25: the row's read-back and the picker's current mark. `#teamColorSwatch`
      needs no write here -- it carries no `data-tint` of its own, so it reads

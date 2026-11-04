@@ -19,7 +19,7 @@ import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInN
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
-         validTipoff, tipoffLabel, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS } from './storage.js';
+         validTipoff, tipoffLabel, RUN_KEYS, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 import { emptyConstraints, removePlayer as removeFrom, setAvailable, removeTeam } from './team-ops.js';
@@ -454,24 +454,29 @@ export const playsInDetail = g => `Every player plays in ${playsInText(g)}. It's
 
 /* #566: the team's two "in a row" values, 0 when off. One reader, beside
    `leagueSetting`; `setTeamRun` is the one writer. */
-const RUN_KEYS = ['maxConsecutive', 'maxBench'];
 export const teamRun = key => {
   const v = state.settings?.[key];
   return Number.isInteger(v) && v >= 0 ? v : DEFAULT_SETTINGS[key];
 };
-/* A team value reaches the open day's games that have not started, the rule
-   `fmt()` in teams-view.js follows for the format (#567); started games, filed
-   games and other days keep their own. Returns whether any game moved. */
-export function setTeamRun(key, v) {
-  if (!RUN_KEYS.includes(key)) return false;
-  state.settings[key] = v;
+/* A team value reaches the open day's games that have not started (#567's rule,
+   for the format fields and for these): `where(g)` is the object on a game that
+   holds `key`. Started games, filed games and other days keep their own.
+   Returns whether any game moved. */
+export function applyToOpenDay(where, key, v) {
   let moved = false;
   for (const g of state.day?.games ?? []) {
-    if (gameStarted(g.live) || g.constraints[key] === v) continue;
-    g.constraints[key] = v;
+    const o = where(g);
+    if (gameStarted(g.live) || o[key] === v) continue;
+    o[key] = v;
     moved = true;
   }
   return moved;
+}
+
+export function setTeamRun(key, v) {
+  if (!(key in RUN_KEYS)) return;
+  state.settings[key] = v;
+  applyToOpenDay(g => g.constraints, key, v);
 }
 
 /* #566: the unit names as the minimum's select reads them, by the game's own
@@ -557,6 +562,8 @@ export const runNoun = (g, n = 1) => (g.granMode !== 'breaksOnly' ? (n === 1 ? '
 const runCount = (g, n) => `${n} ${runNoun(g, n)}`;
 // the stepper row's label, "Quarters in a row", and the unit its buttons say
 export const runRowLabel = g => { if (g.granMode !== 'breaksOnly') return 'In a row'; const w = runNoun(g, 2); return `${w[0].toUpperCase()}${w.slice(1)} in a row`; };
+/* The most either "in a row" number can be set to, for the game's own rule and the team's. */
+export const RUN_TOP = 4;
 export const restLimitMax = (g) => Math.max(1, regulationLens(g).lens.length - 1);
 export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 * LINEUP_FLOOR
   ? `With ${availIds(g).length} players, Sits at most 1 in a row is Platoon.` : '');
@@ -564,7 +571,7 @@ export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 *
 /* #566: the line under Settings' Sits at most, once it is on: what the count
    spans in this game, then the Platoon hint where it is true. */
 export const benchFootnote = (g, n) => {
-  const gap = g.periods === 4 ? 'quarter breaks' : g.periods === 2 ? 'halftime' : 'period breaks';
+  const gap = g.periods === 2 ? 'halftime' : `${periodNoun(g.periods)} breaks`;
   return [`Counts across ${gap}. Applies to every player.`, benchPlatoonHint(g, n)].filter(Boolean).join(' ');
 };
 
@@ -744,7 +751,7 @@ export function ruleComplete(kind, draft) {
       const n = (d.ids || []).length;
       return n >= 1 && n <= 5;
     }
-    case 'rest': case 'bench': return Number.isInteger(d.n) && d.n >= 1 && d.n <= 4;
+    case 'rest': case 'bench': return Number.isInteger(d.n) && d.n >= 1 && d.n <= RUN_TOP;
     default: return false;
   }
 }

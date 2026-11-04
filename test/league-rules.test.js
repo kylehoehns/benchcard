@@ -3,6 +3,7 @@
  * items 7, 8, 9 and "What would settle it" 3, 6, 7, 8). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { S, withTeam, withDays, player, bareGame } from './state-fixture.js';
 
 const four = () => bareGame({ id: 'four', periods: 4, periodMinutes: 8 });
@@ -96,4 +97,12 @@ test('the Sits at most footnote names the game\'s break, and adds the Platoon hi
   assert.equal(note(bareGame({ periods: 3, periodMinutes: 10 }), 2), 'Counts across period breaks. Applies to every player.');
   const ten = Array.from({ length: 10 }, (_, i) => `p${i}`);
   assert.equal(note(four(), 1, ten), 'Counts across quarter breaks. Applies to every player. With 10 players, Sits at most 1 in a row is Platoon.');
+});
+
+test('the unit select ships with the 4-period words, the same ones the painter writes for a 4-period game', () => {
+  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
+  const sel = html.slice(html.indexOf('id="minUnit"'), html.indexOf('</select>', html.indexOf('id="minUnit"')));
+  const shipped = [...sel.matchAll(/<option value="(\w+)">([^<]*)<\/option>/g)].map(m => [m[1], m[2]]);
+  assert.deepEqual(shipped.map(([v]) => v), ['min', 'pct', 'periods', 'full']);
+  for (const [value, text] of shipped) assert.equal(text, S.minUnitLabel(four(), value), value);
 });

@@ -96,6 +96,8 @@ test('a re-plan mid-game places the full periods that fit and names the rest, ne
     }
     const r = S.resolveRest(g, S.plans[0], 3);
     assert.ok(r.issues.some(i => i.code === 'FULL_PERIODS_SHORT'), r.issues.map(i => i.code).join());
+    const short = r.issues.find(i => i.code === 'FULL_PERIODS_SHORT');
+    assert.match(short.message, /gets \d of 2 whole quarters: /, short.message);
   });
 });
 

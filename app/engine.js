@@ -114,6 +114,8 @@ function stintGroups(stints, format, mode) {
 /* #451: what a half or period is called in a sentence: "each half" under
    halves, else by the game's period count (a quarter, a half, a period). */
 export const periodNoun = (periods, count = 1) => (count === 1 ? periodWords(periods).one : periodWords(periods).many);
+// "2 whole quarters", "1 whole half": the league minimum's own words for a count of whole periods
+const wholePeriods = (periods, k) => `${k} whole ${periodNoun(periods, k)}`;
 export const playsInNoun = (mode, periods) => (mode === 'halves' ? periodWords(2).one : periodNoun(periods));
 
 /* #450: the regulation periods a list of stints covers whole -- the periods a
@@ -470,7 +472,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
   }
 
-  /* #450: the full periods asked for must fit the seats the whole periods have.
+  /* #450: the whole periods asked for must fit the seats the whole periods have.
      Said in periods; it replaces the same arithmetic in minutes below. */
   const fullAsked = avail.filter(id => c.fullPeriods[id]);
   let fullTooMany = false;
@@ -483,7 +485,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     if (total > eligible * ON_FLOOR) {
       fullTooMany = true;
       const same = fullAsked.every(id => c.fullPeriods[id] === c.fullPeriods[fullAsked[0]]);
-      const asked = same ? `Everyone plays ${plural(c.fullPeriods[fullAsked[0]], 'full period')}` : 'The full periods asked for';
+      const asked = same ? `Everyone plays ${wholePeriods(periods, c.fullPeriods[fullAsked[0]])}` : `The whole ${periodNoun(periods, 2)} asked for`;
       err('FULL_PERIODS_TOO_MANY',
         `${asked} needs ${total} player-periods${same ? ` (${c.fullPeriods[fullAsked[0]]} x ${plural(fullAsked.length, 'player')})` : ''}, but ${plural(eligible, 'period')} have room for ${eligible * ON_FLOOR} (${eligible} x ${ON_FLOOR} on the floor). Lower the number, or count it in minutes.`,
         fullAsked);
@@ -1341,7 +1343,7 @@ function pinGroups(stints, c, periods) {
     ['OPENING_MISSED', 'is set to start', 'Starting five', false, { openingFive: c.openingFive }],
     ['LAST_PERIOD_MISSED', 'is set to start the last period', 'Starts the last period', false, { lastPeriodFive: c.lastPeriodFive }],
     ['CLOSER_MISSED', 'is set to close', 'Closers', true, { closing: c.closing }],
-    ['FULL_PERIOD_MISSED', 'is set to play a full period', 'Full periods', true, { fullPins: c.fullPins }],
+    ['FULL_PERIOD_MISSED', `is set to play a whole ${periodNoun(periods)}`, `Whole ${periodNoun(periods, 2)}`, true, { fullPins: c.fullPins }],
   ].map(([code, say, name, plural, only]) => ({ code, say: say.replace(/^is /, ''), verb: say, name, plural,
     forced: buildForced(stints, { ...none, ...only }, { periods }) }));
 }
@@ -2581,7 +2583,7 @@ function finish(lineups, ctx, issues, meta) {
   if (meta.fullShort?.length) {
     issues.push({
       severity: 'warn', code: 'FULL_PERIODS_SHORT', playerIds: meta.fullShort.map(x => x.id),
-      message: `${andList(meta.fullShort.map(x => `${label(x.id)} gets ${x.got} of ${plural(x.need, 'full period')}`))}: no period had room for them without breaking another rule.`,
+      message: `${andList(meta.fullShort.map(x => `${label(x.id)} gets ${x.got} of ${wholePeriods(periods, x.need)}`))}: no period had room for them without breaking another rule.`,
     });
   }
 

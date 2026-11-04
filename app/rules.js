@@ -22,7 +22,7 @@ import { playsInDetail, state, game, byId, plans, seasonAdjust, availIds, team, 
          changedRuleToast, removedRuleToast, suppressRotationOffer,
          dayIsToday, makeUpOffers, makeUpShown, makeUpOf, setMakeUp } from './state.js';
 import { pickFive } from './pills.js';
-import { pushPlanPane, stepperRow, runStepperRow, runTop, paintChoiceRows, onPlanOpen } from './game-setup.js';
+import { pushPlanPane, stepperRow, runStepperRow, runTop, RUN_START, paintChoiceRows, onPlanOpen } from './game-setup.js';
 import { gameStarted } from './live.js';
 import { MAKE_UPS } from './storage.js';
 import { popPane } from './trap.js';
@@ -560,7 +560,7 @@ function kindControls(kind, draft, hooks = {}) {
     };
     const top = runTop(game(), kind);
     // a limit above the top (the stepper starts at 2; a saved rule may be higher) is no limit at all, so show and save the top
-    draft.n = Math.max(1, Math.min(draft.n ?? 2, top));
+    draft.n = Math.max(1, Math.min(draft.n ?? RUN_START, top));
     paintHint();
     grp.append(runStepperRow(game(), kind, () => draft.n, v => { draft.n = v; }, () => { paintHint(); afterStep?.(); }));
     body.append(grp, hint);

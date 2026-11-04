@@ -53,6 +53,7 @@ import { WORD_RECTS_FN } from './row-stack.mjs';
 import { CONFIRM_DIALOG } from './heading-outline.mjs';
 import { land } from './page-state.mjs';
 import { firstLine } from './verdict.mjs';
+import { LEAGUE_RULES_STATE, BOTH_RUNS_STATE, SITS_DETAIL_STATE } from './league-states.mjs';
 
 /* Two long, unbroken words (no hyphen) — `LONG_NAME` already covers the
  * hyphenated case (`Featherstone-Whitmore`), so this second name exercises
@@ -154,7 +155,7 @@ export const CLOSERS_STATE = {
 };
 
 /* #582: the Plan sheet's Rules list with a league minimum in whole quarters, whose
- * row ("Everyone plays at least 1 full period (8 min)") is the longest sentence in
+ * row ("Everyone plays at least 1 whole quarter (8 min)") is the longest sentence in
  * the list and shows on every strategy. `open` proves the row is on screen;
  * `close` puts the league settings back exactly. */
 export const LEAGUE_MIN_STATE = {
@@ -645,7 +646,8 @@ const describeFinding = p => {
 };
 
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
-export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, LEAGUE_MIN_STATE, ORDER_STATE, PLAN_NOTES_STATE];
+export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, LEAGUE_MIN_STATE, ORDER_STATE, PLAN_NOTES_STATE,
+  LEAGUE_RULES_STATE, BOTH_RUNS_STATE, SITS_DETAIL_STATE];
 
 /* The states that navigate to their own page and so wipe whatever the run
  * set up on the one before (the roster, injected CSS). Shared with

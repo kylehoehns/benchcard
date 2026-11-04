@@ -17,3 +17,11 @@ test('the run-rule help says breaks do not reset the count, says a game can chan
   assert.ok(e.toLowerCase().includes('sitting does not reset at a break'), 'sits: says a break does not reset the count');
   assert.ok(e.includes('A game can change its own in-a-row number'), 'says a game can change its own');
 });
+
+test('How it works names no "N" in a row and counts the minimum in the unit words Settings uses', () => {
+  const help = flat(html.slice(html.indexOf('id="help"'), html.indexOf('id="keys"')));
+  assert.ok(help.length > 5000, 'read the whole help dialog, not an empty slice');
+  assert.ok(lacks(help, ' N in a row'), 'no "Plays at most N in a row" or "Sits at most N in a row"');
+  assert.ok(lacks(help, ', in periods'), 'the unit is named like the select: quarters of time');
+  assert.ok(lacks(help, 'or in periods'), 'the unit is named like the select: quarters of time');
+});
