@@ -16,6 +16,7 @@
  * could move first.
  * ================================================================== */
 import { $, el } from './dom.js';
+import { mq } from './text-size.js';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
   'textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
@@ -453,7 +454,7 @@ export function openSheet(dialog, trigger, { full = false } = {}) {
   // leaves a half-height sheet no room for rows: open it full (#421). The
   // handle still toggles to half. Keep in sync with app.css's
   // `@media (max-height: 40em)` sheet block, which sizes the chrome for this case.
-  full = full || matchMedia('(max-height: 40em)').matches;
+  full = full || matchMedia(mq('(max-height: 40em)')).matches;
   setSheetHeight(dialog, full, false); // not open yet -- nothing to FLIP from
   dialog.showModal();
   focusTarget(dialog).focus({ preventScroll: true });

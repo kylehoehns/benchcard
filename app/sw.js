@@ -42,6 +42,7 @@ const PRECACHE = [
   './roster.js',
   './dom.js',
   './trap.js',
+  './text-size.js',
   './state.js',
   './live.js',
   './team-ops.js',

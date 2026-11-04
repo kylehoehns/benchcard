@@ -191,7 +191,7 @@ test('ready is resolved and close closes the browser', async () => {
 /* ---------- the verdicts: each row's pass/fail, from facts read off the page ---------- */
 
 import {
-  printProblems, homeScreenProblems, shareImageProblems, benchProblems, addGameProblems,
+  printProblems, homeScreenProblems, shareImageProblems, benchProblems, addGameProblems, largeTextProblems,
   rowOf, tableOf, exitCodeOf,
 } from '../scripts/webkit/verdicts.mjs';
 
@@ -281,6 +281,28 @@ test('add a game: a flow left open, no new game, a wrong label or no pass on Tod
   has(addGameProblems({ ...base, after: ['Hawks', 'Ravens', 'Eagles'] }), /Panthers/);
   has(addGameProblems({ ...base, passes: ['Hawks', 'Ravens'] }), /pass/);
   has(addGameProblems({ ...base, before: [], after: [], passes: [] }), /measured nothing|no games/);
+});
+
+test('today at large text: clean cells with a pass title measured in each pass', () => {
+  assert.deepEqual(largeTextProblems({ cells: [
+    { width: 320, passTitles: 2, unexcused: [] },
+    { width: 390, passTitles: 2, unexcused: [] },
+  ] }), []);
+});
+
+test('today at large text: an unexcused finding fails and names its width and text', () => {
+  const r = largeTextProblems({ cells: [
+    { width: 320, passTitles: 2, unexcused: ['top: "Westfield Wi…" is 300px wide in a 200px box (span.pass-title)'] },
+    { width: 390, passTitles: 2, unexcused: [] },
+  ] });
+  has(r, /320/);
+  has(r, /Westfield/);
+  assert.equal(r.length, 1);
+});
+
+test('today at large text: no pass title found is a failure, not a pass', () => {
+  has(largeTextProblems({ cells: [{ width: 320, passTitles: 0, unexcused: [] }, { width: 390, passTitles: 2, unexcused: [] }] }), /320px: no \.pass-title/);
+  has(largeTextProblems({ cells: [] }), /measured nothing|no cell/);
 });
 
 test('a row is PASS with no problems, FAIL with any, and a FAIL names every problem', () => {

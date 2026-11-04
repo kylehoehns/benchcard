@@ -95,18 +95,18 @@ trigger, because a job that depends on the live site must not gate a merge. It
 runs on `workflow_dispatch`, and `test/ci-config.test.js` guards that it never
 pushes to `main`.
 
-**WebKit checks (#597).** `node scripts/webkit.mjs` runs five checks in
+**WebKit checks (#597).** `node scripts/webkit.mjs` runs six checks in
 Playwright's WebKit, the engine behind Safari, because every other browser check
 here is Chrome, and two bugs that showed only on an iPhone got past them. The
-checks are print, home-screen print, share image, bench mode scroll bars and add
-a game. It prints a PASS, FAIL or SKIP row for each and exits 1 on any FAIL.
+checks are print, home-screen print, share image, bench mode scroll bars, add
+a game and today at large text (#611: Today at 320 and 390 with the 32px root, no cut-off text). It prints a PASS, FAIL or SKIP row for each and exits 1 on any FAIL.
 Playwright is not in `package.json`. The script loads it at run time, pinned to
 1.64.1 in `scripts/webkit/playwright.mjs`, so install it first with
 `npm install --no-save --no-package-lock playwright@1.64.1 && npx playwright@1.64.1 install webkit`.
 Without it the script prints the install line and exits 1. `npm test` and
 `npm run smoke` never import Playwright.
 
-`.github/workflows/webkit.yml` runs the same five checks on push and PR against
+`.github/workflows/webkit.yml` runs the same six checks on push and PR against
 `main`, and by hand, on `ubuntu-24.04`, then a look run, and uploads the shots
 as the `webkit-look` artifact. Its job has `continue-on-error: true`, so a red
 run cannot block a merge. It is its own workflow, not a job in `test.yml`,

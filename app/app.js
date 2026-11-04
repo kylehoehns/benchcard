@@ -12,6 +12,7 @@
  * function instead, which is what keeps the import graph a tree.
  * ================================================================== */
 import { icon } from './icons.js';
+import { scaleBreakpoints } from './text-size.js';
 import { $, on, set, clone, initFit } from './dom.js';
 import { refreshCardSheetPreview, CARD_FONT } from './card.js';
 import { shareCards, isHomeScreenApp, SHARE_TO_PRINT } from './share.js';
@@ -508,6 +509,12 @@ function fileOverdueDay(today = new Date()) {
    bench-mode trigger -- gamemode.js calls it on close and knows nothing else
    about the tip jar. This is the only place in the app that knows the whole
    graph, which is the point of it being the entry point. */
+/* #611: before anything renders, and again when a coach comes back from
+   Settings having changed Larger Text. */
+scaleBreakpoints();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') scaleBreakpoints();
+});
 initToast(renderAll, setView);
 initTeams(renderAll, setView, edit, fileOverdueDay);
 initSeason(renderAll);

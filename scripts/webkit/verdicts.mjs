@@ -77,6 +77,20 @@ export function addGameProblems({ closed, before, after, passes }) {
   return out;
 }
 
+/* Today at large text (#611), one cell per width: each is `{ width, passTitles,
+ * unexcused }`, the count of `.pass-title` found and the described findings
+ * `knownIssueFor` did not excuse, top and bottom together. A cell that found
+ * no `.pass-title` measured nothing, and so does a run with no cells. */
+export function largeTextProblems({ cells }) {
+  if (!cells.length) return ['no cell was measured, so nothing was checked'];
+  const out = [];
+  for (const { width, passTitles, unexcused } of cells) {
+    if (!passTitles) out.push(`${width}px: no .pass-title was found on Today, so no game title was measured`);
+    for (const f of unexcused) out.push(`${width}px: ${f}`);
+  }
+  return out;
+}
+
 export const rowOf = (name, problems, detail) =>
   problems.length ? { name, status: 'FAIL', detail: problems.join('; ') } : { name, status: 'PASS', detail };
 

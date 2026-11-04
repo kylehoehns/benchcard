@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* #597: the key checks, in WebKit. Prints a PASS/FAIL/SKIP table of five rows
+/* #597: the key checks, in WebKit. Prints a PASS/FAIL/SKIP table of six rows
  * and exits 1 on any FAIL (or if nothing ran). Playwright is not a dependency:
  * it is found at run time (`webkit/playwright.mjs`), and missing it prints the
  * install line and exits 1. Playwright's WebKit is desktop WebKit, not iOS
