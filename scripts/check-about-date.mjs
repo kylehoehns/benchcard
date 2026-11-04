@@ -20,10 +20,15 @@
    `node scripts/check-about-date.mjs origin/main` answers "have I forgotten
    the date on this branch". Exits 0 when there is nothing to check — a first
    push, a shallow clone, a missing base — because a guard that fails on a ref
-   it cannot read teaches people to ignore it. */
+   it cannot read teaches people to ignore it.
+
+   The "commit date" the dateline is judged against is the PR's last commit
+   (`scripts/pr-commit-date.mjs`), not HEAD's: HEAD is a squash or test merge
+   dated when it was built, which can be the next day. */
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { prCommitDate } from './pr-commit-date.mjs';
 
 const PAGE = 'app/about.html';
 
@@ -112,8 +117,7 @@ function main() {
   }
 
   const changed = git(['diff', '--name-only', base, 'HEAD']).split('\n').filter(Boolean);
-  let headDate = null;
-  try { headDate = git(['log', '-1', '--format=%cs', 'HEAD'], true).trim(); } catch {}
+  const headDate = prCommitDate();
 
   const found = problems(changed, oldLine, newLine, headDate);
   if (!found.length) {
