@@ -21,7 +21,7 @@ describe('a coach follows a ?try= link from a chart page', { skip }, () => {
     await coach.onTeamScreen(['Maya Webb', 'Jo Park']);
     await coach.openAt('/?try=7');
 
-    assert.equal(await coach.toast(), "You already have a team, so the sample team wasn't loaded.");
+    assert.equal(await coach.lastToast(), "You already have a team, so the sample team wasn't loaded.");
     assert.equal(await coach.address(), '/');
     assert.deepEqual(await coach.rosterNames(), ['Maya Webb', 'Jo Park']);
   });
@@ -35,7 +35,7 @@ describe('a coach follows a ?try= link from a chart page', { skip }, () => {
   test('a coach with nothing saved still gets the sample team', async () => {
     await coach.openFreshAt('/?try=7');
 
-    assert.ok((await coach.toast()).startsWith('Sample team loaded.'), await coach.toast());
+    assert.ok((await coach.lastToast()).startsWith('Sample team loaded.'), await coach.lastToast());
     assert.equal(await coach.address(), '/');
   });
 
