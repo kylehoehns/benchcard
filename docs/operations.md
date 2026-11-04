@@ -66,7 +66,7 @@ read is a guard people learn to ignore.
 
 `scripts/check-whats-new.mjs` is the third step. It fails a coach-facing change
 under `app/` that adds no entry to `scripts/whats-new.json`; the rule and its
-escape are in `AGENTS.md`. The page itself, `app/whats-new.html`, is generated
+escape are in `/ship-feature` § Would a coach notice this?. The page itself, `app/whats-new.html`, is generated
 from that JSON by `npm run whats-new`.
 
 `.github/workflows/vendor-drift.yml` re-runs `sh app/vendor/fetch.sh` and

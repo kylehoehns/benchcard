@@ -281,10 +281,10 @@ fails a PR that changes a coach-facing path under `app/` and has neither.
 
     Write the body with the `pr` skill's template, in plain words a newcomer
     can follow. Evidence is what you ran and what it printed, before and
-    after. The body ends with `Closes #N`, and nothing after it.
+    after.
 
 11. **Prove the pushed commit.** In a batch, run local CI
-    (`scripts/lanes/ci-local.sh <worktree>`, the same five checks GitHub runs)
+    (`scripts/lanes/ci-local.sh <worktree>`, the checks GitHub runs)
     on the commit before you push it, and again after any later commit or
     rebase; never push a commit whose local CI is red. Its GREEN line goes in
     the PR's Evidence. Outside a batch, the proof pair from step 6 or 8

@@ -1,7 +1,7 @@
 #!/bin/bash
 # PreToolUse(Bash). Three commands AGENTS.md forbids in prose, forbidden in fact.
 #
-# Prose in AGENTS.md is read once at session start and competes with 11KB of
+# Prose in AGENTS.md is read once at session start and competes with all the
 # other prose. These three have all been violated or nearly violated before,
 # and all three are exactly matchable, so they belong here instead of there.
 # AGENTS.md lists each rule in its "What is enforced" table; the deny

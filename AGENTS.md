@@ -28,7 +28,7 @@ stays**: it is the record of what was asked for at that commit, not a
 description of the code today. A small fix carries no spec; its issue is the
 record (`/ship-feature` § The small-fix lane).
 
-**Proof** is `npm test` and `npm run smoke`, and neither is optional. "It
+**Proof** is the proof pair (§ Layout says when each half runs). "It
 works" means a harness said so, in a browser, on this tree; `/browser-verify`
 is the order of operations for the parts a harness does not cover, and a
 layout change gets a screenshot. `npm run evals` runs the Stage 4 suite in
@@ -43,7 +43,7 @@ becomes a new issue. A batch of tickets runs one lane per issue
 
 **Every change reaches `main` through a pull request**, reviewed against
 `REVIEW.md` — including a one-line fix and a change that touches only
-`notes/`. Its body says `Closes #N`, so the merge closes the issue.
+`notes/`.
 
 ## Test seams
 
@@ -92,17 +92,12 @@ Procedures live in `.claude/skills/` and cite this file rather than copy it:
   `.claude/agents/`.
 - `/browser-verify` and `/new-guard` own their subjects outright (§ Traps,
   § Guards).
-- `/address-review` is for acting on findings on a pull request: verify a
-  finding before complying with it, and treat a repeat of a class already
-  written down here as the harness failing rather than the code.
+- `/address-review`: a repeat of a class already written down here is the
+  harness failing, not the code.
 - Matt Pocock's, copied in unchanged so they can be refreshed from upstream
   (the setup skill keeps only its GitHub tracker template): `/grill-with-docs`,
-  the interview `/ship-feature` starts with, built from `/grilling` and
-  `/domain-modeling`; `/to-spec` and `/to-tickets`, which turn a settled
-  conversation into issues, configured by `/setup-matt-pocock-skills`; `/tdd`,
-  how a change is built — one failing test at a seam the spec named, then just
-  enough code to pass it; and `/codebase-design`, the vocabulary it consults
-  when where a seam goes is itself in question.
+  `/grilling`, `/domain-modeling`, `/to-spec`, `/to-tickets`,
+  `/setup-matt-pocock-skills`, `/tdd` and `/codebase-design`.
 
 **Skills are Claude-specific. This file is not** — anything an agent must know
 to avoid breaking the tree belongs here, where every tool reads it.
@@ -123,25 +118,20 @@ when a term or decision first needs them. See `docs/agents/domain.md`.
 
 `app/` is everything served, and the only directory deployed, by way of its
 copy in `dist/` (§ Deploy). Everything else is process, and none of it reaches
-a coach. `docs/design-decisions.md` is near the 60 KB limit: a new decision
-goes in the matching side file in its index, or in a new side file added to
-that index.
+a coach. `docs/design-decisions.md` is near the 60 KB limit; its § Side files
+says where a new decision goes.
 
 Serve with `npm run serve` (port 8201), never `python3 -m http.server`. It
 redirects the way Cloudflare does: `about.html` 307s to the extensionless
 spelling, which is what every internal href, canonical tag and sitemap entry
-uses. The python server 404s on all of them. It stops itself after
-60 minutes (`--ttl <minutes>`) or as soon as the process that started it
-exits, so start it in the foreground or as a background job, not with a bare
-`&` from a shell that then exits (#595).
+uses. The python server 404s on all of them. How it stops itself:
+`docs/operations.md`.
 
 `npm run smoke` runs the browser checks, the unit suite and the coverage floor
 as one pass/fail table (`--no-tests` skips the suite and the floor).
 `scripts/smoke/README.md` indexes every row and says how a run works
 (fixtures, the pinned clock, timing, the large-text passes); read the one
-module you are changing, not the whole suite. A run ends itself if it hangs
-(`--timeout`, default 60 minutes) and closes its Chrome even when killed, so
-it needs no wrapper.
+module you are changing, not the whole suite.
 
 **The iterate-then-prove rule.** While iterating, run `node --test <file>`
 for the file you touched and `node scripts/smoke.mjs --only "<check>"` for the
@@ -152,17 +142,15 @@ catches a markup move breaking a test three files away — and not smoke.
 one full `npm run smoke`, which runs the unit suite inside it, so the suite
 runs once. It cannot be split: the coverage floor needs both halves in one
 run, and the commit's handoff has to cover the tree it names. A tree a commit
-already recorded as green is not re-run to say so again (on #22 every agent
-re-ran it: about twelve pairs for one ticket).
+already recorded as green is not re-run to say so again.
 
 **Do not raise a number in `LARGE_TEXT_ALLOW` or `APP_LARGE_TEXT_ALLOW` to
 clear a new failure**, and never replace one with a blanket tolerance. Both
-are empty, every page is pinned at zero, and a blanket is what let a 228px
-sideways pan ship on the games view.
+are empty, every page is pinned at zero, and a blanket once let a sideways
+pan ship.
 
-**Smoke forces CI's font on a Mac too.** CI's Ubuntu fonts measured wider than
-a Mac's, and seven of ten red CI runs in #131–#150 were text that fit locally.
-So the harness forces CI's own font, DejaVu Sans (`scripts/fonts/`), on every
+**Smoke forces CI's font on a Mac too.** CI's Ubuntu fonts measure wider than
+a Mac's, so text that fit locally went red in CI. So the harness forces CI's own font, DejaVu Sans (`scripts/fonts/`), on every
 page it opens (#177); the printed card's InterVar and the paste box's
 monospace keep their real fonts. A check that measures text still leaves at
 least 15% spare width, as `scripts/smoke/row-stack.mjs` does. When CI fails a
@@ -179,19 +167,17 @@ is a finding to report, not a retry.
 **Budgets.** **`requests` is the one real pin** — `REQUESTS_BASELINE` in
 `scripts/budgets.mjs`, held one under the measured cold load, so a new module
 cannot quietly join the boot graph. A module that joins on purpose re-pins it
-there and says which and why (#123). **Bytes and nodes are regression alarms,
+there and says which and why (#123); nothing else re-records it. **Bytes and nodes are regression alarms,
 not constraints**: the shell is precached, so neither costs a coach anything
 after the first load, and neither is a reason to reject a fix. Re-pin
 `BYTES_BASELINE` (or `NODES_BASELINE`) in `scripts/budgets.mjs` to your own
 measured cold load, deliberately, and say what you measured there and in the
-commit. Do not widen the percentage instead: that ratchet ran from #22 to #33
-and ended with a ceiling 61% above a stale number.
+commit. Do not widen the percentage instead: that ratchet ends with a ceiling
+far above a stale number.
 
-**Pictures.** `node scripts/look.mjs --out <dir>` is the harness for any look
-check: any URL (a preview included), the `--widths`, `--font` sizes and
-`--view`s you choose, `--dark`, one PNG per cell, and a `measurements.json`
-listing each shot's cut-off text (`excused` names the known issue, `null` is
-new). It exits 0 unless a shot could not be proved (#180). A redesign
+**Pictures.** `node scripts/look.mjs` (`--help`) is the harness for any look
+check. Its `measurements.json` lists each shot's cut-off text: `excused` names
+the known issue, `null` is new. A redesign
 ticket's fixed side-by-side set against the prototype is `node
 scripts/compare-shots.mjs --issue <n>` instead. Do not write a throwaway
 capture script.
@@ -201,8 +187,7 @@ capture script.
 **`scripts/check-about-date.mjs`, `scripts/check-sitemap-lastmod.mjs` and
 `scripts/check-whats-new.mjs` need a base ref,** so the proof pair skips them;
 `npm run check:history` runs all three against `origin/main` — run it before
-every push. The third fails a coach-facing change with no What's new entry;
-`/ship-feature` § Would a coach notice this? says what to add.
+every push.
 
 **The printed card is auto-fitted from canvas `measureText`.** Its measurement
 font stack must match `.card`'s exactly. The UI itself does not use the card's

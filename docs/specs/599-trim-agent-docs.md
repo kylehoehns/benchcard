@@ -36,6 +36,8 @@ The existing guards over these files, run unchanged: `test/one-answer.test.js`
   from the lane template into ship-feature step 7, so it applies outside a
   batch too. "Never quote the owner" moved from the lane template to
   `AGENTS.md` § Rules, so it applies to every agent.
+- § The merge step in ship-feature is left word for word, job names included,
+  so open #618 (which edits it) lands without a conflict.
 - #615's suggested `lastToast()` clause for § Test seams was not added: the
   driver's verb list in `test/coach.js` already documents it.
 
@@ -57,7 +59,7 @@ The existing guards over these files, run unchanged: `test/one-answer.test.js`
 | Rules: stage explicit paths, with why | table row; why in the `guard-bash.sh` deny message | hook-enforced |
 | Rules: third-party code only through `fetch.sh` | table row; why in the `guard-edit.sh` deny message | hook-enforced |
 | Rules: American spelling everywhere | table row | hook and `test/spelling.test.js` enforce it |
-| Rules: one writer at a time | table row (session-start hook) | hook reports it |
+| Rules: one writer at a time, and its why (a second writer reverted an uncommitted fix) | table row; why in the `session-start.sh` header | hook reports it |
 | Rules: privacy claim's file counts (9, 31), comment and regex scope, guard history | `test/analytics.test.js` | the test owns the detail; counts go stale |
 | Enforced: paragraph on `hooks.test.js` ALLOW cases | `test/hooks.test.js` header | said there |
 | Layout: directory tree block | removed | `ls` shows it |
@@ -76,6 +78,19 @@ The existing guards over these files, run unchanged: `test/one-answer.test.js`
 | Guards: the five failure ways listed | `/new-guard` | it owns them |
 | Judgement: two anecdotes (verified-it-worked, `app.css` device claims) | removed | one example per bullet kept |
 | Deploy: the four dashboard commands, "confirmed 2026-08-24, keep three copies in step" | `wrangler.jsonc` header, `docs/operations.md` § Deployment | two copies, not three |
+| Loop: "neither is optional" | § Layout's iterate-then-prove rule | one answer to when each half runs |
+| Loop: "Its body says `Closes #N`" | the "What is enforced" row | one statement |
+| Agent skills: a paragraph per Matt Pocock skill; `/address-review`'s verify-first | the names stay; each skill's own description | the skill says it |
+| Layout: design-decisions side-file rule | `docs/design-decisions.md` § Side files | said and tested there |
+| Layout: serve's 60-minute stop, `--ttl`, bare `&`; the why "a local server that disagrees with production…" | `docs/operations.md` | said there; the redirect fact stays |
+| Layout: smoke's own server is "immune to the stale-service-worker trap"; "do the hand checks it covers only when it fails" | removed | no-op beside the iterate-then-prove rule |
+| Layout: `npm test` from the root, no dependencies | removed | `package.json` |
+| Layout: "a main-frame navigation with no coverage taken fails the row" | `scripts/smoke/README.md` | said there |
+| Layout: the CI job is named `smoke` for the ruleset | removed | `test/ci-config.test.js` guards it |
+| Layout: `--timeout` and the run closing its Chrome | `scripts/smoke/README.md` § Ending | said there |
+| Layout: look.mjs flags, PNG per cell, exit code (#180) | `node scripts/look.mjs --help` | the script says it |
+| Layout and Traps: anecdotes (#22's twelve pairs, the 228px pan, seven of ten red runs, the 61% ceiling) | shortened to the reason alone | the rule stays |
+| Traps: check-whats-new fails a change with no entry | `/ship-feature` § Would a coach notice this? | said there |
 | Deploy: build fails without the `unbuilt` line; `app/` never rewritten; 77% of gzipped bytes | removed | `scripts/build.mjs` behavior and history |
 
 ### ship-feature SKILL.md
@@ -92,7 +107,9 @@ The existing guards over these files, run unchanged: `test/one-answer.test.js`
 | Step 7: review skills "run in this session" | removed | no-op |
 | Step 10: template section names and upstream source | the `pr` skill | the names were already stale |
 | Step 10: `No coach note:` placement | § Would a coach notice this? | said there |
-| Step 10: `guard-bash.sh` denies a footer | `AGENTS.md` table | enforced |
+| Step 10: `guard-bash.sh` denies a footer; "the body ends with `Closes #N`" | `AGENTS.md` table | enforced; one statement |
+| Step 11: "the same five checks"; merge step: "local green is not CI green" | the merge step waits for the `tests` jobs | it enforces this |
+| Build preface: a fresh session "keeps the unattended run clean" | removed | the instruction stays |
 | Merge step: history checks need a base ref | `AGENTS.md` § Traps | said there |
 | Batch: `git worktree add` | `scripts/lanes/lane.sh` | the script does it |
 | Batch: proof pair one lane at a time | the `ci-local.sh` / `ci-slot.sh` slot | the slot enforces it |
@@ -106,7 +123,10 @@ The existing guards over these files, run unchanged: `test/one-answer.test.js`
 | Do not wait for GitHub CI or the preview | ship-feature step 12 | said there |
 | Never quote the owner | `AGENTS.md` § Rules | applies to every agent |
 | No trailers | `AGENTS.md` table, `guard-bash.sh` | hook-enforced |
-| PR body: `pr` template, global CLAUDE.md rules, 400 words, ends at `Closes #N` | ship-feature step 10; global CLAUDE.md loads on its own | duplicate |
+| PR body: `pr` template, global CLAUDE.md rules, 400 words, ends at `Closes #N` | ship-feature step 10, the `AGENTS.md` table; global CLAUDE.md loads on its own | duplicate |
+| GREEN line "(sha and time)" | `ci-local.sh` prints it | the script says it |
+| `ci-local.sh` refuses when behind or dirty | the script's refusal message | the script says it |
+| Servers and Chromes stop on their own (#595) | `docs/operations.md`, `scripts/smoke/README.md` | said there |
 | Look checks with long names, scrolled to the bottom, full height | ship-feature step 7 | one statement, outside batches too |
 | SKIP-OK: "GitHub's checks must still all pass" | the merge step | it enforces this |
 | DO NOT MERGE and do not approve; merge-one runs the preview check | ship-feature step 12 and § The merge step | said there |
