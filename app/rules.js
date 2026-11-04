@@ -459,7 +459,7 @@ function focusRuleRowAfterRemove(idx) {
 
 // Decision 9's order and the prototype's plainer labels. `scripts/feature-
 // keys.mjs`'s `shipped().rule` reads this exact array by name and shape, so
-// an eighth kind here is an eighth kind there rather than a silent gap (A19).
+// a new kind here is a new kind there rather than a silent gap (A19).
 const KINDS = [
   ['minimum', 'Plays at least'],
   ['cap', 'Plays at most'],

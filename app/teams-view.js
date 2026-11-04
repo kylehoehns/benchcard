@@ -205,7 +205,7 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
      switch turns one on at 2 (held to the top of its stepper) or off at 0; the
      stepper is the one the rule's detail page uses. The open day's games that
      have not started follow (`setTeamRun`). */
-  for (const [sw, key, kind] of [['#restOn', 'maxConsecutive', 'rest'], ['#benchOn', 'maxBench', 'bench']]) {
+  for (const { sw, key, kind } of LEAGUE_RUNS) {
     on(sw, 'onchange', (e) => {
       if (!team()?.settings) return;
       setTeamRun(key, e.target.checked ? Math.min(2, runTop(settingsRef(), kind)) : 0);
@@ -353,15 +353,19 @@ function paintLeagueMin(settled = false) {
    built from the team's own format when there is none. */
 const settingsRef = () => game() ?? newGame(0, null, team()?.settings);
 
+/* The two "in a row" rules: the team key, the rule kind, and the ids of the
+   switch, group and footnote in Settings. */
+const LEAGUE_RUNS = [
+  { key: 'maxConsecutive', kind: 'rest', sw: '#restOn', grp: '#restGrp', note: '#restNote' },
+  { key: 'maxBench', kind: 'bench', sw: '#benchOn', grp: '#benchGrp', note: '#benchNote' },
+];
+
 /* The two "in a row" groups: the switch, the stepper under it while on, and
    the footnote. The stepper is rebuilt only when what it shows changes -- a tap
    on it updates its own number, and `renderAll` then finds nothing to redo. */
 function paintLeagueRuns() {
   const ref = settingsRef();
-  for (const [key, kind, sw, grp, note] of [
-    ['maxConsecutive', 'rest', '#restOn', '#restGrp', '#restNote'],
-    ['maxBench', 'bench', '#benchOn', '#benchGrp', '#benchNote'],
-  ]) {
+  for (const { key, kind, sw, grp, note } of LEAGUE_RUNS) {
     const v = teamRun(key);
     const box = $(grp);
     if (!box) continue;
