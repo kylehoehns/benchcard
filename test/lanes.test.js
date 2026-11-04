@@ -7,11 +7,13 @@
  * `scripts/lanes/` and a `node_modules` dir. Nothing touches the real repo.
  *
  * Also one guard (reads files, not behavior): no file under `scripts/lanes/`
- * may name a session's temp folder (`/private/tmp`). Rule 2a: a scan that
+ * may name a session's temp folder (`/private/tmp`) or a typed home path
+ * (`/Users/`). Rule 2a: a scan that
  * found fewer than six files fails rather than passing vacuously.
  *
  * STATES THE GUARD WAS RUN AGAINST: the finished tree (green); a lanes file
- * temporarily holding `/private/tmp` (red, names the file).
+ * temporarily holding `/private/tmp` (red, names the file); a lanes file
+ * temporarily holding `/Users/` (red, names the file).
  */
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -114,13 +116,39 @@ describe('lane.sh', () => {
     assert.ok(text.includes('LANE-SPECIFIC & odd/path text'));
   });
 
-  test('refuses on a wrong argument count, a non-number, or an existing branch', () => {
+  test('refuses on a wrong argument count, a non-number, or an existing branch, each with its own message', () => {
     const f = fixture();
-    assert.notEqual(start(f, '999', 'test-999').status, 0, 'too few args');
-    assert.notEqual(start(f, 'x9', 'test-999', '8399').status, 0, 'issue not a number');
-    assert.notEqual(start(f, '999', 'test-999', 'p').status, 0, 'port not a number');
-    assert.notEqual(start(f, '999', 'main', '8399').status, 0, 'branch exists');
+    const cases = [
+      [['999', 'test-999'], /usage/, 'too few args'],
+      [['x9', 'test-999', '8399'], /issue must be a number/, 'issue not a number'],
+      [['999', 'test-999', 'p'], /port must be a number/, 'port not a number'],
+      [['999', 'main', '8399'], /branch already exists/, 'branch exists'],
+    ];
+    for (const [args, message, label] of cases) {
+      const r = start(f, ...args);
+      assert.notEqual(r.status, 0, `${label}: refuses`);
+      assert.match(r.stderr, message, `${label}: says why`);
+    }
     assert.ok(!existsSync(join(f.wtDir, '999')), 'no worktree after refusals');
+  });
+
+  test('an invalid branch name is refused with a message and leaves nothing behind', () => {
+    const f = fixture();
+    const r = start(f, '999', 'bad..name', '8399');
+    assert.notEqual(r.status, 0, 'refuses');
+    assert.match(r.stderr, /not a valid branch name/);
+    assert.ok(!existsSync(join(f.wtDir, '999')), 'no worktree');
+    assert.ok(!existsSync(join(f.wtDir, 'lane-999.txt')), 'no prompt');
+    assert.ok(!existsSync(f.wtDir), 'no worktree folder');
+  });
+
+  test('an extra file holding a literal __EXTRA__ line is text, not a template fault', () => {
+    const f = fixture();
+    const extra = join(f.root, 'extra.txt');
+    writeFileSync(extra, 'before\n__EXTRA__\nafter\n');
+    const r = start(f, '999', 'test-999', '8399', extra);
+    assert.equal(r.status, 0, `lane.sh failed: ${r.stderr}`);
+    assert.ok(readFileSync(join(f.wtDir, 'lane-999.txt'), 'utf8').includes('before\n__EXTRA__\nafter'));
   });
 });
 
@@ -133,6 +161,10 @@ describe('scripts/lanes/ guard', () => {
       assert.ok(
         !text.includes('/private/tmp'),
         `scripts/lanes/${name} contains /private/tmp: use \${TMPDIR:-/tmp} or CI_SLOT_POOL instead of a session path`,
+      );
+      assert.ok(
+        !text.includes('/Users/'),
+        `scripts/lanes/${name} contains /Users/: find the main checkout with \`git worktree list\`, don't type a home path`,
       );
     }
   });

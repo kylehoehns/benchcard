@@ -7,6 +7,8 @@
 #   so it also stands in for the "node 24" job), smoke 1/3 2/3 3/3, evals,
 #   redirect-check, and the three history checks (What's new since #529) against origin/main.
 #   Then merges the smoke parts the way the `smoke` job does.
+# - The slot pool is one fixed path, /tmp/benchcard-ci-slots, so every lane on the
+#   machine shares it whatever its TMPDIR is. CI_SLOT_POOL overrides it.
 # - Ports: every server and Chrome here binds port 0 with its own temp
 #   profile, so runs in different worktrees never collide on ports.
 # - CPU is the real limit (flakes under load). A machine-wide slot pool lets
@@ -15,7 +17,7 @@ set -u
 WT=${1:-$PWD}
 SLOTS=${CI_SLOTS:-2}
 TMPROOT=${TMPDIR:-/tmp}; TMPROOT=${TMPROOT%/}
-POOL=${CI_SLOT_POOL:-$TMPROOT/benchcard-ci-slots}
+POOL=${CI_SLOT_POOL:-/tmp/benchcard-ci-slots}
 cd "$WT" || exit 2
 mkdir -p "$POOL"
 

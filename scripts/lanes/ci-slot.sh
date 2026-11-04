@@ -4,11 +4,12 @@
 # runs share one CPU budget. Usage: ci-slot.sh <cmd> [args...]
 # The command is stopped after CI_SLOT_TIMEOUT seconds (default 600), so a hung
 # script can't hold the one slot forever (2026-10-31: a probe with no timeout did).
+# The slot pool is one fixed path, /tmp/benchcard-ci-slots, so every lane on the
+# machine shares it whatever its TMPDIR is. CI_SLOT_POOL overrides it.
 set -u
 SLOTS=${CI_SLOTS:-2}
 LIMIT=${CI_SLOT_TIMEOUT:-600}
-TMPROOT=${TMPDIR:-/tmp}; TMPROOT=${TMPROOT%/}
-POOL=${CI_SLOT_POOL:-$TMPROOT/benchcard-ci-slots}
+POOL=${CI_SLOT_POOL:-/tmp/benchcard-ci-slots}
 mkdir -p "$POOL"
 SLOT=""
 while [ -z "$SLOT" ]; do

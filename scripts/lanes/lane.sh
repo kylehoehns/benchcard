@@ -26,6 +26,7 @@ case "$PORT" in ''|*[!0-9]*) die "port must be a number, got '$PORT'";; esac
 [ -z "$EXTRA_FILE" ] || [ -f "$EXTRA_FILE" ] || die "extra file not found: $EXTRA_FILE"
 [ -f "$TEMPLATE" ] || die "template not found: $TEMPLATE"
 if git -C "$MAIN" show-ref --verify --quiet "refs/heads/$BRANCH"; then die "branch already exists: $BRANCH"; fi
+git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "not a valid branch name: $BRANCH"
 [ ! -e "$WT" ] || die "worktree path already exists: $WT"
 
 TMP=$(mktemp "${TMPDIR:-/tmp}/lane-prompt.XXXXXX")
@@ -53,7 +54,9 @@ awk '
   }
 ' "$TEMPLATE" > "$TMP.body"
 trap 'rm -f "$TMP" "$TMP.body"' EXIT
-# Leftovers are looked for before the extra text goes in (it may say __X__ on purpose).
+# Template checks run before the extra text goes in, so extra text is never
+# judged (it may say __X__ or a whole __EXTRA__ line on purpose).
+if grep -v '^__EXTRA__$' "$TMP.body" | grep -q '__EXTRA__'; then die "__EXTRA__ must be on a line by itself in $TEMPLATE"; fi
 LEFT=$(grep -oE '__[A-Z]+__' "$TMP.body" | sort -u | grep -vx '__EXTRA__' || true)
 if [ -n "$LEFT" ]; then
   while IFS= read -r name; do echo "lane.sh: unknown placeholder $name in $TEMPLATE" >&2; done <<< "$LEFT"
@@ -63,7 +66,6 @@ awk '
   /^__EXTRA__$/ { print ENVIRON["L_EXTRA"]; next }
   { print }
 ' "$TMP.body" > "$TMP"
-if grep -q '__EXTRA__' "$TMP"; then die "__EXTRA__ must be on a line by itself in $TEMPLATE"; fi
 
 git -C "$MAIN" fetch -q origin main
 mkdir -p "$WTDIR"

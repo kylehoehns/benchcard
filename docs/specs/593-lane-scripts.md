@@ -34,11 +34,13 @@ Item 1's scan is a guard (reads files, not behavior): `/new-guard` applies.
 
 ## Design and choices the issue left open
 
-- **No session paths.** The slot pool moves from a fixed
-  `/private/tmp/claude-501/...` to `${CI_SLOT_POOL:-${TMPDIR:-/tmp}/benchcard-ci-slots}`,
-  shared by `ci-local.sh` and `ci-slot.sh`; run logs go under the same temp
-  root. The main checkout is found with `git worktree list` (its first entry)
-  instead of a typed home path.
+- **No session paths.** The slot pool moves from
+  `/private/tmp/claude-501/...` to `${CI_SLOT_POOL:-/tmp/benchcard-ci-slots}`,
+  shared by `ci-local.sh` and `ci-slot.sh`. It stays one fixed path, not under
+  TMPDIR, because two lanes with different TMPDIRs would otherwise get two
+  pools and the CPU limit would stop holding (review finding). Run logs go
+  under TMPDIR. The main checkout is found with `git worktree list` (its first
+  entry) instead of a typed home path; the guard also refuses `/Users/`.
 - **Where a lane goes.** Worktree: `<main>-wt/<issue>` beside the main checkout
   (today's `benchcard-wt/<N>`). Prompt: `<main>-wt/lane-<issue>.txt`; the path
   is printed.
