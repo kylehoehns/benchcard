@@ -447,9 +447,9 @@ test('the sitemap lists the 6-player page before the 7 and the halves page after
   const at = loc => entries.findIndex(e => e[0] === `https://benchcard.app/${loc}`);
   assert.equal(at(slug(6)) + 1, at(slug(7)));
   assert.equal(at('basketball-rotation-chart-two-halves'), at(slug(12)) + 1);
-  for (const loc of [slug(6), 'basketball-rotation-chart-two-halves']) {
-    assert.deepEqual(entries[at(loc)].slice(1), ['2026-11-02', '0.7'], loc);
-  }
+  // every chart page moved with the #608 line-break and footer-email fixes
+  assert.deepEqual(entries[at(slug(6))].slice(1), ['2026-11-04', '0.7'], slug(6));
+  assert.deepEqual(entries[at('basketball-rotation-chart-two-halves')].slice(1), ['2026-11-04', '0.7']);
 });
 
 /* ---------------- 6. try first, chart above the fold, Print, Hardwood (#433) ---------------- */
@@ -492,7 +492,34 @@ test('each size page has the one-sentence lede, with the minutes from the plan',
     // the phrase is the range of the minutes the card's own footer prints
     const mins = footerMinutes(html.get(n));
     const lo = Math.min(...mins), hi = Math.max(...mins);
-    assert.equal(m[1], lo === hi ? `${lo} minutes each` : `${lo}–${hi} minutes each`, `${file(n)} minutes phrase`);
+    assert.equal(m[1], lo === hi ? `${lo} minutes each` : `${lo}–&#8288;${hi} minutes each`, `${file(n)} minutes phrase`);
+  }
+});
+
+/* #608: a browser may break a line right after an en dash, which left "24–"
+   at the end of a line and "28" on the next. The visible body text carries a
+   word joiner after the dash; the descriptions a crawler reads stay plain. */
+test('every lede and figcaption keeps a number range on one line (#608)', () => {
+  let ranges = 0;
+  for (const [name, page] of pages()) {
+    const body = [...page.matchAll(/<(?:p class="lede|figcaption)[^>]*>([\s\S]*?)<\/(?:p|figcaption)>/g)].map(m => m[1]);
+    assert.equal(body.length, 2, `${name} lede and figcaption`);
+    for (const text of body) {
+      assert.ok(!/\d–(?!&#8288;\d)\d/.test(text), `${name} breaks a range: ${text}`);
+      ranges += (text.match(/\d–&#8288;\d/g) ?? []).length;
+    }
+  }
+  assert.ok(ranges >= 5, `only ${ranges} ranges measured; the pages with ranges are 6, 7, 9, 11, 12`);
+});
+
+test('the 6-player lede reads 24–&#8288;28 minutes each, and the descriptions stay plain', () => {
+  const page = html.get(6);
+  assert.ok(lede(page).includes('That is 24–&#8288;28 minutes each, as close'), lede(page));
+  for (const re of [/<meta name="description" content="([^"]*)"/,
+    /<meta property="og:description" content="([^"]*)"/,
+    /<meta name="twitter:description" content="([^"]*)"/]) {
+    assert.ok(meta(page, re).includes('24–28 minutes each'), `${re} ${meta(page, re)}`);
+    assert.ok(!meta(page, re).includes('&#8288;'), `${re} has a joiner`);
   }
 });
 
@@ -526,5 +553,12 @@ test('every chart page is Hardwood and its links paint --accent-text', () => {
       }
     }
     assert.equal(linkColor, 'var(--accent-text)', `${c.file}: its sheets paint links ${linkColor}`);
+  }
+});
+
+test('every chart page footer breaks its email address only after the @', () => {
+  for (const [name, html] of pages()) {
+    assert.ok(html.includes('<a href="mailto:hello@benchcard.app">hello@<wbr>benchcard.app</a>'),
+      `app/${name} footer mail link must read hello@<wbr>benchcard.app`);
   }
 });
