@@ -15,7 +15,7 @@ test('launch() starts Chrome with --use-mock-keychain', { ...NEEDS_CHROME, timeo
     const command = execFileSync('ps', ['-ww', '-o', 'command=', '-p', String(proc.pid)], { encoding: 'utf8' }).trim();
     assert.notEqual(command, '', 'ps printed no command line for Chrome, so nothing was checked');
     assert.ok(command.split(/\s+/).includes('--use-mock-keychain'),
-      `Chrome's command line lacks --use-mock-keychain (#616): ${command}`);
+      `Chrome's command line lacks --use-mock-keychain (#616); restore it in launch() in scripts/smoke/chrome.mjs: ${command}`);
   } finally {
     await closeChrome(proc, dir);
   }
