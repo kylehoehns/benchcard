@@ -50,7 +50,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
 
     await coach.openLinkAgain(link);
 
-    assert.equal(await coach.toast(), 'You already have this game, further along.');
+    assert.equal(await coach.lastToast(), 'You already have this game, further along.');
     await resume();
     assert.equal(await coach.stint(), '6 of 8');
     assert.deepEqual(await coach.onFloor(), floor);
@@ -68,11 +68,11 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
     await coach.tap('Leave');
     const later = await shareFromCard();
     await coach.openLink(early);
-    assert.equal(await coach.toast(), 'Smoke Test game added. Open bench mode to run subs.');
+    assert.equal(await coach.lastToast(), 'Smoke Test game added. Open bench mode to run subs.');
 
     await coach.openLinkAgain(later);
 
-    assert.equal(await coach.toast(), 'Smoke Test game updated.');
+    assert.equal(await coach.lastToast(), 'Smoke Test game updated.');
     assert.ok(await coach.sees('Undo'), 'no Undo offered');
     await resume();
     assert.equal(await coach.stint(), '4 of 8');
@@ -99,7 +99,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
 
     await coach.openLinkAgain(link, toastShown);
 
-    assert.equal(await coach.toast(), 'You already filed this game.');
+    assert.equal(await coach.lastToast(), 'You already filed this game.');
     assert.ok(await coach.sees('Season 1 game filed ›'), 'Today should still say one game filed');
     assert.ok(!(await coach.todayGames()).some(n => n.startsWith('Hawks')), 'Hawks is back on Today');
     await coach.tap('Season 1 game filed ›');
@@ -113,7 +113,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
 
     await coach.openLinkAgain(link, toastShown);
 
-    assert.equal(await coach.toast(), 'Sat, Sep 12: 1 game filed to the season.');
+    assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season.');
     assert.deepEqual(await coach.todayGames(), ['Ravens, 11:30 AM, planned']);
     await coach.tap('Season 1 game filed ›');
     assert.deepEqual(await coach.seasonFiled(), ['Sep 12 · 1 game', 'vs Hawks']);

@@ -231,7 +231,7 @@ describe('a coach runs a game', { skip }, () => {
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1);
 
-    assert.equal(await coach.toast(), 'Sat, Sep 12: 1 game filed to the season. Ravens was never started, so it was left out.');
+    assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season. Ravens was never started, so it was left out.');
     await coach.tap('Season 1 game filed ›');
 
     const minutes = await coach.seasonMinutes();

@@ -70,7 +70,7 @@ describe('a coach prints or hands off a game', { skip }, () => {
     await coach.tap('Hand off');
     await coach.openLink(await coach.shareLink());
 
-    assert.equal(await coach.toast(), 'Smoke Test game added. Open bench mode to run subs.');
+    assert.equal(await coach.lastToast(), 'Smoke Test game added. Open bench mode to run subs.');
     await coach.tap('Card');
     assert.deepEqual(await coach.changeLines(), CHANGE_LINES);
     assert.deepEqual(await coach.cardFives(), fives);

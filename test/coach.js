@@ -129,6 +129,29 @@ const BEACON_SPY = `window.__beacons = [];
     return realBeacon ? realBeacon(url, body) : true;
   };`;
 
+/* How a toast's message reads: its buttons and links removed, whitespace
+ * collapsed. One expression, a function of the toast element, shared by
+ * `toast()` and the log below so the two cannot read a toast differently. */
+const TOAST_TEXT = `(t => {
+  const c = t.cloneNode(true); c.querySelectorAll('button, a').forEach(b => b.remove());
+  return c.innerText.replace(/\\s+/g, ' ').trim();
+})`;
+
+/* A log of every toast as it is added to the page, newest last, as
+ * `lastToast()` reads it back. The app appends the message before it inserts
+ * the toast, so the text is there when the observer runs. Toasts mount in
+ * #toasts or inside an open dialog's .bsheet-toasts, so it watches the whole
+ * document. Per document: a page load starts it empty. */
+const TOAST_LOG = `window.__toasts = [];
+  const toastText = ${TOAST_TEXT};
+  new MutationObserver(records => {
+    for (const r of records) for (const n of r.addedNodes) {
+      if (n.nodeType !== 1) continue;
+      const found = n.matches('.toast') ? [n] : [...n.querySelectorAll('.toast')];
+      for (const t of found) window.__toasts.push(toastText(t));
+    }
+  }).observe(document, { childList: true, subtree: true });`;
+
 const KEY_CODES = { Escape: 27, Tab: 9, Enter: 13 };
 
 export class Coach {
@@ -159,6 +182,7 @@ export class Coach {
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FADE_WATCH });
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: PRINT_SPY });
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: BEACON_SPY });
+      await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TOAST_LOG });
     } catch (err) {
       c?.close();
       if (launched) await closeChrome(launched.proc, launched.dir);
@@ -534,9 +558,17 @@ export class Coach {
     return evalIn(this.c, `(() => {
       const t = [...document.querySelectorAll('.toast:not(.out)')].pop();
       if (!t) return '';
-      const c = t.cloneNode(true); c.querySelectorAll('button, a').forEach(b => b.remove());
-      return c.innerText.replace(/\\s+/g, ' ').trim();
+      return (${TOAST_TEXT})(t);
     })()`);
+  }
+
+  /** The newest toast this page has shown, still up or already timed out, or
+      '' when it has shown none. A toast raised during boot can time out before
+      `land` returns on a busy machine, so a scenario reading a toast right
+      after a page load asks for this one (#601). `toast()` stays what is on
+      screen now. */
+  lastToast() {
+    return evalIn(this.c, `(window.__toasts || []).at(-1) ?? ''`);
   }
 
   /** Who bench mode shows on the floor, top to bottom, by name. */

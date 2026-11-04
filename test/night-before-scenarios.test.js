@@ -43,7 +43,7 @@ describe('a game set up the night before', { skip }, () => {
 
     await coach.comeBackAt(MORNING);
 
-    assert.ok(!/left out/.test(await coach.toast()), `toast: ${await coach.toast()}`);
+    assert.ok(!/left out/.test(await coach.lastToast()), `toast: ${await coach.lastToast()}`);
     assert.deepEqual(await printedFives(), fives);
   });
 
@@ -55,7 +55,7 @@ describe('a game set up the night before', { skip }, () => {
 
     await coach.comeBackAt(MORNING);
 
-    assert.match(await coach.toast(), /Fri, Oct 30: 1 game filed/);
+    assert.match(await coach.lastToast(), /Fri, Oct 30: 1 game filed/);
     assert.ok((await coach.controls()).includes('Game 1, planned'), 'today has a new game');
   });
 
