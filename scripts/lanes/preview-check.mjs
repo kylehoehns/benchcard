@@ -17,6 +17,12 @@
  *    origin. With no pages it only checks that `/` answers 200.
  * 4. Posts one PR comment either way, and exits 0 on PASS, 1 on FAIL.
  *
+ * Exit 2 (#613): could not read from GitHub. The first `gh pr view` and the two
+ * `git fetch` calls get 3 tries, LANES_GH_RETRY_WAIT seconds apart (default 5),
+ * each retry printed; an empty headRefOid or headRefName is a failed read. A
+ * build wait whose every check-runs read failed ends the same way. No comment
+ * is posted, because that is not a verdict on the PR.
+ *
  * Reused, not re-derived: `coachFacing` (which app/ paths a coach sees),
  * `VIEWS` (the five app views), look.mjs (shots and clip findings).
  * The pure parts are exported for test/preview-check.test.js; `main()` runs
@@ -107,6 +113,19 @@ export function commentText(r) {
   return lines.join('\n');
 }
 
+/* What waitForBuild throws at its cap. When every read failed, the build was
+ * never seen, so this is a read failure (exit 2), not "did not finish". */
+export function capError({ tried, failed, lastError, N, fallback }) {
+  if (tried > 0 && failed === tried) return readError(N, lastError);
+  return new Error(fallback);
+}
+
+function readError(N, lastError) {
+  const e = new Error(`couldn't read #${N} from GitHub: ${lastError}`);
+  e.unreadable = true;
+  return e;
+}
+
 /* ---------- the run ---------- */
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -114,24 +133,43 @@ const log = m => console.log(`preview-check: ${m}`);
 const gh = async args => (await run('gh', args, { timeout: GH_MS, maxBuffer: 20e6 })).stdout;
 const git = async (...args) => (await run('git', args, { timeout: GIT_MS, maxBuffer: 20e6 })).stdout;
 
+const lastLine = e => ((e.stderr || '').trim() || e.message).split('\n').filter(Boolean).pop() ?? 'unknown error';
+
+/* 3 tries, LANES_GH_RETRY_WAIT seconds apart; each retry is printed. `read`
+ * throws on a failed or empty answer. */
+async function withRetries(N, read) {
+  const wait = Number(process.env.LANES_GH_RETRY_WAIT ?? 5) * 1000;
+  let last;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try { return await read(); } catch (e) {
+      last = lastLine(e);
+      if (attempt < 3) { log(`read failed (attempt ${attempt} of 3): ${last}; retrying`); await sleep(wait); }
+    }
+  }
+  throw readError(N, last);
+}
+
 async function getText(url) {
   const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_MS), redirect: 'follow', cache: 'no-store' });
   return { status: res.status, body: res.status === 200 ? await res.text() : '' };
 }
 
-async function waitForBuild(sha) {
+async function waitForBuild(sha, N) {
   const end = Date.now() + BUILD_CAP_MS;
+  let tried = 0, failed = 0, lastError = '';
   while (Date.now() < end) {
     let found;
+    tried++;
     try {
       const out = JSON.parse(await gh(['api', `repos/${REPO}/commits/${sha}/check-runs`]));
       found = out.check_runs.find(c => c.name === CHECK);
-    } catch (e) { log(`check-runs read failed (${e.message.split('\n')[0]}); retrying`); }
+    } catch (e) { failed++; lastError = lastLine(e); log(`check-runs read failed (${lastError}); retrying`); }
     if (found?.conclusion === 'success') return found;
     if (found?.conclusion) throw new Error(`${CHECK} ${found.conclusion} on ${sha.slice(0, 7)}`);
     await sleep(BUILD_EVERY_MS);
   }
-  throw new Error(`${CHECK} did not finish on ${sha.slice(0, 7)} within ${BUILD_CAP_MS / 60_000} minutes`);
+  throw capError({ tried, failed, lastError, N,
+    fallback: `${CHECK} did not finish on ${sha.slice(0, 7)} within ${BUILD_CAP_MS / 60_000} minutes` });
 }
 
 async function waitForAlias(alias, preview) {
@@ -163,18 +201,26 @@ async function lookAt(alias, views) {
 export async function main(argv = process.argv.slice(2)) {
   const N = argv[0];
   if (!/^\d+$/.test(N ?? '')) { console.error('usage: node scripts/lanes/preview-check.mjs <pr-number>'); return 1; }
-  const { headRefName, headRefOid: sha } = JSON.parse(await gh(['pr', 'view', N, '--json', 'headRefName,headRefOid']));
+  const notRead = e => { console.log(e.message); return 2; };
+  let headRefName, sha;
+  try {
+    ({ headRefName, headRefOid: sha } = await withRetries(N, async () => {
+      const v = JSON.parse(await gh(['pr', 'view', N, '--json', 'headRefName,headRefOid']));
+      if (!v.headRefName || !v.headRefOid) throw new Error('gh returned nothing');
+      return v;
+    }));
+  } catch (e) { if (e.unreadable) return notRead(e); throw e; }
   let url = aliasUrl(headRefName);
   const result = { url, sha, views: [], notChecked: [], shots: 0, findings: [], consoleErrors: [], problems: [], pass: false };
   try {
-    await git('fetch', '-q', 'origin', 'main');
-    await git('fetch', '-q', 'origin', `pull/${N}/head`);
+    await withRetries(N, () => git('fetch', '-q', 'origin', 'main'));
+    await withRetries(N, () => git('fetch', '-q', 'origin', `pull/${N}/head`));
     const paths = (await git('diff', '--name-only', '--no-renames', `origin/main...${sha}`)).split('\n').filter(Boolean);
     result.views = viewsFor(paths);
     result.notChecked = notChecked(paths);
 
     log(`waiting for ${CHECK} on ${sha.slice(0, 7)}`);
-    const built = await waitForBuild(sha);
+    const built = await waitForBuild(sha, N);
     const { preview, alias } = urlsFromSummary(built.output?.summary);
     url = result.url = urlToCheck(alias, url);
     if (preview) { log(`waiting for ${url} to serve ${preview}`); await waitForAlias(url, preview); }
@@ -190,6 +236,7 @@ export async function main(argv = process.argv.slice(2)) {
       if (!result.pass) result.reason = `${url}/ answered ${status}`;
     }
   } catch (e) {
+    if (e.unreadable) return notRead(e);
     result.pass = false;
     result.reason = e.message.split('\n')[0];
   }
