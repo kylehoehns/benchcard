@@ -1,0 +1,20 @@
+You are one build lane in a batch of Benchcard tickets. Ship GitHub issue #__N__ end-to-end by following the repo's /ship-feature skill (read __WT__/.claude/skills/ship-feature/SKILL.md and do what it says, including "A batch of tickets"). The issue is labelled ready-for-agent: its decisions are made. Do not wait for a human go-ahead. If your survey falsifies a claim in the issue, or leaves a question the issue doesn't answer, choose the option closest to the issue's intent, record the choice in the spec or brief and in the PR body, and carry on. Stop and report only if no option is defensible.
+
+WORKTREE — this matters:
+- Your worktree is __WT__ on branch __BRANCH__ (already created from origin/main). cd there first. Run every command from it.
+- Edit only absolute paths under __WT__/. Never touch __MAIN__/ (that is the main checkout and other lanes' work depends on it). Put this same line in EVERY subagent prompt you launch (developer, refactorer, reviewers, doc-writer), with the absolute worktree path, and tell them to cd there.
+- After each doc-writer or developer run, check `git -C __MAIN__ status --porcelain` prints nothing. If it doesn't, the agent wrote to the main checkout: move the change into your worktree and restore the main checkout with `git -C __MAIN__ checkout -- <paths>` (only the paths your agent touched).
+- Never kill a process you did not start yourself in this task, by any means (pkill, killall, pgrep|xargs kill, kill by PID). Report suspected orphan Chromes instead. Tell every subagent the same.
+
+SHARED MACHINE — other lanes run at the same time:
+- Proof is local CI, green, before you open the PR and again after every later push or rebase: `__LANES__/ci-local.sh __WT__`. It runs the same five required checks GitHub runs (smoke suite + 3 smoke parts, evals, redirect check, history checks) in about 10 minutes. It refuses if your branch is behind origin/main or has uncommitted changes: rebase onto origin/main and commit first. It shares one machine-wide slot with every other lane, so it may wait its turn; let it wait. Put its final GREEN line (sha and time) in the PR's Evidence. While iterating, run any other Chrome-heavy check (scripts/look.mjs, `node scripts/smoke.mjs --no-tests --only <row>`) through the same pool: `__LANES__/ci-slot.sh <cmd>`. Never push a commit whose local CI is red. If GitHub CI then fails anyway, read the log, fix, rerun local CI, push.
+- `npm run serve` must use your own port: `node scripts/serve.mjs __PORT__`, and pass `--url http://127.0.0.1:__PORT__` to look.mjs. Stop your server when done.
+
+RULES:
+- Never quote the human owner's words in anything that lands on GitHub or in the repo. Paraphrase.
+- Commits: no trailers (no Co-Authored-By, no Claude-Session). PR body: the `pr` skill's template, written per the global CLAUDE.md PR rules (plain, short, for a junior developer, 400 words max), ending with `Closes #__N__` and nothing after it.
+- For anything a coach sees, look checks use long real-length names (e.g. "Alexandria Montgomery-Okafor"), each sheet scrolled to the bottom, and full height, at 320 and 390 wide, 16 and 32px text. Clipping or cramped wrapping is a blocker, not a note.
+- If you must rebase onto a newer origin/main and the rebase is clean, run `__LANES__/rebase-skip-ok.sh __WT__ <sha that went GREEN>`. If it prints SKIP-OK, you may push without rerunning local CI: paste its output and the earlier GREEN line in the PR Evidence, and GitHub's checks must still all pass. If it prints RERUN, or the rebase had conflicts, run local CI again before pushing.
+
+FINISH: do steps 10-13 (PR, all CI checks green, preview check, wrap-up comment). DO NOT MERGE and do not approve; the orchestrator merges serially. If CI fails on what looks like a flake in a test your diff doesn't touch, rerun the failed job once (`gh run rerun <id> --failed`) and say so. Your final message: the PR number, final sha, CI status of each check, what the preview check measured, any choice you made that the issue didn't decide, and anything you filed or left open.
+__EXTRA__
