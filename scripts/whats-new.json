@@ -1,4 +1,9 @@
 [
+  { "date": "2026-11-03", "text": "New in Settings: League rules. Everyone plays at least, Everyone plays in, and how long a player can stay on the floor or on the bench in a row are now in one place." },
+  { "date": "2026-11-03", "text": "Each new game starts with your team's limits on playing or sitting in a row. To change one for a single game, tap it in that game's rules. Your team's limit stays the same." },
+  { "date": "2026-11-03", "text": "Under Everyone plays at least, a line now says what your minimum comes to in a game, like 16 min in a 4 × 8 game." },
+  { "date": "2026-11-03", "text": "Your league minimum can now be counted in quarters of time or in whole quarters, or halves if your games have two halves." },
+  { "date": "2026-11-03", "text": "Plays at most and Sits at most are no longer in Add a rule. Turn them on in Settings under League rules." },
   { "date": "2026-11-03", "text": "Add a game now asks two things: who you're playing and who's here. A new game plans the same way as your last one. To change it, tap it in the sentence on the game screen." },
   { "date": "2026-11-03", "text": "On the plan sheet, one row, Make up minutes from, now replaces the two Even out switches. Pick This game only, Earlier today or The season so far." },
   { "date": "2026-11-03", "text": "Settings no longer asks how a new game starts. A new game keeps The season so far if you picked it last time." },
