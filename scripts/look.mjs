@@ -5,10 +5,11 @@
  * check makes beside every PNG.
  *
  *   node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390]
- *     [--font 16,32] [--height 844] [--dark] [--view today,settings,about,whats-new] [--headful]
+ *     [--font 16,32] [--height 844] [--dark] [--view today,settings,about,whats-new,advanced,...] [--headful]
  *
  * Each shot is `<view-slug>-<width>-<font>-<theme>.png`, plus `-bottom.png`
- * when that state scrolls. `measurements.json` holds one record per PNG.
+ * when that state scrolls. `measurements.json` holds one record per PNG, with the shot's `consoleErrors`
+ * (our origin) and `thirdParty` (any other host) beside its `findings`.
  * Every page also gets smoke's frozen clock (`CLOCK_SCRIPT`), so a preview
  * shows smoke's fixed date, and the findings agree with the smoke sweep's.
  * Findings are reported, never a failure: the exit code is non-zero only when
@@ -33,7 +34,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
-import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
+import { launch, cdp, closeChrome, collector, listen } from './smoke/chrome.mjs';
 import { serve } from './serve.mjs';
 import { FONT_INJECTION_SCRIPT, CLOCK_SCRIPT } from './smoke/registry.mjs';
 import { evalIn, SETTLE, TIMER_TRACKER, HEIGHT } from './smoke/dom.mjs';
@@ -47,10 +48,18 @@ import {
 import { shotProblems, postCaptureProblems, READ_PAINT, applyThemeScript } from './compare-shots.mjs';
 
 const ABOUT = 'about';
+const PROBE = 'look: console probe (ignore)';
 /* #499: the What's new page, shot the way about is: land on its address, ready
  * when its h1 is there (it has no .reveal elements and no app to boot). */
 const WHATS_NEW = 'whats-new';
-const VIEW_NAMES = [...CLIP_STATES.map(s => s.name), ABOUT, WHATS_NEW];
+/* #596: the other static pages, shot the way whats-new is. The view name is
+ * the page's file name without `.html`, which is what preview-check.mjs's
+ * `viewsFor` names; test/preview-check.test.js holds the two lists together. */
+export const STATIC_PAGES = [
+  'advanced', ...[6, 7, 8, 9, 10, 11, 12].map(n => `${n}-player-basketball-rotation-chart`),
+  'basketball-rotation-chart-two-halves',
+];
+const VIEW_NAMES = [...CLIP_STATES.map(s => s.name), ABOUT, WHATS_NEW, ...STATIC_PAGES];
 
 /* The page's own scrolling state: the window plus every scroller's offset, so
  * "did the bottom shot move anything" covers an open sheet's own scroller. */
@@ -147,7 +156,7 @@ export const classify = findings => findings.map(f => ({ ...f, excused: knownIss
 
 /* One cell: land, open the state, settle, then the top shot, and the bottom
  * shot when scrolling moved something. Throws the moment a shot is not proved. */
-async function shoot(c, origin, cell, outDir, height) {
+async function shoot(c, origin, cell, outDir, height, errors) {
   const record = richWith({ theme: cell.theme }, LONG_AND_SQUEEZE);
   /* page '/', not '/index.html': the local server's 307 from the latter drops
    * a query string (`?try=`), and with the service worker bypassed nothing
@@ -157,8 +166,8 @@ async function shoot(c, origin, cell, outDir, height) {
 
   if (cell.view === ABOUT) {
     await land(c, origin, { record, ...want, page: '/about', ready: ABOUT_READY });
-  } else if (cell.view === WHATS_NEW) {
-    await land(c, origin, { record, ...want, page: '/whats-new', ready: `document.querySelector('h1')` });
+  } else if (cell.view === WHATS_NEW || STATIC_PAGES.includes(cell.view)) {
+    await land(c, origin, { record, ...want, page: `/${cell.view}`, ready: `document.querySelector('h1')` });
   } else {
     const state = CLIP_STATES.find(s => s.name === cell.view);
     /* The sweep starts on `games` but its first state, `today`, takes it to
@@ -207,6 +216,7 @@ async function shoot(c, origin, cell, outDir, height) {
       origin: where.host, swControlled: where.swControlled, measured,
       digest: createHash('sha256').update(buf).digest('hex'),
       findings: classify(findingsOf(res, cell.view, pos)),
+      ...errors.drain(),
     });
   };
 
@@ -231,7 +241,15 @@ export async function main(argv = process.argv.slice(2)) {
   const records = [];
   try {
     await c.ready;
-    for (const m of ['Runtime.enable', 'Page.enable', 'Network.enable']) await c.send(m);
+    for (const m of ['Runtime.enable', 'Log.enable', 'Page.enable', 'Network.enable']) await c.send(m);
+    /* #596: console errors per shot, split by origin. A listener that never
+     * attached must not read as clean, so a probe error is thrown first and
+     * the run fails unless the listener saw it. */
+    const errors = collector(origin);
+    listen(c, errors.record);
+    await evalIn(c, `console.error(${JSON.stringify(PROBE)})`);
+    await new Promise(r => setTimeout(r, 200));
+    if (!errors.drain().consoleErrors.includes(PROBE)) throw new Error('the console listener did not see a probe error, so a clean run would prove nothing');
     // A fresh profile has no worker; this keeps one from ever answering.
     await c.send('Network.setBypassServiceWorker', { bypass: true });
     await c.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
@@ -247,7 +265,8 @@ export async function main(argv = process.argv.slice(2)) {
     await first;
     await evalIn(c, SW_SETTLED);
 
-    for (const cell of cells(args)) records.push(...await shoot(c, origin, cell, outDir, args.height));
+    errors.drain();
+    for (const cell of cells(args)) records.push(...await shoot(c, origin, cell, outDir, args.height, errors));
     const empty = emptyRunProblem(records.length);
     if (empty) throw new Error(empty);
 
@@ -255,6 +274,9 @@ export async function main(argv = process.argv.slice(2)) {
     for (const r of records) {
       const open = r.findings.filter(f => f.excused === null);
       if (open.length) console.log(`look: ${r.file}: ${open.length} unexcused finding(s): ${open.map(f => `${f.kind} ${f.el}`).join('; ')}`);
+    }
+    for (const r of records) {
+      if (r.consoleErrors.length) console.log(`look: ${r.file}: ${r.consoleErrors.length} console error(s): ${r.consoleErrors.join(' | ')}`);
     }
     console.log(`look: wrote ${records.length} PNG(s) and measurements.json to ${outDir} (origin ${[...new Set(records.map(r => r.origin))].join(', ')})`);
     return 0;

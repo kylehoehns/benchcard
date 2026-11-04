@@ -66,7 +66,7 @@ import { folder, linesOf, summarize as summarizeCoverage, judge, record, annotat
 import { parseShard, inShard, consoleRow, mergePartials, shardPartial } from './smoke/shard.mjs';
 import { failuresOf, failureLines } from './smoke/suite-failures.mjs';
 
-import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
+import { launch, cdp, closeChrome, isOurs, listen } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER, DESCRIBE_EL } from './smoke/dom.mjs';
 import { SEED } from './smoke/fixtures.mjs';
 import { land, reset } from './smoke/page-state.mjs';
@@ -202,22 +202,10 @@ async function browserChecks(origin, only, folded, shard) {
      console error on every run, and counting it would train everyone to ignore
      this check. Third-party noise is recorded separately, never as a failure —
      anything served from our own origin still counts. */
-  const isOurs = t => !/https?:\/\/(?!127\.0\.0\.1|localhost)/.test(t);
-  const record = text => (isOurs(text) ? consoleErrors : thirdParty).push(text);
+  const record = text => (isOurs(text, origin) ? consoleErrors : thirdParty).push(text);
   try {
     await c.ready;
-    c.on('Runtime.consoleAPICalled', p => {
-      if (p.type === 'error') record(p.args.map(a => a.value ?? a.description ?? a.type).join(' '));
-    });
-    c.on('Runtime.exceptionThrown', p => {
-      const d = p.exceptionDetails;
-      record(d.exception?.description || d.text);
-    });
-    c.on('Log.entryAdded', p => {
-      // Network 4xx/5xx surface here and nowhere else — a missing precached
-      // file looks fine on screen and fatal offline.
-      if (p.entry.level === 'error') record(`${p.entry.source}: ${p.entry.text} ${p.entry.url || ''}`.trim());
-    });
+    listen(c, record);
 
     /* Every request the page makes on a cold load, for the payload budget.
        `encodedDataLength` is what actually crossed the wire (compressed), so

@@ -5,7 +5,8 @@ description: >
   issue #14", "build the ticket #14", or "work the next issue". Reads the issue
   as the source of truth, grills it into a spec with grill-with-docs (or, for a
   small fix, a short brief), then orchestrates the subagent team through build →
-  test → refactor → review → PR → CI → verify on the preview → notify.
+  test → refactor → review → PR → notify. The merge step then waits for CI,
+  checks the preview, and merges.
 ---
 
 # Ship a change from a GitHub issue
@@ -76,13 +77,12 @@ In the small lane:
 | `refactorer` | a new `developer`, test-first with `/tdd` |
 | `reuse-reviewer`, `efficiency-reviewer` | `quality-reviewer`, judging the diff against the issue |
 | `doc-writer`, unless a file under `docs/` or `README.md` names what changed | the proof pair, once per commit, by you |
-| the preview check, when no coach can see the change | the preview check, when a coach can |
 | | `/code-review` and `/security-review`, by you (step 7) |
 
 **Wherever the steps below or an agent file say "spec", the small lane
 substitutes:**
 
-- **the spec** (steps 4, 5, 7, 12, and `developer.md`/`quality-reviewer.md`):
+- **the spec** (steps 4, 5, 7, and `developer.md`/`quality-reviewer.md`):
   the issue with its comments, plus a short brief you write that lists each
   acceptance value and **the seam that tests it** — what a spec's Proof would
   have named; coach-facing work defaults to the Coach seam (`AGENTS.md` §
@@ -93,8 +93,7 @@ substitutes:**
 - **step 6:** no `refactorer`; commit with no spec file to stage;
 - **step 7:** launch `quality-reviewer`, plus `doc-writer` only when a doc
   names what changed; run both review skills as usual;
-- **step 10:** the PR body names the lane;
-- **step 12:** skipped when no coach can see the change.
+- **step 10:** the PR body names the lane.
 
 **If it grows past the limit mid-build, switch to the full lane there:** write
 the spec, run the `refactorer`, then all three reviewers and the `doc-writer`.
@@ -306,48 +305,53 @@ fails a PR that changes a coach-facing path under `app/` and has neither.
     issue, and nothing after it (`AGENTS.md` § Rules; `guard-bash.sh` denies a
     generated-by line or session link).
 
-## Make CI green
-
-`tests` in `test.yml` is five jobs: `node 24`, `smoke`, `evals`,
-`service worker behind redirects`, `checks that need history`. **All five green
-is a hard gate** — do not touch review threads until they pass. Local green is
-not CI green: the history checks need a base ref, which is why step 10 runs
-`npm run check:history` before the push.
-
-11. ```bash
-    gh pr checks "$PR" --watch --fail-fast
-    RUN=$(gh run list --branch "$(git branch --show-current)" --workflow tests --limit 1 --json databaseId -q '.[0].databaseId')
-    gh run view "$RUN" --log-failed
-    ```
-
-    Fix from the real log, never a guess. Re-run locally, commit, push, watch
-    again. **Three attempts at most**; then stop and report.
-
-## Verify on the preview
-
-12. **Prove it runs where it will ship.** Cloudflare builds every branch and
-    `cloudflare-workers-and-pages` comments the **Branch Preview URL** on the
-    PR. That server redirects the way production does, which `npm run serve`
-    only imitates.
-
-    ```bash
-    gh api "repos/kylehoehns/benchcard/issues/$PR/comments" \
-      --jq '.[] | select(.user.login | startswith("cloudflare")) | .body' \
-      | grep -o "https://[a-z0-9-]*-benchcard[^']*workers.dev" | tail -1
-    ```
-
-    Follow `/browser-verify` against that URL for the spec's **What would settle
-    it** values, at 390×844 first. Best effort: if there is no preview, use
-    `npm run serve` and say which one you used. Post what you measured as a PR
-    comment — values, not adjectives — and call out any drift from the spec.
+11. **Prove the pushed commit.** In a batch, run local CI on it
+    (`scripts/lanes/ci-local.sh <worktree>`, the same five checks GitHub
+    runs) and put its GREEN line in the PR's Evidence. Outside a batch, the
+    proof pair from step 6 or 8 already names this commit.
 
 ## Wrap up
 
-13. **Notify.** One PR comment that @mentions `@kylehoehns`: the PR and issue,
-    final CI status, what was measured on the preview, and the final commit
-    sha. **Do not merge and do not approve** — `REVIEW.md` says the approval is a human's.
-    Where the human has allowed the merge, watch `main` after it (§ A batch of
-    tickets, **Watch `main` after each merge**).
+12. **Notify, and stop.** One PR comment that @mentions `@kylehoehns`: the PR
+    and issue, the local proof, and the final commit sha. The run ends here.
+    It does not wait for GitHub CI or the preview deploy: the merge step
+    waits for both. **Do not merge and do not approve** — `REVIEW.md` says
+    the approval is a human's.
+
+## The merge step
+
+Whoever merges runs `scripts/lanes/merge-one.sh <PR>`: the orchestrator in a
+batch, the human otherwise. In order, it:
+
+1. waits until the five `tests` jobs (`node 24`, `smoke`, `evals`,
+   `service worker behind redirects`, `checks that need history`) pass on a
+   head that contains `main`. Red is exit 1; behind `main` is exit 3;
+2. runs the preview check, `scripts/lanes/preview-check.mjs <PR>`. It waits
+   for Cloudflare's `Workers Builds: benchcard` check on the head commit and
+   for `https://<branch>-benchcard.kyhoehns.workers.dev` to serve that build,
+   picks the pages the PR changed, shoots them at 390×844 with `look.mjs`,
+   fails on cut-off text or a console error, and posts what it measured as a
+   PR comment. A failure is exit 4, and nothing is merged;
+3. squash-merges, prints `merged #N as <sha>`, and watches `main` (§ A batch
+   of tickets, **Watch `main` after each merge**): `main green + deployed at
+   <sha>`, or exit 2 with `MAIN RED`.
+
+Where the human has not allowed the merge, run `node
+scripts/lanes/preview-check.mjs <PR>` alone: it posts the same comment and
+merges nothing.
+
+**When the merge step stops on red** (exit 1 or 4), the PR goes back to a
+build run. Fix from the real log, never a guess:
+
+```bash
+RUN=$(gh run list --branch <branch> --workflow tests --limit 1 --json databaseId -q '.[0].databaseId')
+gh run view "$RUN" --log-failed
+```
+
+or from the preview comment. Local green is not CI green: the history checks
+need a base ref, which is why step 10 runs `npm run check:history` before the
+push. Fix, prove, push, and run the merge step again. **Three attempts at
+most**; then stop and report.
 
 ## A batch of tickets
 
@@ -358,15 +362,12 @@ parallel, and each is still one issue, one spec (or small-lane brief) and one PR
 
 - **The proof pair runs one lane at a time.** Two smoke runs on one machine
   starve each other's Chrome and fail on timing.
-- **Merge one at a time,** once all six checks (the five jobs plus Cloudflare's
-  Workers Builds) are green and step 12's preview check passed:
-  `gh pr merge <PR> --squash --subject "<title> (#<PR>)" --body ""`. Never
+- **Merge one at a time,** with the merge step (§ The merge step). Never
   approve; that stays a human's.
 - **Watch `main` after each merge.** No person is watching it, so a red
-  `main` run goes unnoticed otherwise. Find the run for the merge commit
-  (`gh run list --workflow tests --commit <sha> --json databaseId`; it can
-  take a few seconds to appear, so list again if it is empty) and `gh run
-  watch <id> --exit-status`. If it fails, run `npm run flakes`. When a
+  `main` run goes unnoticed otherwise. The merge step watches it for you and
+  exits 2 with `MAIN RED` when it fails; find that run with `gh run list
+  --workflow tests --commit <sha> --json databaseId`. Then run `npm run flakes`. When a
   failing name shows two or more failures there (this run and at least one
   before it), rerun the failed jobs once (`gh run rerun <id> --failed`) and
   watch again. Otherwise, or if the rerun fails too, treat it as a real
@@ -375,6 +376,6 @@ parallel, and each is still one issue, one spec (or small-lane brief) and one PR
 - **After each merge, the next lane rebases onto `main`,** then proves again.
 - **Remove the worktree** once its PR is merged.
 
-Step 13's "do not merge" is the default; only the human's word for this batch
+Step 12's "do not merge" is the default; only the human's word for this batch
 lifts it.
 

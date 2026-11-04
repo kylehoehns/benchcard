@@ -152,6 +152,73 @@ describe('lane.sh', () => {
   });
 });
 
+/* ---------- merge-one.sh (#596): the preview check before `gh pr merge` ---------- */
+
+/** A fake `gh` first on PATH. It logs every argv (one line per call) and answers
+ *  the calls merge-one makes: the head sha, five SUCCESS checks, a title, and six
+ *  `=success` check runs for the merge commit, all at once so no sleep runs. */
+function fakeGh(f, headSha) {
+  const bin = join(f.root, 'bin');
+  mkdirSync(bin);
+  const log = join(f.root, 'gh.log');
+  writeFileSync(log, '');
+  const script = `#!/bin/bash
+echo "$*" >> '${log}'
+case "$*" in
+  *headRefOid*) echo ${headSha} ;;
+  *statusCheckRollup*) echo "SUCCESS,SUCCESS,SUCCESS,SUCCESS,SUCCESS" ;;
+  *"--json title"*) echo "Make Avery's card wider" ;;
+  "pr merge"*) exit 0 ;;
+  "api "*) echo "node 24=success,smoke=success,evals=success,service worker behind redirects=success,checks that need history=success,Workers Builds: benchcard=success" ;;
+  *) echo "fake gh: unexpected call: $*" >&2; exit 9 ;;
+esac
+`;
+  writeFileSync(join(bin, 'gh'), script, { mode: 0o755 });
+  return { bin, log };
+}
+
+/** A fixture whose preview-check.mjs is a stub that exits `code`, plus a PR 77
+ *  head (one commit on top of main) pushed to origin as refs/pull/77/head. */
+function mergeFixture(code) {
+  const f = fixture((lanes) => writeFileSync(join(lanes, 'preview-check.mjs'),
+    `console.log('stub preview check for #' + process.argv[2]); process.exit(${code});\n`));
+  git(f.main, 'checkout', '-q', '-b', 'pr-77');
+  writeFileSync(join(f.main, 'change.txt'), 'x\n');
+  git(f.main, 'add', 'change.txt');
+  git(f.main, 'commit', '-q', '-m', 'the PR');
+  const head = git(f.main, 'rev-parse', 'HEAD');
+  git(f.main, 'push', '-q', 'origin', 'HEAD:refs/pull/77/head');
+  git(f.main, 'checkout', '-q', 'main');
+  return { ...f, ...fakeGh(f, head) };
+}
+
+const mergeOne = (f) => run('bash', [join(f.main, 'scripts', 'lanes', 'merge-one.sh'), '77'], {
+  cwd: f.root, env: { ...GIT_ENV, PATH: `${f.bin}:${process.env.PATH}` },
+});
+
+describe('merge-one.sh', () => {
+  test('a failed preview check: exit 4, says so, and never calls gh pr merge', () => {
+    const f = mergeFixture(1);
+    const r = mergeOne(f);
+    assert.equal(r.status, 4, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.ok(r.stdout.includes('#77 preview check failed; not merged'), r.stdout);
+    assert.doesNotMatch(r.stdout, /merged\s+#77\s+as/, 'did not claim a merge');
+    const calls = readFileSync(f.log, 'utf8');
+    assert.ok(calls.includes('statusCheckRollup'), 'the checks were read first');
+    assert.ok(!/^pr merge/m.test(calls), `gh pr merge was called:\n${calls}`);
+  });
+
+  test('a passing preview check: gh pr merge is called, merged #N as <sha7>, main green, exit 0', () => {
+    const f = mergeFixture(0);
+    const r = mergeOne(f);
+    assert.equal(r.status, 0, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /merged #77 as [0-9a-f]{7}/);
+    assert.match(r.stdout, /main green \+ deployed at [0-9a-f]{7}/);
+    const calls = readFileSync(f.log, 'utf8');
+    assert.match(calls, /^pr merge 77 --squash/m);
+  });
+});
+
 describe('scripts/lanes/ guard', () => {
   test('no file names a session temp folder', () => {
     const files = readdirSync(LANES_SRC);
