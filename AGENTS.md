@@ -51,6 +51,9 @@ nothing here can decide them.
 in here". A diff that touches three issues cannot be judged against any one
 spec, which is the check `REVIEW.md` exists to make possible. A real problem
 found along the way becomes a new issue, not part of this diff.
+A batch of tickets runs one lane per issue (`/ship-feature` § A batch of
+tickets); `scripts/lanes/lane.sh <issue> <branch> <port>` starts a lane, and
+the rest of `scripts/lanes/` is its local CI, slot pool and merge scripts.
 
 **Done is the merge.** The pull request says `Closes #N`, so merging it closes
 the issue. Finished work is the closed issue, its pull request and `git log`.
