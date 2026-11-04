@@ -1,7 +1,7 @@
 /* The Rules group, and the switch groups beside it, inside the Plan sheet
  * (#28). `renderConstraints` paints level 1: the Rules rows (from the pure
  * `ruleItems(g)` in state.js), the "Add a rule" row, and the three switch
- * groups that are not really rules (`#planPairs`, `#planDay`, the Make up minutes from group).
+ * groups that are not really rules (`#planDay`, the Make up minutes from group).
  * It never repaints an open level-2 page.
  *
  * The two level-2 pages this file owns -- a rule's detail, and Add a rule --
@@ -16,7 +16,7 @@
  */
 import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
-import { fmtMinutes } from './engine.js';
+import { fmtMinutes, periodNoun, isAlways } from './engine.js';
 import { playsInDetail, state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
          ruleItems, runHint, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
@@ -43,7 +43,7 @@ export function initRules(editFn) {
 // list the coach cannot see yet would cost a full rules scan per tap for
 // nothing. Every other caller still passes nothing and gets its own list.
 export function renderConstraints(itemsIn) {
-  const g = game(), c = g.constraints;
+  const g = game();
   const avail = availIds(g);
 
   // The header and footer sit on the sheet background, outside the white
@@ -69,7 +69,6 @@ export function renderConstraints(itemsIn) {
   if (!avail.length) wrap.append(el('p', 'pgrp-f', 'Nobody available.'));
   else if (!items.length) wrap.append(el('p', 'pgrp-f', 'No rules yet. The plan just evens out the minutes.'));
 
-  renderPairsGroup(c);
   renderMakeUpGroup(g);
   renderCopyGroup(g);
   renderSeasonAdjust();
@@ -99,20 +98,6 @@ function switchRow(label, checked, disabled, onChange) {
   // way, since `<label>` links both children to the input.
   row.append(el('span', 'prow-t', label), input);
   return row;
-}
-
-function renderPairsGroup(c) {
-  const wrap = $('#planPairs');
-  if (!wrap) return;
-  wrap.textContent = '';
-  if (!c.pairs.length) { wrap.hidden = true; return; }
-  wrap.hidden = false;
-  const box = el('div', 'pgrp');
-  box.append(switchRow('Force Together keeps each pair on the floor at the same time', c.hardPairs, false, v => {
-    c.hardPairs = v; renderConstraints(); edit('pairs');
-  }));
-  wrap.append(box);
-  wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximizes their shared floor time and reports it.'));
 }
 
 /* #563: the one "Make up minutes from" group, in place of the two even-out
@@ -318,7 +303,7 @@ function draftFrom(item) {
     case 'minimum': case 'cap':
       return { kind: item.kind, id: item.id, minutes: minutesBucket(c, item.kind)[item.id] };
     case 'together': case 'apart': case 'keepon':
-      return { kind: item.kind, a: item.pair[0], b: item.pair[1] };
+      return { kind: item.kind, a: item.pair[0], b: item.pair[1], always: item.kind === 'together' && isAlways(item.pair) };
     case 'starts': return { kind: 'starts', ids: [...c.openingFive] };
     case 'lastq': return { kind: 'lastq', ids: [...c.lastPeriodFive] };
     case 'rest': return { kind: 'rest', n: c.maxConsecutive };
@@ -457,18 +442,40 @@ function focusRuleRowAfterRemove(idx) {
 
 /* ---------------- level 2: Add a rule ----------------------------------- */
 
-// Decision 9's order and the prototype's plainer labels. `scripts/feature-
-// keys.mjs`'s `shipped().rule` reads this exact array by name and shape, so
-// a new kind here is a new kind there rather than a silent gap (A19).
+// Decision 9's order and the prototype's plainer labels, in the order of the
+// three headings below. `scripts/feature-keys.mjs`'s `shipped().rule` reads this
+// exact array by name and shape, so a new kind here is a new kind there rather
+// than a silent gap (A19). #568 groups it under `KIND_GROUPS`, which is a
+// separate list so this one stays flat.
 const KINDS = [
   ['minimum', 'Plays at least'],
   ['cap', 'Plays at most'],
-  ['apart', 'Apart'],
   ['together', 'Together'],
+  ['apart', 'Apart'],
   ['keepon', 'One of two on'],
   ['starts', 'Starting five'],
   ['lastq', 'Starts the last period'],
 ];
+
+// #568: the headings Add a rule sorts the kinds under, in order
+// (heading, then its kinds, flat: a `['kind', 'Label']`-shaped pair here would
+// be read as a KINDS entry by the two parsers named above)
+const KIND_GROUPS = [
+  ['One player', 'minimum', 'cap'],
+  ['Two players', 'together', 'apart', 'keepon'],
+  ['Who starts and finishes', 'starts', 'lastq'],
+];
+
+// #568: what the picked kind does, in one plain line above its picker
+const KIND_LINES = {
+  minimum: () => 'The fewest minutes one player gets.',
+  cap: () => 'The most minutes one player gets.',
+  together: () => 'Two players who play well as a pair are on the floor together.',
+  apart: () => 'Two players are never on the floor at the same time.',
+  keepon: () => 'One of two players is always on the floor, like your two ball handlers.',
+  starts: () => 'Who is on the floor at tip-off. Minutes stay even.',
+  lastq: g => `Who is on the floor when the last ${periodNoun(g.periods)} starts.`,
+};
 
 // The draft is module state, reset on each push (Design > State).
 let draft = { kind: 'minimum' };
@@ -480,10 +487,11 @@ function defaultMinutes(g) {
 
 function renderAddRule(trigger) {
   const g = game();
-  draft = { kind: 'minimum', minutes: defaultMinutes(g) };
+  draft = { kind: 'minimum', minutes: defaultMinutes(g), always: false };
   const sub = $('#planSub');
   sub.textContent = '';
-  const kindsBox = el('div', 'chips plan-kinds');
+  const kindsBox = el('div');
+  kindsBox.id = 'planKinds';
   sub.append(kindsBox);
   const body = el('div');
   body.id = 'planKindBody';
@@ -495,19 +503,25 @@ function renderAddRule(trigger) {
 
 function paintKindChips(box) {
   box.textContent = '';
-  for (const [k, label] of KINDS) {
-    // #545: the order picks who starts, so there is no Starting five to add
-    if (k === 'starts' && game().strategy === 'order' && draft.kind !== 'starts') continue;
-    const b = el('button', 'chip press' + (draft.kind === k ? ' sel' : ''), label);
-    b.type = 'button';
-    b.setAttribute('aria-pressed', String(draft.kind === k));
-    b.onclick = () => {
-      // Changing the kind keeps the minutes and clears the players.
-      draft = { kind: k, minutes: draft.minutes };
-      paintKindChips(box);
-      renderKindBody();
-    };
-    box.append(b);
+  for (const [heading, ...kinds] of KIND_GROUPS) {
+    const row = el('div', 'chips plan-kinds');
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', heading);
+    for (const [k, label] of KINDS.filter(([key]) => kinds.includes(key))) {
+      // #545: the order picks who starts, so there is no Starting five to add
+      if (k === 'starts' && game().strategy === 'order' && draft.kind !== 'starts') continue;
+      const b = el('button', 'chip press' + (draft.kind === k ? ' sel' : ''), label);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(draft.kind === k));
+      b.onclick = () => {
+        // Changing the kind keeps the minutes and clears the players.
+        draft = { kind: k, minutes: draft.minutes, always: false };
+        paintKindChips(box);
+        renderKindBody();
+      };
+      row.append(b);
+    }
+    if (row.children.length) box.append(el('div', 'pgrp-h', heading), row);
   }
 }
 
@@ -543,6 +557,7 @@ function kindControls(kind, draft, hooks = {}) {
       else if (draft.b === id) draft.b = null;
       onPick();
     }, { max: 2, title: 'Pick two players' }));
+    if (kind === 'together') body.append(strengthControls(draft, afterStep));
   } else if (kind === 'starts' || kind === 'lastq') {
     body.append(pickFive(draft.ids || [], (id, on) => {
       draft.ids = on ? [...(draft.ids || []), id] : (draft.ids || []).filter(x => x !== id);
@@ -568,11 +583,29 @@ function kindControls(kind, draft, hooks = {}) {
   return body;
 }
 
+/* #568: the strength of a Together rule, as two choice rows under the picker.
+   One builder for Add a rule and a rule's own page (via `kindControls`), so
+   they cannot word it two ways. `afterChange` runs only when the choice moved. */
+function strengthControls(draft, afterChange) {
+  const wrap = el('div');
+  const box = el('div', 'pgrp');
+  let changed = false;
+  const choose = always => () => { changed = !!draft.always !== always; draft.always = always; };
+  const paint = () => paintChoiceRows(box, [
+    ['As much as possible', !draft.always, choose(false)],
+    ['Always', !!draft.always, choose(true)],
+  ], () => { paint(); if (changed) afterChange?.(); });
+  wrap.append(el('div', 'pgrp-h', 'Keep them on together'), box, el('p', 'pgrp-f', 'Always can make minutes less even.'));
+  paint();
+  return wrap;
+}
+
 function renderKindBody() {
   const g = game(), c = g.constraints;
   const body = $('#planKindBody');
   if (!body) return;
   body.textContent = '';
+  body.append(el('p', 'plan-kind-line', KIND_LINES[draft.kind](g)));
   body.append(kindControls(draft.kind, draft, { onPick: renderKindBody, afterStep: syncAddRuleBtn }));
 
   const replaces = (draft.kind === 'starts' && c.openingFive.length)
@@ -595,13 +628,21 @@ const addPairOnce = (list, a, b) => {
   if (!pairInList(list, a, b)) list.push([a, b]);
 };
 
+// Together carries a strength, so a pair already in the list takes the one
+// picked, in the same place, rather than the pick being dropped.
+const setTogether = (list, a, b, always) => {
+  const i = list.findIndex(pr => pairInList([pr], a, b));
+  const pr = always ? [a, b, true] : [a, b];
+  if (i < 0) list.push(pr); else list[i] = pr;
+};
+
 function commitAddRule() {
   const g = game(), c = g.constraints;
   if (!ruleComplete(draft.kind, draft)) return;
   switch (draft.kind) {
     case 'minimum': c.minMinutes[draft.id] = draft.minutes; break;
     case 'cap': c.maxMinutes[draft.id] = draft.minutes; break;
-    case 'together': addPairOnce(c.pairs, draft.a, draft.b); break;
+    case 'together': setTogether(c.pairs, draft.a, draft.b, draft.always === true); break;
     case 'apart': addPairOnce(c.avoids, draft.a, draft.b); break;
     case 'keepon': addPairOnce(keepOnList(c), draft.a, draft.b); break;
     case 'starts': c.openingFive = [...draft.ids]; break;

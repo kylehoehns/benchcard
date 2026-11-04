@@ -139,13 +139,16 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       const closers = ['Hana Kim', 'Eli Tran', 'Ana Reyes', 'Sam Okafor', 'Riley Novak'];
       await openHawks(coach);
       await openPlan(coach);
-      await addRule(coach, 'Together', ['Marcus Williams', 'Devon Ellis']);
+      await coach.tap('Add a rule');
+      await coach.tap('Together');
+      for (const p of ['Marcus Williams', 'Devon Ellis']) await coach.tap(p);
+      await coach.tap('Always');
+      await coach.tap('Add rule');
       /* Marcus's minimum pulls him a stint past Devon's even share, so
-         only the forced Together keeps them paired in every stint: left
-         to share as much as it can, the plan splits them once. */
+         only Always keeps them paired in every stint: left to share as
+         much as it can, the plan splits them once. */
       await addRule(coach, 'Plays at least', ['Marcus Williams'], 20);
       await addRule(coach, 'Apart', ['Hana Kim', 'Nia Brooks']);
-      await coach.tap('Force Together keeps each pair on the floor at the same time');
       await addRule(coach, 'Starting five', opening);
       await coach.tap('Closers');
       // #569: Closers comes with five picked; this coach clears them and picks their own

@@ -1,4 +1,6 @@
 [
+  { "date": "2026-11-03", "text": "Add a rule now sorts the kinds under three headings: one player, two players, and who starts and finishes. The kind you pick says what it does in one line." },
+  { "date": "2026-11-03", "text": "Each Together rule now has its own choice: keep the two on together as much as possible, or always. It replaces the one switch that covered every pair in the game." },
   { "date": "2026-11-03", "text": "New in Settings: League rules. Everyone plays at least, Everyone plays in, and how long a player can stay on the floor or on the bench in a row are now in one place." },
   { "date": "2026-11-03", "text": "Each new game starts with your team's limits on playing or sitting in a row. To change one for a single game, tap it in that game's rules. Your team's limit stays the same." },
   { "date": "2026-11-03", "text": "Under Everyone plays at least, a line now says what your minimum comes to in a game, like 16 min in a 4 × 8 game." },

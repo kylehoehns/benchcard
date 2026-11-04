@@ -532,8 +532,14 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
   const uniquePlayers = players.filter(p => !seen.has(p.id) && seen.add(p.id));
   const validId = new Set(uniquePlayers.map(p => p.id));
   const keep = ids => strArr(ids).filter(id => validId.has(id));
-  const keepPairs = v => (Array.isArray(v) ? v : [])
-    .filter(pr => Array.isArray(pr) && pr.length === 2 && pr.every(id => validId.has(id)));
+  const validPair = (pr, len) => Array.isArray(pr) && pr.length === len && pr.slice(0, 2).every(id => validId.has(id));
+  const keepPairs = v => (Array.isArray(v) ? v : []).filter(pr => validPair(pr, 2));
+  /* #568: a Together rule is `[a, b]` or `[a, b, true]` (Always). Any other third
+     field is dropped; the old game-wide `hardPairs` is copied onto each kept rule. */
+  const keepTogether = (v, all) => (Array.isArray(v) ? v : [])
+    .filter(pr => validPair(pr, 2) || validPair(pr, 3))
+    // engine.js's isAlways: the flag is on only when exactly `true`.
+    .map(([a, b, always]) => (all || always === true ? [a, b, true] : [a, b]));
   /* Same sweep for the id-keyed maps. `idMap` alone only checks that the value
      is a number, so a cap or a slot target naming a player who is not on this
      roster used to survive -- harmless-looking in v3, where the only way to get
@@ -634,10 +640,9 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
           targetSlots: keepMap(c.targetSlots),
           targetCapacity: c.targetCapacity == null || !Number.isFinite(Number(c.targetCapacity)) ? null : Number(c.targetCapacity),
           lockedTargets: keep(c.lockedTargets),
-          pairs: keepPairs(c.pairs), avoids: keepPairs(c.avoids), keepOnFloor: keepPairs(c.keepOnFloor),
+          pairs: keepTogether(c.pairs, c.hardPairs === true), avoids: keepPairs(c.avoids), keepOnFloor: keepPairs(c.keepOnFloor),
           openingFive: keep(c.openingFive).slice(0, 5),
           lastPeriodFive: keep(c.lastPeriodFive).slice(0, 5),
-          hardPairs: !!c.hardPairs,
           ...Object.fromEntries(Object.keys(RUN_KEYS).map(k => [k, num(c[k], 0, 0, RUN_MAX)])),
           closing: { stints: num(closing.stints, 2, 1, 40), players: keep(closing.players).slice(0, 5) },
           units: (Array.isArray(c.units) ? c.units : []).map(keep),

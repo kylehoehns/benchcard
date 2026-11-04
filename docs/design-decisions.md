@@ -8,9 +8,8 @@ its alternative is an assertion, so the rejected options are kept here too.
 Rules are additive, so two of them can ask for things that cannot both happen.
 This table says which one the plan keeps and what the coach is told. The reasons
 are in the bullets under [Design decisions](#design-decisions), and the table
-points at them rather than repeating them. **Force Together** is the Together
-switch that makes a pair hard (`hardPairs`); plain **Together** is the soft
-default.
+points at them rather than repeating them. Each **Together** rule has a strength.
+**Always** makes the pair hard (`[a, b, true]`); **As much as possible** is the soft default.
 
 A minimum now beats a locked By hand number. Before this change, a lock could
 sit under a rule's or the league's minimum and the minimum was the thing that
@@ -23,10 +22,10 @@ lost. Now the lock is raised to the minimum, and the plan says so.
 | A minimum (the league's or a coach's own) that a kid who arrived late cannot reach in the time left | The time left. The league owes that kid its share of the minutes from their arrival stint on, and the minimum gives way to the minutes that exist. | Warning `MIN_CLAMPED`, one per kid, naming the minimum that could not be reached. | "A late arrival is owed the league's share of the time left (#447)" |
 | A minimum and Plays at most N in a row | The minimum. The run limit gives way. | `CONSEC_MIN_CONFLICT` names every player the limit makes impossible to meet. | "A Plays at most N in a row limit that cannot hold is caught before the search (#439)" |
 | Together and Apart on the same two players | Nothing: the plan is refused. | Error `PAIR_AVOID_CONFLICT` naming the two, whatever the Together strength. | `analyzeFeasibility`; [Choices](#choices-behind-the-table) |
-| Force Together ties A to B and A to C, and B and C are set Apart | Nothing: the plan is refused, but only with Force Together on. Plain Together is not refused. | Error `PAIR_CHAIN_APART` naming B and C and the player who links them. | [Choices](#choices-behind-the-table) |
-| Force Together (hard) and even minutes | The pair stays on the floor together. Even minutes give way only when no even plan keeps them together. | The plan reports the shared floor time. | "Pairs are soft by default" |
-| Force Together ties a player with no rule of their own to a partner who has a cap, a minimum or a By hand number | The partner's number holds, and the tied player plays the same minutes. | Info note: the tied player plays that many minutes because of Force Together, and names the partner's rule. | [Choices](#choices-behind-the-table) |
-| Force Together ties more players than the bench has seats for | The whole tied group plays every minute. | Info note saying so. | [Choices](#choices-behind-the-table) |
+| Two Always pairs tie A to B and A to C, and B and C are set Apart | Nothing: the plan is refused, but only when both links are Always. | Error `PAIR_CHAIN_APART` naming B and C and the player who links them. | [Choices](#choices-behind-the-table) |
+| A Together rule set Always and even minutes | The pair stays on the floor together. Even minutes give way only when no even plan keeps them together. | The plan reports the shared floor time. | "Pairs are soft by default" |
+| An Always pair ties a player with no rule of their own to a partner who has a cap, a minimum or a By hand number | The partner's number holds, and the tied player plays the same minutes. | Info note: the tied player plays that many minutes because they are Always together, and names the partner's rule. | [Choices](#choices-behind-the-table) |
+| An Always group ties more players than the bench has seats for | The whole tied group plays every minute. | Info note saying so. | [Choices](#choices-behind-the-table) |
 | Apart and a short bench | Apart holds. The pair shares one spot and each plays less. | Info note naming the pair and their minutes. | [Choices](#choices-behind-the-table); `swapLegal` in `app/engine.js` |
 | Apart and a player who plays every minute | Apart holds. The player set Apart from them plays nothing. | Info note. | [Choices](#choices-behind-the-table) |
 | One of two on and Apart on the same pair | Both hold. Never both on and never both off means exactly one of them is on. | Nothing. | `planning-strategies.md`, the One of two on section |
@@ -65,7 +64,7 @@ player's target" is the number the plan is trying to hit for them.
 | A player not on the floor before halftime, when the roster is small enough for that to be possible | 200 each (`LATE_WEIGHT`) |
 | A stint's strength away from its balance target (Lineup balance) | 5 per point (`BALANCE_WEIGHT`) |
 | A seat not in the previous plan's fives, on a rule edit only | 5 per seat (`START_WEIGHT`), below every rule term |
-| A Together pair split across a stint | 25 per minute under soft Together; 400 per minute under Force Together |
+| A Together pair split across a stint | 25 per minute under As much as possible; 400 per minute under Always |
 | One of two on, with both players off the floor | 1000 per minute |
 
 Apart is not in `cost()`: the search's swaps refuse it (`swapLegal`). The
@@ -95,7 +94,7 @@ text left open, and a future reader needs them to read the plan.
   minimum, and the plan notes say so. The other rows of the table get no page
   line.
 - **PAIR_CHAIN_APART is an error.** It is refused like `PAIR_AVOID_CONFLICT`,
-  but only with Force Together on. A direct pair is still only
+  but only when both links are Always. A direct pair is still only
   `PAIR_AVOID_CONFLICT`, so it is not said twice.
 - **Locks count in the One of two on cover.** Each side covers the smaller of
   its cap and its locked number, after the raise. The refusal stays
@@ -116,7 +115,7 @@ text left open, and a future reader needs them to read the plan.
 - **SPREAD_RULE replaces SPREAD_FLOOR only when it fires.** It is one info note.
   It is emitted only when the spread is wider than the clock alone makes it,
   and never on Platoon. It names only the reasons the final minutes prove, so a
-  reason is said only when it is true. It covers the Force Together, Apart and
+  reason is said only when it is true. It covers the Always together, Apart and
   One of two on rows above. Because `sayWhyTheyAreShort` keys on
   `SPREAD_FLOOR`, its absence also removes the "Shuffle" suggestion from a
   spread that a rule caused. `SPREAD_CONSTRAINED` is unchanged.
@@ -666,7 +665,7 @@ text left open, and a future reader needs them to read the plan.
   their order are the coach's.
 - **Fairness is scored against water-filled per-player targets**, not raw max-minus-min. A capped player otherwise anchors the minimum and blinds the optimizer to real imbalance among everyone else. `spreadUnconstrained` is the number that actually tells you if the rotation is fair.
 - **Local search needs more than one move type.** A single in-for-out swap shifts both players' minute totals, so once minutes are even it can never improve pairing or sit patterns without breaking balance. The minute-neutral exchange move (trade two players' places across two stints) is what makes pair constraints reachable. A hard pair needs a third, the paired move, because one swap cannot seat or bench both players at once: it moves the two as one.
-- **Pairs are soft by default** (`hardPairs: true` to force). Requiring two players together every stint fights even minutes hard; the plan maximizes shared floor time and reports it as "together 20 of a possible 20 minutes". A hard pair costs even minutes only when no even plan keeps the pair together: the search has a move that seats, benches or trades the pair as one.
+- **Pairs are soft by default** (a Together rule set Always forces it). Requiring two players together every stint fights even minutes hard; the plan maximizes shared floor time and reports it as "together 20 of a possible 20 minutes". A hard pair costs even minutes only when no even plan keeps the pair together: the search has a move that seats, benches or trades the pair as one.
 - **Infeasibility is arithmetic, checked before any search**, so the message can name the offending constraint and the numbers.
 - **Subs are held to 1-3 per stint** so there is continuity on the floor.
 - **A sit for the rest is a fact about the game, not only about its stints.** Sitting a kid writes their later stints as overrides, but every later re-plan (an arrival, a Who's here change, a Shuffle, overtime, a hand-off) plans afresh, so the sit used to vanish on the next one. The sit is now also recorded as `live.sat`, and every re-plan leaves those kids out. No "Back in" control was added: Undo and Back to the printed plan are the way back, and that button stays on screen while a sit stands. A re-plan cannot refuse over a short bench, because the arrival or change has already happened. So when leaving the sat kid out would leave fewer than five, that one solve puts them back for the fifth seat, the sit stays recorded, and the coach is told once. The mechanics are in [bench-mode.md](architecture/bench-mode.md).
@@ -740,3 +739,4 @@ text left open, and a future reader needs them to read the plan.
   start filled in (#569)**: [in full](design-decisions-filled-in.md).
   **Levels (#570)**: [in full](design-decisions-levels.md).
   **League rules**: [in full](design-decisions-league-rules.md).
+  **Together (#568)**: [in full](design-decisions-together.md).

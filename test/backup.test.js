@@ -13,7 +13,7 @@ import { backupFilename, backupText, readBackup, keepStored } from '../app/backu
 
 const emptyConstraints = () => ({
   minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [],
-  openingFive: [], lastPeriodFive: [], hardPairs: false, maxConsecutive: 0,
+  openingFive: [], lastPeriodFive: [], maxConsecutive: 0,
   targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [],
 });
 const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8,
@@ -57,10 +57,10 @@ const populated = () => ({
               minMinutes: { p0: 8 }, maxMinutes: { p1: 14 },
               targetSlots: { p0: 5, p1: 4 }, targetCapacity: 40,
               lockedTargets: ['p0'],
-              pairs: [['p2', 'p3']], avoids: [['p4', 'p5']],
+              pairs: [['p2', 'p3', true]], avoids: [['p4', 'p5']],
               openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'],
               lastPeriodFive: ['p0', 'p5', 'p6', 'p7', 'p8'],
-              hardPairs: true, maxConsecutive: 3,
+              maxConsecutive: 3,
               closing: { stints: 3, players: ['p0', 'p1'] },
               units: [['p0', 'p1', 'p2', 'p3', 'p4'], ['p5', 'p6']],
             },

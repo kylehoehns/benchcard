@@ -260,7 +260,7 @@ test('a roster the plain search gets stuck on still finds the list that keeps th
 test('orderBuilt survives a save and load only when it is true', async () => {
   const { sanitize } = await import('../app/storage.js');
   const emptyConstraints = () => ({ minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], openingFive: [],
-    lastPeriodFive: [], hardPairs: false, maxConsecutive: 0, targetSlots: {}, lockedTargets: [],
+    lastPeriodFive: [], maxConsecutive: 0, targetSlots: {}, lockedTargets: [],
     closing: { stints: 2, players: [] }, units: [] });
   const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8, granMode: 'everyN',
     granValue: 4, out: [], useCarryover: false, strategy: 'balanced', balance: 'even',

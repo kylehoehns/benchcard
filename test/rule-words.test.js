@@ -161,15 +161,6 @@ test('removing a team\'s last-team toast no longer says "The day rebalanced"', (
   assert.equal(m[1], 'The day evened out.');
 });
 
-/* Survey's one switch label, `renderPairsGroup`'s `switchRow` call: item 2
-   says every rule name in coach-visible copy is the `KINDS` label exactly,
-   in the same case ("Together", not "together"). */
-test('the "force pairs" switch names the Together rule by its KINDS label', () => {
-  const m = rulesJs.match(/switchRow\('([^']*)',\s*c\.hardPairs/);
-  assert.ok(m, 'renderPairsGroup\'s switchRow call for hardPairs is gone from rules.js');
-  assert.equal(m[1], 'Force Together keeps each pair on the floor at the same time');
-});
-
 /* The help sheet's Rules section (#help in index.html) is coach-visible copy
    too: it still had a "Minutes limit" entry ("a floor, a ceiling ... capped
    at 12") after the rest of the app moved to the KINDS labels. The section

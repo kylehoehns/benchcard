@@ -3063,6 +3063,9 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 .pgrp-h { padding: 1.5rem 2rem .45rem; font-size: var(--fs-footnote); color: var(--muted); }
 .pgrp-f { padding: .45rem 2rem 0; font-size: var(--fs-footnote);
   color: var(--muted); line-height: 1.35; }
+/* Add a rule: the picked kind's one line. Body ink with its own gap above, so it
+   reads as the kind's description and not as a caption for the chip row above. */
+.plan-kind-line { padding: 1.25rem 2rem 0; font-size: var(--fs-footnote); color: var(--ink); line-height: 1.35; }
 /* Season's own screen modifier, not a second grammar: .pgrp's side margin
    is a sheet inset, and .wrap already gives #view-season its own side
    padding, so the same margin here would double it. Top spacing is
@@ -3182,9 +3185,12 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    opens a pane. The label gets its room from the row's own spacing instead,
    the gap to the chevron .75rem -> .25rem and the right padding 1rem -> .5rem.
    Measured at 320px/32px: label box 142px -> 174px against "Everyone", the
-   longest word, at 150px; the chevron (26px wide) sits 16px inside the card. */
+   longest word, at 150px; the chevron (26px wide) sits 16px inside the card.
+   #568: 13em, not 12em, so 390px/32px gets it too. There the sheet is 12.2em
+   and "Bartholomew" (213px) split in a 212px label box; with this spacing the
+   box is 244px. */
 #sheetPlanBody { container-type: inline-size; }
-@container (max-width: 12em) {
+@container (max-width: 13em) {
   #constraints .prow { gap: .25rem; padding-right: .5rem; }
 }
 @media (hover: hover) { button.prow:hover { background: var(--surface-2); } }
@@ -3289,7 +3295,7 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    Closing-window one, which renders into #stratbody -- this same sheet.
    This scopes the sheet's own padding, since the chips sit inside a group's
    edge rather than a page's. */
-.plan-kinds { padding: 1rem 1rem 0; }
+.plan-kinds { padding: 0 1rem; }
 /* "One of two always on" was the longest kind label and, at a 32px root in
    a 320px viewport, wider than the sheet itself; .chip's own white-space:
    nowrap is what every other, shorter chip wants, but here it is what

@@ -324,7 +324,10 @@ function raiseLockedTargets(targets, locked, minMinutes, avail) {
   return raised;
 }
 
-/* Force Together ties players into groups that play every stint as one:
+/* #568: a Together pair is `[a, b]`, or `[a, b, true]` when set Always. */
+export const isAlways = pr => pr[2] === true;
+
+/* Always-together pairs tie players into groups that play every stint as one:
    `Map` of id to the (shared) Set of everyone tied to it. */
 function tiedGroups(ids, pairs) {
   const group = new Map(ids.map(id => [id, new Set([id])]));
@@ -339,12 +342,12 @@ function normalize(constraints, availSet) {
   const c = constraints || {};
   // A pair rule means nothing unless both players are at the game. Three lists
   // share that split now, hence the helper.
-  const splitPairs = (list) => {
+  const splitPairs = (list, withAlways = false) => {
     const keep = [], dropped = [];
-    for (const [a, b] of list || []) (availSet.has(a) && availSet.has(b) ? keep : dropped).push([a, b]);
+    for (const pr of list || []) (availSet.has(pr[0]) && availSet.has(pr[1]) ? keep : dropped).push(withAlways && isAlways(pr) ? [pr[0], pr[1], true] : [pr[0], pr[1]]);
     return [keep, dropped];
   };
-  const [keepPairs, droppedPairs] = splitPairs(c.pairs);
+  const [keepPairs, droppedPairs] = splitPairs(c.pairs, true);
   const [keepAvoids, droppedAvoids] = splitPairs(c.avoids);
   const [keepOnFloor, droppedKeepOn] = splitPairs(c.keepOnFloor);
   const filterIds = (ids) => (ids || []).filter(id => availSet.has(id));
@@ -379,7 +382,9 @@ function normalize(constraints, availSet) {
        inverse of neither -- a coach who wants a ball handler out there at all
        times says nothing about whether the other one is also playing. */
     keepOnFloor,
-    hardPairs: !!c.hardPairs,
+    /* #568: the Together rules set Always, in stored order. Only these are held
+       as a hard pair; the rest of `pairs` are the soft default. */
+    alwaysPairs: keepPairs.filter(isAlways),
     openingFive: filterIds(c.openingFive),
     lastPeriodFive: filterIds(c.lastPeriodFive),
     droppedPairs,
@@ -519,17 +524,17 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
   }
 
-  /* #446: Force Together makes a tied group play every stint as one, so two
+  /* #446: Always together makes a tied group play every stint as one, so two
      kids tied through a third and also set Apart can never both be satisfied.
      A direct pair is PAIR_AVOID_CONFLICT above and is not said twice. */
-  if (c.hardPairs) {
-    const group = tiedGroups(avail, c.pairs);
+  if (c.alwaysPairs.length) {
+    const group = tiedGroups(avail, c.alwaysPairs);
     const direct = new Set(c.pairs.map(([a, b]) => pairKey(a, b)));
     for (const [a, b] of c.avoids) {
       if (direct.has(pairKey(a, b)) || group.get(a) !== group.get(b)) continue;
       const via = [...group.get(a)].filter(id => id !== a && id !== b);
       err('PAIR_CHAIN_APART',
-        `${label(a)} and ${label(b)} are set Apart, but Force Together ties both to ${andList(via.map(label))}, so they would always be on together. Drop one of the rules.`,
+        `${label(a)} and ${label(b)} are set Apart, but Always together rules tie both to ${andList(via.map(label))}, so they would always be on together. Drop one of the rules.`,
         [a, b]);
     }
   }
@@ -1053,7 +1058,7 @@ export function generatePlan(input) {
     ? input.start.map(row => (Array.isArray(row) ? row.filter(id => availSet.has(id)) : []))
     : null;
   const ctx = { stints, avail, avoidSet, start, capOf, minOf, credit, gameMinutes, maxSubs, minSubs, lockedSet,
-                pairs: c.pairs, hardPairs: c.hardPairs, keepOn: c.keepOnFloor, tierOf,
+                pairs: c.pairs, alwaysPairs: c.alwaysPairs, keepOn: c.keepOnFloor, tierOf,
                 targetOf: id => (c.targetMinutes[id] != null ? c.targetMinutes[id] : null),
                 maxConsecutive: c.maxConsecutive,
                 leadOf: id => input.streakBefore?.[id] || 0,
@@ -2125,13 +2130,14 @@ function cost(lineups, ctx) {
   }
 
   if (ctx.pairs.length) {
-    for (const [a, b] of ctx.pairs) {
+    for (const pr of ctx.pairs) {
+      const [a, b] = pr;
       let apart = 0;
       lineups.forEach((lu, i) => {
         const ha = lu.includes(a), hb = lu.includes(b);
         if (ha !== hb) apart += ctx.stints[i].minutes;
       });
-      c += apart * (ctx.hardPairs ? 400 : 25);
+      c += apart * (isAlways(pr) ? 400 : 25);
     }
   }
 
@@ -2234,16 +2240,15 @@ function replaceLegal(lu, outs, ins, forced, ctx) {
   return !ctx.avoidSet.has(pairKey(x, y));
 }
 
-/* A hard pair can only move together, but every other move changes one player
+/* An Always pair can only move together, but every other move changes one player
    at a time, and unseating one of the two costs the pair penalty before the
    partner can follow -- so the search never finds the even plan that exists.
    These moves seat, bench or trade the pair as one. Listed after singleSwaps and
    before exchangeSwaps (measured): first, it starves the budget on long formats
    because descend restarts at the head after every gain; last, it is never
-   reached on 16-stint formats. Yields nothing without a hard pair. */
+   reached on 16-stint formats. Yields nothing without an Always pair. */
 function* pairSwaps(cur, ctx, forcedByStint) {
-  if (!ctx.hardPairs) return;
-  for (const [a, b] of ctx.pairs) {
+  for (const [a, b] of ctx.alwaysPairs) {
     for (let i = 0; i < cur.length; i++) {
       const on = cur[i].includes(a) && cur[i].includes(b);
       const off = !cur[i].includes(a) && !cur[i].includes(b);
@@ -2430,26 +2435,26 @@ function spreadRuleNote(ctx, c, minutes, label) {
     say(`${label(a)} and ${label(b)} share one spot because they are Apart and only ${n} are here, so they play ${Math.abs(ma - mb) < 1e-9 ? `${fmtMinutes(ma)} each` : `${fmtMinutes(ma)} and ${fmtMinutes(mb)}`}.`, [a, b]);
   }
 
-  /* Force Together ties a kid with nothing set to a partner who has a cap, a
+  /* An Always pair ties a kid with nothing set to a partner who has a cap, a
      minimum or a By hand number, so they play the partner's minutes. */
   const near = (x, y) => Math.abs(x - y) < 1e-9;
   const bare = id => ctx.minOf(id) === 0 && ctx.capOf(id) === Infinity && ctx.targetOf(id) == null;
   const bound = (id) => {
     const m = minutes[id];
-    if (ctx.capOf(id) !== Infinity && near(m, ctx.capOf(id))) return `capped at ${fmtMinutes(ctx.capOf(id))}`;
-    if (ctx.minOf(id) && near(m, ctx.minOf(id))) return `minimum ${fmtMinutes(ctx.minOf(id))}`;
-    if (ctx.targetOf(id) != null && near(m, ctx.targetOf(id))) return `By hand ${fmtMinutes(ctx.targetOf(id))}`;
+    if (ctx.capOf(id) !== Infinity && near(m, ctx.capOf(id))) return `capped at ${fmtMinutes(ctx.capOf(id))} min`;
+    if (ctx.minOf(id) && near(m, ctx.minOf(id))) return `minimum ${fmtMinutes(ctx.minOf(id))} min`;
+    if (ctx.targetOf(id) != null && near(m, ctx.targetOf(id))) return `By hand ${fmtMinutes(ctx.targetOf(id))} min`;
     return null;
   };
-  if (c.hardPairs) {
-    for (const [x, y] of c.pairs) {
+  if (c.alwaysPairs.length) {
+    for (const [x, y] of c.alwaysPairs) {
       for (const [a, b] of [[x, y], [y, x]]) {
         if (!bare(b) || bare(a) || !near(minutes[a], minutes[b])) continue;
         const why = bound(a);
         const others = ctx.avail.filter(id => id !== a).map(id => minutes[id]);
         const ends = near(minutes[b], Math.min(...others)) || near(minutes[b], Math.max(...others));
         if (!why || !ends) continue;
-        say(`${label(b)} plays ${fmtMinutes(minutes[b])} because Force Together ties them to ${label(a)} (${why}).`, [a, b]);
+        say(`${label(b)} plays ${fmtMinutes(minutes[b])} min because they are set Always together with ${label(a)} (${why}).`, [a, b]);
         break;
       }
     }
@@ -2457,12 +2462,12 @@ function spreadRuleNote(ctx, c, minutes, label) {
 
   /* a tied group bigger than the bench has seats can never all sit, so it
      plays every minute */
-  if (c.hardPairs) {
-    const group = tiedGroups(ctx.avail, c.pairs);
+  if (c.alwaysPairs.length) {
+    const group = tiedGroups(ctx.avail, c.alwaysPairs);
     for (const set of new Set(group.values())) {
       const ids = [...set];
       if (ids.length > n - ON_FLOOR && ids.every(id => near(minutes[id], ctx.gameMinutes))) {
-        say(`${andList(ids.map(label))} play every minute because Force Together ties ${ids.length} players and only ${plural(n - ON_FLOOR, 'player')} can sit.`, ids);
+        say(`${andList(ids.map(label))} play every minute because ${ids.length} players are set Always together and only ${n - ON_FLOOR} can sit.`, ids);
       }
     }
   }

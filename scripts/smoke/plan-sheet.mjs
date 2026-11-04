@@ -369,6 +369,8 @@ export async function planSheetPass(c, origin, rec) {
     addDisabled: document.getElementById('planAddRuleBtn')?.disabled,
     kinds: [...document.querySelectorAll('#planSub .plan-kinds .chip')].map(b => b.textContent),
     pressed: [...document.querySelectorAll('#planSub .plan-kinds .chip')].map(b => b.getAttribute('aria-pressed')),
+    headings: [...document.querySelectorAll('#planSub #planKinds .pgrp-h')].map(h => h.textContent),
+    groups: [...document.querySelectorAll('#planSub #planKinds .plan-kinds')].map(g => [g.getAttribute('role'), g.getAttribute('aria-label')]),
   })`);
   rec.check(addPage.title === 'Add a rule', `the level-2 title reads "${addPage.title}", want "Add a rule"`);
   rec.check(addPage.tFoc, 'focus not on title after the add-rule push');
@@ -377,8 +379,14 @@ export async function planSheetPass(c, origin, rec) {
   rec.check(addPage.addHidden === false, '"Add rule" is hidden on the Add-a-rule page');
   rec.check(addPage.addLabel === 'Add rule', `the commit button reads "${addPage.addLabel}", want "Add rule"`);
   rec.check(addPage.addDisabled === true, '"Add rule" is not disabled with nothing picked yet');
-  const WANT_KINDS = ['Plays at least', 'Plays at most', 'Apart', 'Together',
+  // #568: in group order, under three headings
+  const WANT_KINDS = ['Plays at least', 'Plays at most', 'Together', 'Apart',
     'One of two on', 'Starting five', 'Starts the last period'];  // #566: the two in-a-row rules live in Settings now
+  const WANT_HEADINGS = ['One player', 'Two players', 'Who starts and finishes'];
+  rec.check(JSON.stringify(addPage.headings) === JSON.stringify(WANT_HEADINGS),
+    `the kind headings read ${JSON.stringify(addPage.headings)}, want ${JSON.stringify(WANT_HEADINGS)}`);
+  rec.check(JSON.stringify(addPage.groups) === JSON.stringify(WANT_HEADINGS.map(h => ['group', h])),
+    `the kind chip rows read ${JSON.stringify(addPage.groups)}, want each a group named for its heading`);
   rec.check(JSON.stringify(addPage.kinds) === JSON.stringify(WANT_KINDS),
     `the kind chips read ${JSON.stringify(addPage.kinds)}, want ${JSON.stringify(WANT_KINDS)}`);
   rec.check(addPage.pressed[0] === 'true' && addPage.pressed.slice(1).every(p => p === 'false'),
@@ -447,7 +455,8 @@ export async function planSheetPass(c, origin, rec) {
   rec.check(together2.addDisabled === false, '"Add rule" is still disabled with two tiles picked for "Together"');
   rec.check(together2.thirdDisabled === true, 'a third tile is not disabled once two are picked for "Together"');
 
-  /* #265 H: commit Together, check Force Together (I), then one rule of
+  /* #265 H: commit Together, check its strength on the rule's page (I, which
+   * #568 moved off the game-wide Force Together switch), then one rule of
    * each remaining kind. Names are the picked tiles' first names (the
    * fixture's first names are all distinct); ids are the fixture's own. */
   // The finally puts Hawks back (it started with no rules, so a fresh
@@ -457,7 +466,10 @@ export async function planSheetPass(c, origin, rec) {
       return JSON.stringify({ c: s.game().constraints, ok: s.plans[s.state.activeGame]?.ok, stale: !!s.plans[s.state.activeGame]?.staleMarker,
         title: document.getElementById('sheetPlanTitle')?.textContent,
         rows: [...document.querySelectorAll('#constraints .prow')].filter(b => !b.classList.contains('add-rule')).map(r => r.textContent.trim()),
-        sw: [...document.querySelectorAll('#planPairs input[switch]')].map(i => [i.closest('label')?.textContent.trim(), i.checked]) }); })()`);
+        strength: (() => {
+          const h = [...document.querySelectorAll('#planSub .pgrp-h')].find(e => e.textContent === 'Keep them on together');
+          return h ? [...h.nextElementSibling.querySelectorAll('.prow')].map(b => [b.querySelector('.prow-t').textContent, b.getAttribute('aria-pressed')]) : null;
+        })() }); })()`);
     const commit = async (kind, text, has) => {
       await tapPane(c, `document.getElementById('planAddRuleBtn').click()`);
       const r = await readC();
@@ -466,21 +478,28 @@ export async function planSheetPass(c, origin, rec) {
       rec.check(has(r.c), `constraints hold ${JSON.stringify(r.c)} after adding ${kind}`);
     };
     await commit('together', 'Marcus and Devon together', c2 => JSON.stringify(c2.pairs) === '[["p0","p1"]]');
-    const forceOff = await readC();
-    rec.check(JSON.stringify(forceOff.sw) === JSON.stringify([['Force Together keeps each pair on the floor at the same time', false]]),
-      `#planPairs switches read ${JSON.stringify(forceOff.sw)}, want the unchecked "Force Together keeps each pair on the floor at the same time"`);
-    // Mark the plan object the solver last made; a recompute after the click
+    // the strength is on the rule's own page: As much as possible until the coach picks Always
+    const rowJs = text => `[...document.querySelectorAll('#constraints .prow')].find(b => b.textContent.trim() === ${JSON.stringify(text)}).click()`;
+    const strengthJs = label => `[...document.querySelectorAll('#planSub .pgrp-h')].find(e => e.textContent === 'Keep them on together').nextElementSibling
+      .querySelectorAll('.prow')[${label === 'Always' ? 1 : 0}].click()`;
+    await tapPane(c, rowJs('Marcus and Devon together'));
+    const softRows = await readC();
+    rec.check(JSON.stringify(softRows.strength) === JSON.stringify([['As much as possible', 'true'], ['Always', 'false']]),
+      `the strength rows read ${JSON.stringify(softRows.strength)}, want "As much as possible" chosen and "Always" not`);
+    // Mark the plan object the solver last made; a recompute after the tap
     // swaps in a new one, so the mark surviving means `ok` below is stale.
     await evalJSON(c, `(async () => { const s = await import('/state.js');
       s.plans[s.state.activeGame].staleMarker = true; return 'true'; })()`);
-    await tap(c, `document.querySelector('#planPairs input[switch]').click()`);
-    const forceOn = await readC();
-    rec.check(forceOn.c.hardPairs === true, `hardPairs is ${forceOn.c.hardPairs} after turning Force Together on, want true`);
-    rec.check(forceOn.sw[0]?.[1] === true, 'the Force Together switch does not read checked after turning it on');
-    rec.check(forceOn.stale === false, 'the plan was not recomputed after turning Force Together on');
-    rec.check(forceOn.ok === true, 'the plan does not solve with Force Together on');
-    await tap(c, `document.querySelector('#planPairs input[switch]').click()`);
-    rec.check((await readC()).c.hardPairs === false, 'hardPairs is not false after turning Force Together off');
+    await tap(c, strengthJs('Always'));
+    const always = await readC();
+    rec.check(JSON.stringify(always.c.pairs) === '[["p0","p1",true]]', `pairs are ${JSON.stringify(always.c.pairs)} after choosing Always, want [["p0","p1",true]]`);
+    rec.check(always.strength?.[1]?.[1] === 'true', 'the Always row does not read chosen after choosing it');
+    rec.check(always.rows.includes('Marcus and Devon always together'), `#constraints reads ${JSON.stringify(always.rows)}, want a row "Marcus and Devon always together"`);
+    rec.check(always.stale === false, 'the plan was not recomputed after choosing Always');
+    rec.check(always.ok === true, 'the plan does not solve with Always chosen');
+    await tap(c, strengthJs('As much as possible'));
+    rec.check(JSON.stringify((await readC()).c.pairs) === '[["p0","p1"]]', 'pairs are not [["p0","p1"]] after choosing As much as possible again');
+    await tapPane(c, `document.getElementById('planBack').click()`);
 
     const KINDS = [
       ['Plays at most', ['Eli Tran'], 2, 'Eli plays at most 14 min', k => JSON.stringify(k.maxMinutes) === '{"p3":14}'],

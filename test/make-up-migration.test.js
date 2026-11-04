@@ -6,7 +6,7 @@ import { sanitizeTeam, sanitizeSettings, DEFAULT_SETTINGS } from '../app/storage
 
 const emptyConstraints = () => ({
   minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [],
-  openingFive: [], lastPeriodFive: [], hardPairs: false, maxConsecutive: 0,
+  openingFive: [], lastPeriodFive: [], maxConsecutive: 0,
   targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [],
 });
 const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8,
