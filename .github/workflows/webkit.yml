@@ -1,0 +1,52 @@
+name: webkit
+
+# #597: the key checks again, in WebKit. Chrome runs everything else, so two
+# bugs that only showed on an iPhone (Print card doing nothing in the Home
+# Screen app, bench mode's scroll bar showing on iOS) got past every check.
+# Playwright's WebKit is desktop WebKit, not iOS Safari: a green run here does
+# not clear an iPhone bug (`/browser-verify` section 6).
+#
+# ADVISORY, ON PURPOSE. It is its own workflow, not a job in test.yml, because
+# test.yml's job list is pinned to branch protection (test/ci-config.test.js).
+# `continue-on-error: true` means a red run cannot block a merge; it still
+# prints the table and uploads the look shots. Making it required is a later
+# decision, once it has proved stable.
+#
+# Playwright is installed here at run time, at the version
+# scripts/webkit/playwright.mjs pins (the test holds the two equal), so
+# package.json stays free of dependencies.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  webkit:
+    runs-on: ubuntu-24.04
+    name: webkit (advisory)
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      # --no-save --no-package-lock: nothing here touches package.json.
+      - run: npm install --no-save --no-package-lock playwright@1.64.1
+      - run: npx playwright@1.64.1 install --with-deps webkit
+      - run: node scripts/webkit.mjs
+      # A failed table must not skip the look run: its shots are the evidence.
+      - if: always()
+        run: node scripts/look.mjs --engine webkit --out webkit-look
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: webkit-look
+          path: webkit-look/
+          if-no-files-found: ignore
+          retention-days: 3

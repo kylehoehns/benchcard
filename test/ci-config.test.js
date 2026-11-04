@@ -503,3 +503,45 @@ test('the lighthouse guards object to a broken copy, and to one with nothing to 
   }
   assert.notDeepEqual(lighthouseBadgeProblems(''), [], 'an empty README passed the guard');
 });
+
+/* #597: the WebKit run is advisory. It lives in its own workflow so test.yml's
+ * job list (pinned to branch protection above) never changes, and its one job
+ * cannot block a merge: `continue-on-error: true`. It installs exactly the
+ * Playwright version scripts/webkit/playwright.mjs pins. */
+import { PLAYWRIGHT_VERSION } from '../scripts/webkit/playwright.mjs';
+
+const webkit = read('.github/workflows/webkit.yml');
+
+test('the WebKit workflow runs on pushes to main and on pull requests', () => {
+  const on = webkit.slice(webkit.indexOf('\non:'), webkit.indexOf('\npermissions:'));
+  assert.ok(on.length > 10, 'could not find the on: block ahead of permissions:');
+  assert.match(on, /push:\n\s+branches: \[main\]/);
+  assert.match(on, /pull_request:/);
+});
+
+test('the WebKit job cannot block a merge, and is not one of test.yml\'s jobs', () => {
+  assert.match(webkit, /^    continue-on-error: true$/m);
+  const name = /^    name: (.+)$/m.exec(webkit)?.[1].trim();
+  assert.ok(name, 'the WebKit job has no name');
+  assert.ok(!REQUIRED.includes(name), `"${name}" is a required job's name`);
+  assert.ok(!tests.includes(`name: ${name}`), `test.yml has a job named "${name}"`);
+  assert.doesNotMatch(tests, /webkit/i, 'test.yml mentions WebKit: the advisory run belongs in webkit.yml');
+});
+
+test('the WebKit workflow runs on the pinned image and installs exactly the pinned Playwright', () => {
+  assert.match(webkit, /^    runs-on: ubuntu-24\.04$/m);
+  assert.ok(webkit.includes(`playwright@${PLAYWRIGHT_VERSION} `) || webkit.includes(`playwright@${PLAYWRIGHT_VERSION}\n`),
+    `webkit.yml does not install playwright@${PLAYWRIGHT_VERSION}`);
+  const versions = [...webkit.matchAll(/playwright@([^\s]+)/g)].map(m => m[1]);
+  assert.ok(versions.length >= 2, 'expected the npm install and the browser install to name the version');
+  assert.deepEqual([...new Set(versions)], [PLAYWRIGHT_VERSION], 'webkit.yml names a Playwright version other than the pinned one');
+  assert.match(webkit, /install --with-deps webkit/);
+  assert.doesNotMatch(webkit, /npm\s+ci/);
+  assert.doesNotMatch(webkit, /playwright@latest/);
+});
+
+test('the WebKit workflow runs the five checks and a look run, and uploads the shots', () => {
+  assert.match(webkit, /node scripts\/webkit\.mjs/);
+  assert.match(webkit, /node scripts\/look\.mjs --engine webkit/);
+  assert.match(webkit, /- if: always\(\)\n\s+uses: actions\/upload-artifact/, 'the shots are not uploaded after a failed run');
+});

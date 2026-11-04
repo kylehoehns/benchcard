@@ -6,6 +6,7 @@
  *
  *   node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390]
  *     [--font 16,32] [--height 844] [--dark] [--view today,settings,about,whats-new,advanced,...] [--headful]
+ *     [--engine chromium|webkit]
  *
  * Each shot is `<view-slug>-<width>-<font>-<theme>.png`, plus `-bottom.png`
  * when that state scrolls. `measurements.json` holds one record per PNG, with the shot's `consoleErrors`
@@ -16,6 +17,11 @@
  * a shot could not be proved (font size, painted theme, service worker,
  * about's fade-in) or a state did not open. For a redesign ticket's fixed
  * set against the prototype use `compare-shots.mjs` instead.
+ *
+ * #597: `--engine webkit` runs the same shots in Playwright's WebKit, through
+ * the CDP-shaped adapter (`webkit/cdp.mjs`), so everything below runs
+ * unchanged. A CDP method WebKit has no meaning for throws, naming it, and the
+ * run fails on it. Chromium is the default and is launched as before.
  *
  * Everything that sets the page up is reused: `land` (width, text size,
  * emulated media and the record, in the order that makes the font size take),
@@ -46,6 +52,7 @@ import {
   REVEAL_STATE, ABOUT_READY,
 } from './smoke/clip-sweep.mjs';
 import { shotProblems, postCaptureProblems, READ_PAINT, applyThemeScript } from './compare-shots.mjs';
+import { openWebKit } from './webkit/open.mjs';
 
 const ABOUT = 'about';
 const PROBE = 'look: console probe (ignore)';
@@ -82,7 +89,9 @@ const SW_SETTLED = `(async () => {
 
 export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-const USAGE = 'usage: node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390] [--font 16,32] [--height 844] [--dark] [--view a,b] [--headful]';
+const USAGE = 'usage: node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390] [--font 16,32] [--height 844] [--dark] [--view a,b] [--headful] [--engine chromium|webkit]';
+
+const ENGINES = ['chromium', 'webkit'];
 
 function positiveInts(flag, text) {
   return text.split(',').map(raw => {
@@ -128,8 +137,11 @@ export function parseArgs(argv) {
   if (!out) throw new Error(`--out <dir> is required\n${USAGE}`);
   const url = flag('--url');
   const widths = flag('--widths'), fonts = flag('--font'), views = flag('--view'), height = flag('--height');
+  const engine = flag('--engine') ?? 'chromium';
+  if (!ENGINES.includes(engine)) throw new Error(`--engine "${engine}" is not one of ${ENGINES.join(' | ')}\n${USAGE}`);
   return {
     out,
+    engine,
     url: url ? url.replace(/\/+$/, '') : null,
     widths: widths === null ? [320, 390] : positiveInts('--widths', widths),
     fonts: fonts === null ? [16, 32] : positiveInts('--font', fonts),
@@ -228,6 +240,18 @@ async function shoot(c, origin, cell, outDir, height, errors) {
   return records;
 }
 
+/* The one place the engine is opened: a CDP-shaped client and how to close its
+ * browser. Chromium is launched with a fresh profile; WebKit is Playwright's. */
+async function openEngine({ engine, headful }) {
+  if (engine === 'webkit') {
+    const c = await openWebKit({ headful });
+    return { c, close: () => c.close() };
+  }
+  const { proc, dir, ws } = await launch(0, headful);
+  const c = cdp(ws);
+  return { c, close: async () => { c.close(); await closeChrome(proc, dir); } };
+}
+
 export async function main(argv = process.argv.slice(2)) {
   let args;
   try { args = parseArgs(argv); } catch (e) { console.error(e.message); return 1; }
@@ -236,10 +260,11 @@ export async function main(argv = process.argv.slice(2)) {
   await mkdir(outDir, { recursive: true });
   const server = args.url ? null : await serve();
   const origin = args.url ?? `http://127.0.0.1:${server.address().port}`;
-  const { proc, dir, ws } = await launch(0, args.headful);
-  const c = cdp(ws);
   const records = [];
+  let browser;
   try {
+    browser = await openEngine(args);
+    const c = browser.c;
     await c.ready;
     for (const m of ['Runtime.enable', 'Log.enable', 'Page.enable', 'Network.enable']) await c.send(m);
     /* #596: console errors per shot, split by origin. A listener that never
@@ -281,13 +306,13 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(`look: wrote ${records.length} PNG(s) and measurements.json to ${outDir} (origin ${[...new Set(records.map(r => r.origin))].join(', ')})`);
     return 0;
   } catch (e) {
-    console.error(`look: ${e.message}`);
+    // The install line is printed as it is, so it can be copied.
+    console.error(e.message.startsWith('Playwright not installed') ? e.message : `look: ${e.message}`);
     return 1;
   } finally {
     // The browser is killed with its fresh profile, so the page overrides
     // `land` set die with it; nothing is left to restore.
-    c.close();
-    await closeChrome(proc, dir);
+    await browser?.close();
     server?.close();
   }
 }
