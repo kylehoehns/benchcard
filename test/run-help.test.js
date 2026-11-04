@@ -7,19 +7,13 @@ import { readFileSync } from 'node:fs';
 import { flat, lacks } from './prose.js';
 
 const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
-const entry = (title) => {
-  const i = html.indexOf(`<dt>${title}</dt>`);
-  assert.ok(i > 0, `help entry ${title} exists`);
-  return html.slice(i, html.indexOf('</dd>', i));
-};
 
-test('the run-rule help says breaks do not reset the count and drops "the whole half"', () => {
-  const plays = entry('Plays at most N in a row');
-  const sits = entry('Sits at most N in a row');
-  for (const e of [plays, sits]) {
-    assert.ok(lacks(e, 'the whole half'), 'no "the whole half"');
-  }
-  assert.ok(flat(plays).toLowerCase().includes('a break between periods is not a rest'), 'plays: says a break does not reset the count');
-  assert.ok(flat(sits).toLowerCase().includes('a break between periods does not reset the count'), 'sits: says a break does not reset the count');
-  assert.ok(flat(plays).includes('Set it to 1 and all five change at every sub'), 'says what 1 means');
+test('the run-rule help says breaks do not reset the count, says a game can change its own number, and drops "the whole half"', () => {
+  const i = html.indexOf('<b>League rules.</b>');
+  assert.ok(i > 0, 'help has a League rules entry');
+  const e = flat(html.slice(i, html.indexOf('</p>', i)));
+  assert.ok(lacks(e, 'the whole half'), 'no "the whole half"');
+  assert.ok(e.toLowerCase().includes('a break between periods is not a rest'), 'plays: says a break does not reset the count');
+  assert.ok(e.toLowerCase().includes('sitting does not reset at a break'), 'sits: says a break does not reset the count');
+  assert.ok(e.includes('A game can change its own in-a-row number'), 'says a game can change its own');
 });

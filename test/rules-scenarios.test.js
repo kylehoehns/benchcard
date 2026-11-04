@@ -94,22 +94,22 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
     });
     test('the run rules are named for what they limit, and Sits at most is kept', async () => {
       const { coach } = own;
-      await openHawks(coach);
+      // #566: the two rules are set in Settings, so the game starts with both on
+      await coach.onGameDayWith(g => ({ constraints: { ...g.constraints, maxConsecutive: 2, maxBench: 2 } }));
+      await coach.tap('Hawks, 9:00 AM, planned');
       await openPlan(coach);
-      await coach.tap('Add a rule');
-      assert.ok(await coach.sees('Plays at most N in a row'), 'the plays chip is on screen');
-      assert.ok(await coach.sees('Sits at most N in a row'), 'the sits chip is on screen');
+      assert.ok(await coach.sees('Each player plays at most 2 stints in a row (8 min)'), 'the plays row is on screen');
+      assert.ok(await coach.sees('Each player sits at most 2 stints in a row (8 min)'), 'the sits row is on screen');
       assert.ok(!(await coach.sees('Rest limit')), 'the old name is gone');
-      await coach.tap('Sits at most N in a row');
-      assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
+      await coach.tap('Each player sits at most 2 stints in a row (8 min)');
+      assert.equal(await coach.text('#planSub .pstep-val'), '8 min');
       await coach.tap('Longer');
-      assert.equal(await coach.text('#planKindBody .pstep-val'), '12 min');
+      assert.equal(await coach.text('#planSub .pstep-val'), '12 min');
       await coach.tap('Shorter');
-      await coach.tap('Plays at most N in a row');
-      assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
-      await coach.tap('Sits at most N in a row');
-      await coach.tap('Add rule');
-      assert.ok(await coach.sees('Each player sits at most 2 stints in a row (8 min)'), 'the rule row is shown');
+      await coach.tap('Back to Plan');
+      await coach.tap('Each player plays at most 2 stints in a row (8 min)');
+      assert.equal(await coach.text('#planSub .pstep-val'), '8 min');
+      await coach.tap('Back to Plan');
       await coach.tap('Close');
 
       await coach.comeBackDaysLater(0);

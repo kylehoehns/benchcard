@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, fillGroups, fillClosers, plural, DEFAULT_TIER, tiersDiffer, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, fillGroups, fillClosers, DEFAULT_TIER, tiersDiffer, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -255,6 +255,10 @@ export function newGame(n, from, settings) {
     // startingOrder decides whose list the new game has, and keeps Mix only on the app's
     if (g.strategy !== 'order') delete g.orderMix;
   }
+  /* #566: the team's two "in a row" values, after any clone. A game's own change
+     is for that game, so the next game starts from the team, not from it. */
+  g.constraints.maxConsecutive = settings?.maxConsecutive ?? 0;
+  g.constraints.maxBench = settings?.maxBench ?? 0;
   return g;
 }
 
@@ -445,15 +449,58 @@ const playsInRule = g => (fivesAreSet(g.strategy) ? 'off' : playsInSetting());
 // "each half", or "every quarter" / "every half" / "every period" by the game's period count
 const playsInText = g => (playsInSetting() === 'halves' ? `each ${playsInNoun('halves')}` : `every ${playsInNoun('periods', g.periods)}`);
 
+/* #566: the plays-in row's detail, its own text and not the minimum's. */
+export const playsInDetail = g => `Every player plays in ${playsInText(g)}. It's your league rule. Change it in Settings.`;
+
+/* #566: the team's two "in a row" values, 0 when off. One reader, beside
+   `leagueSetting`; `setTeamRun` is the one writer. */
+const RUN_KEYS = ['maxConsecutive', 'maxBench'];
+export const teamRun = key => {
+  const v = state.settings?.[key];
+  return Number.isInteger(v) && v >= 0 ? v : DEFAULT_SETTINGS[key];
+};
+/* A team value reaches the open day's games that have not started, the rule
+   `fmt()` in teams-view.js follows for the format (#567); started games, filed
+   games and other days keep their own. Returns whether any game moved. */
+export function setTeamRun(key, v) {
+  if (!RUN_KEYS.includes(key)) return false;
+  state.settings[key] = v;
+  let moved = false;
+  for (const g of state.day?.games ?? []) {
+    if (gameStarted(g.live) || g.constraints[key] === v) continue;
+    g.constraints[key] = v;
+    moved = true;
+  }
+  return moved;
+}
+
+/* #566: the unit names as the minimum's select reads them, by the game's own
+   period word: "quarters of time", "whole halves". */
+export function minUnitLabel(g, unit) {
+  const many = periodNoun(g.periods, 2);
+  return unit === 'periods' ? `${many} of time` : unit === 'full' ? `whole ${many}` : unit === 'pct' ? '% of game' : 'min';
+}
+
 /* The rule's sentence, with what it comes to in this game: "half the game
-   (16 min)", "2 periods (16 min)", or plain "16 min". */
-function leagueRuleText(g) {
+   (16 min)", "2 quarters of time (16 min)", or plain "16 min". */
+export function leagueRuleText(g) {
   const { amount, unit } = leagueSetting();
   const mins = `${fmtMinutes(leagueMinFor(g))} min`;
   if (unit === 'pct') return `${amount === 50 ? 'half the game' : `${amount}% of the game`} (${mins})`;
-  if (unit === 'periods') return `${plural(amount, 'period')} (${mins})`;
-  if (unit === 'full') return `${plural(amount, 'full period')} (${mins})`;
+  if (unit === 'periods') return `${amount} ${periodNoun(g.periods, amount)} of time (${mins})`;
+  if (unit === 'full') return `${amount} whole ${periodNoun(g.periods, amount)} (${mins})`;
   return mins;
+}
+
+/* #566: the line under the minimum in Settings, what it comes to in this game;
+   '' when it is off. Whole periods are counted, so they say so. */
+export function leagueLiveLine(g) {
+  const { amount, unit } = leagueSetting();
+  if (!(amount > 0)) return '';
+  const mins = fmtMinutes(leagueMinFor(g));
+  if (unit !== 'full') return `= ${mins} min in a ${g.periods} × ${g.periodMinutes} game, any time`;
+  const n = Math.min(amount, g.periods);
+  return `= ${n} whole ${periodNoun(g.periods, n)} (${mins} min)`;
 }
 
 /* One rule, one count (#26 item 9). `passSummary` and `sentenceParts` below
@@ -513,6 +560,13 @@ export const runRowLabel = g => { if (g.granMode !== 'breaksOnly') return 'In a 
 export const restLimitMax = (g) => Math.max(1, regulationLens(g).lens.length - 1);
 export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 * LINEUP_FLOOR
   ? `With ${availIds(g).length} players, Sits at most 1 in a row is Platoon.` : '');
+
+/* #566: the line under Settings' Sits at most, once it is on: what the count
+   spans in this game, then the Platoon hint where it is true. */
+export const benchFootnote = (g, n) => {
+  const gap = g.periods === 4 ? 'quarter breaks' : g.periods === 2 ? 'halftime' : 'period breaks';
+  return [`Counts across ${gap}. Applies to every player.`, benchPlatoonHint(g, n)].filter(Boolean).join(' ');
+};
 
 /* #28 decision 5: the Plan sheet's Rules section, as plain sentences, in the
  * table's own order -- league minimum, minimum, cap, together, apart, one of

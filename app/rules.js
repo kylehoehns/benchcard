@@ -17,12 +17,12 @@
 import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
 import { fmtMinutes } from './engine.js';
-import { state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
-         ruleItems, runHint, runMinutesText, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
+import { playsInDetail, state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
+         ruleItems, runHint, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
          dayIsToday, makeUpOffers, makeUpShown, makeUpOf, setMakeUp } from './state.js';
 import { pickFive } from './pills.js';
-import { pushPlanPane, stepperRow, paintChoiceRows, onPlanOpen } from './game-setup.js';
+import { pushPlanPane, stepperRow, runStepperRow, runTop, paintChoiceRows, onPlanOpen } from './game-setup.js';
 import { gameStarted } from './live.js';
 import { MAKE_UPS } from './storage.js';
 import { popPane } from './trap.js';
@@ -346,7 +346,7 @@ function openRuleDetail(item, idx, trigger) {
   sub.append(sentence);
 
   if (!item.removable) {
-    sub.append(el('p', 'pgrp-f', 'Your league minimum. Change it in Settings.'));
+    sub.append(el('p', 'pgrp-f', item.kind === 'playsIn' ? playsInDetail(game()) : 'Your league minimum. Change it in Settings.'));
     if (game().strategy === 'minutes') sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
     pushPlanPane(trigger, { title: 'Rule' });
     return;
@@ -362,6 +362,7 @@ function openRuleDetail(item, idx, trigger) {
   const controlsHost = el('div');
   sub.append(controlsHost);
   if (item.kind === 'minimum' && game().strategy === 'minutes') sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
+  if (item.kind === 'rest' || item.kind === 'bench') sub.append(el('p', 'pgrp-f', "Changes this game only. Your team's rule is in Settings."));
   // decision 4: shown only when a pair the coach just picked already
   // matches another rule of the same kind.
   const dupMsg = el('p', 'pgrp-f', 'You already have this rule.');
@@ -467,8 +468,6 @@ const KINDS = [
   ['keepon', 'One of two on'],
   ['starts', 'Starting five'],
   ['lastq', 'Starts the last period'],
-  ['rest', 'Plays at most N in a row'],
-  ['bench', 'Sits at most N in a row'],
 ];
 
 // The draft is module state, reset on each push (Design > State).
@@ -504,7 +503,7 @@ function paintKindChips(box) {
     b.setAttribute('aria-pressed', String(draft.kind === k));
     b.onclick = () => {
       // Changing the kind keeps the minutes and clears the players.
-      draft = { kind: k, minutes: draft.minutes, n: k === 'rest' || k === 'bench' ? 2 : undefined };
+      draft = { kind: k, minutes: draft.minutes };
       paintKindChips(box);
       renderKindBody();
     };
@@ -559,17 +558,11 @@ function kindControls(kind, draft, hooks = {}) {
       hint.textContent = [runHint(g, draft.n), kind === 'bench' ? benchPlatoonHint(g, draft.n) : ''].filter(Boolean).join(' ');
       hint.hidden = !hint.textContent;
     };
-    const top = kind === 'rest' ? restLimitMax(game()) : 4;
+    const top = runTop(game(), kind);
     // a limit above the top (the stepper starts at 2; a saved rule may be higher) is no limit at all, so show and save the top
     draft.n = Math.max(1, Math.min(draft.n ?? 2, top));
     paintHint();
-    const minutes = game().granMode !== 'breaksOnly';
-    // #574: minutes where the game has subs, the period's own name under Breaks only
-    grp.append(stepperRow(runRowLabel(game()), () => draft.n, v => { draft.n = v; }, 1, top,
-      minutes ? 'minutes' : runNoun(game(), 2), () => { paintHint(); afterStep?.(); },
-      minutes ? v => runMinutesText(game(), v) : undefined,
-      // a step is one substitution spot (4 minutes at 4 x 8), so no label promises one minute
-      minutes ? ['Shorter', 'Longer'] : undefined));
+    grp.append(runStepperRow(game(), kind, () => draft.n, v => { draft.n = v; }, () => { paintHint(); afterStep?.(); }));
     body.append(grp, hint);
   }
   return body;
@@ -583,9 +576,7 @@ function renderKindBody() {
   body.append(kindControls(draft.kind, draft, { onPick: renderKindBody, afterStep: syncAddRuleBtn }));
 
   const replaces = (draft.kind === 'starts' && c.openingFive.length)
-    || (draft.kind === 'lastq' && c.lastPeriodFive.length)
-    || (draft.kind === 'rest' && c.maxConsecutive)
-    || (draft.kind === 'bench' && c.maxBench);
+    || (draft.kind === 'lastq' && c.lastPeriodFive.length);
   if (replaces) body.append(el('p', 'pgrp-f', 'Replaces the one you have.'));
 
   syncAddRuleBtn();
@@ -615,8 +606,6 @@ function commitAddRule() {
     case 'keepon': addPairOnce(keepOnList(c), draft.a, draft.b); break;
     case 'starts': c.openingFive = [...draft.ids]; break;
     case 'lastq': c.lastPeriodFive = [...draft.ids]; break;
-    case 'rest': c.maxConsecutive = draft.n; break;
-    case 'bench': c.maxBench = draft.n; break;
     default: return;
   }
   renderConstraints();

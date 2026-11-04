@@ -28,7 +28,8 @@ import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, setMakeUp, newGameMakeUp, openGame, dayHeading, addGame, removeGame,
-         hasGames, bestPlayersOffered } from './state.js';
+         hasGames, bestPlayersOffered, teamRun, setTeamRun, leagueLiveLine, minUnitLabel, benchFootnote } from './state.js';
+import { runStepperRow, runTop } from './game-setup.js';
 import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
 // it is called from -- both the paint and the tap. No cycle: gamemode.js
@@ -200,6 +201,18 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
     setLeagueMin(team()?.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes, e.target.value);
   });
 
+  /* #566: Plays at most and Sits at most, the team's two "in a row" values. A
+     switch turns one on at 2 (held to the top of its stepper) or off at 0; the
+     stepper is the one the rule's detail page uses. The open day's games that
+     have not started follow (`setTeamRun`). */
+  for (const [sw, key, kind] of [['#restOn', 'maxConsecutive', 'rest'], ['#benchOn', 'maxBench', 'bench']]) {
+    on(sw, 'onchange', (e) => {
+      if (!team()?.settings) return;
+      setTeamRun(key, e.target.checked ? Math.min(2, runTop(settingsRef(), kind)) : 0);
+      edit('teamSetting');
+    });
+  }
+
   /* The game format. `onchange` for the same reason the floor is -- a half
      typed "2" on the way to "20" is not a stance -- and blank falls back to the
      default rather than to 0, because a game with no periods is not a game.
@@ -318,7 +331,60 @@ function paintLeagueMin(settled = false) {
     if (settled || document.activeElement !== mm) mm.value = String(settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes);
   }
   const mu = $('#minUnit');
-  if (mu) mu.value = unit;
+  if (mu) {
+    // #566: the unit names use the game's own period word, painted from the reference game
+    const ref = settingsRef();
+    for (const o of mu.options) {
+      const label = minUnitLabel(ref, o.value);
+      if (o.text !== label) o.text = label;
+    }
+    mu.value = unit;
+  }
+  // the live line: written only when it changes, it is an aria-live region
+  const live = $('#minLive');
+  if (live) {
+    const line = leagueLiveLine(settingsRef());
+    if (live.textContent !== line) live.textContent = line;
+    live.hidden = !line;
+  }
+}
+
+/* #566: the game Settings' League rules speak about: the open game, or a game
+   built from the team's own format when there is none. */
+const settingsRef = () => game() ?? newGame(0, null, team()?.settings);
+
+/* The two "in a row" groups: the switch, the stepper under it while on, and
+   the footnote. The stepper is rebuilt only when what it shows changes -- a tap
+   on it updates its own number, and `renderAll` then finds nothing to redo. */
+function paintLeagueRuns() {
+  const ref = settingsRef();
+  for (const [key, kind, sw, grp, note] of [
+    ['maxConsecutive', 'rest', '#restOn', '#restGrp', '#restNote'],
+    ['maxBench', 'bench', '#benchOn', '#benchGrp', '#benchNote'],
+  ]) {
+    const v = teamRun(key);
+    const box = $(grp);
+    if (!box) continue;
+    const toggle = $(sw);
+    if (toggle) toggle.checked = v > 0;
+    const top = runTop(ref, kind);
+    const shown = Math.min(v, top);
+    const sig = v > 0 ? [shown, top, ref.granMode, ref.granValue, ref.periods, ref.periodMinutes].join('|') : '';
+    if (box.dataset.sig !== sig) {
+      box.querySelector('.pstep-row')?.remove();
+      if (v > 0) {
+        box.append(runStepperRow(ref, kind, () => Math.min(teamRun(key), top),
+          n => { setTeamRun(key, n); }, () => edit('teamSetting')));
+      }
+      box.dataset.sig = sig;
+    }
+    const line = v === 0 ? '' : kind === 'bench' ? benchFootnote(ref, shown) : 'Applies to every player.';
+    const p = $(note);
+    if (p) {
+      if (p.textContent !== line) p.textContent = line;
+      p.hidden = !line;
+    }
+  }
 }
 
 /* #570: the Fine-tuning group, painted by the row's tap and by renderSettings
@@ -413,6 +479,7 @@ export function renderSettings() {
 
   paintFineTune();
   paintLeagueMin();
+  paintLeagueRuns();
 
   /* #25: the row's read-back and the picker's current mark. `#teamColorSwatch`
      needs no write here -- it carries no `data-tint` of its own, so it reads

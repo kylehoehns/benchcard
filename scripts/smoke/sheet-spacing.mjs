@@ -120,25 +120,17 @@ async function checkFormatColumns(c, ck, where, checkGeometry = false) {
   await tap(c, `document.getElementById('sheetFormatClose').click()`);
 }
 
-// item 5, Add a rule: one row at a time ("Minutes" for a minimum/cap rule,
-// "Stints in a row" for a Plays at most N in a row rule) -- the two states are measured
-// separately and compared to each other, since both are never on screen
-// together the way Format's two rows are.
+// item 5, Add a rule: one row ("Minutes" for a minimum/cap rule). #566 moved
+// the two "in a row" rules to Settings, so the rule's own page (opened from a
+// saved rule) is where that stepper is measured now.
 async function checkAddRuleColumns(c, ck, where, checkGeometry = false) {
   await tap(c, `document.getElementById('phraseRules').click()`);
   await tap(c, `document.querySelector('#constraints .add-rule').click()`);
   const minuteRows = await pstepCols(c, '#planKindBody');
   ck(minuteRows.length === 1, `${where}: Add a rule's "Minutes" kind shows ${minuteRows.length} stepper row(s), want 1`);
   if (checkGeometry) await stepperGeometryOk(c, ck, '#planKindBody', where, 'Add a rule (Minutes)');
-  await tap(c, `[...document.querySelectorAll('#planSub .plan-kinds .chip')]
-    .find(b => b.textContent.trim() === 'Plays at most N in a row').click()`);
-  const restRows = await pstepCols(c, '#planKindBody');
-  ck(restRows.length === 1, `${where}: Add a rule's "Plays at most N in a row" kind shows ${restRows.length} stepper row(s), want 1`);
-  if (checkGeometry) await stepperGeometryOk(c, ck, '#planKindBody', where, 'Add a rule (Plays at most N in a row)');
-  if (minuteRows.length === 1 && restRows.length === 1) {
-    const both = [minuteRows[0], restRows[0]];
-    ck(colsAligned(both), `${where}: Add a rule's stepper column moves between kinds: ${JSON.stringify(both)}`);
-    ck(buttonsBigEnough(both), `${where}: an Add-a-rule stepper button is under 48×48: ${JSON.stringify(both)}`);
+  if (minuteRows.length === 1) {
+    ck(buttonsBigEnough([minuteRows[0]]), `${where}: an Add-a-rule stepper button is under 48×48: ${JSON.stringify(minuteRows)}`);
   }
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
 }

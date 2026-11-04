@@ -67,8 +67,8 @@ describe('The Plan sheet shows only the switches the strategy uses', { skip }, (
   });
 
   const skipLine = () => coach.text('#stratskip');
-  const PLATOON = "Platoon plays whole groups, so Players changing at once, Everyone plays in, full periods and making up minutes from other games don't apply.";
-  const ORDER = "The order decides who plays, so Everyone plays in, full periods and making up minutes from other games don't apply.";
+  const PLATOON = "Platoon plays whole groups, so Players changing at once, Everyone plays in, whole halves and making up minutes from other games don't apply.";
+  const ORDER = "The order decides who plays, so Everyone plays in, whole halves and making up minutes from other games don't apply.";
   const BY_HAND = "By hand plays the minutes you set, so making up minutes from other games doesn't apply.";
 
   test('3. with no league minimum the line names what each strategy skips, and Even and Closers have none', async () => {
@@ -93,8 +93,8 @@ describe('The Plan sheet shows only the switches the strategy uses', { skip }, (
     ['min', 'order', ' Your league minimum still counts, but the plan only warns when someone falls short.'],
     ['pct', 'order', ' Your league minimum still counts, but the plan only warns when someone falls short.'],
     ['periods', 'order', ' Your league minimum still counts, but the plan only warns when someone falls short.'],
-    ['full', 'platoon', ' Your league minimum still counts in minutes, not as full periods.'],
-    ['full', 'order', ' Your league minimum still counts in minutes, not as full periods, and the plan only warns when someone falls short.'],
+    ['full', 'platoon', ' Your league minimum still counts in minutes, not as whole halves.'],
+    ['full', 'order', ' Your league minimum still counts in minutes, not as whole halves, and the plan only warns when someone falls short.'],
   ]) {
     test(`4. with a league minimum in ${unit}, ${strategy} adds what still holds`, async () => {
       await gameTwo(strategy, { minMinutes: AMOUNT[unit], minUnit: unit });

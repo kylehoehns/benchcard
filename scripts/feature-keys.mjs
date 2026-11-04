@@ -143,8 +143,8 @@ export const FEATURES = [
   { key: 'rule:together', src: 'rules.js KINDS', term: ['together'] },
   { key: 'rule:apart', src: 'rules.js KINDS', term: ['apart'] },
   { key: 'rule:keepon', src: 'rules.js KINDS', term: ['one of two on'] },
-  { key: 'rule:rest', src: 'rules.js KINDS', term: ['plays at most n in a row'], text: ['plays at most n in a row'] },
-  { key: 'rule:bench', src: 'rules.js KINDS', term: ['sits at most n in a row'], text: ['sits at most n in a row'] },
+  { key: 'rule:rest', src: 'index.html League rules (#restOn)', term: ['plays at most n in a row'], text: ['plays at most n in a row'] },
+  { key: 'rule:bench', src: 'index.html League rules (#benchOn)', term: ['sits at most n in a row'], text: ['sits at most n in a row'] },
 
   /* The bench scopes are pinned by the LABEL the button carries, not by its
    * internal key: two of the three have no key at all (one is a bare button),
@@ -229,7 +229,10 @@ export const shipped = () => {
       .matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1]),
     shape: [...between(app('balance.js'), 'const SHAPES = [', '\n];')
       .matchAll(/\bv:\s*'([^']+)'/g)].map((m) => m[1]),
-    rule: [...new Set(ruleKinds)],
+    /* #566: Plays at most and Sits at most left Add a rule for the League
+     * rules group in Settings, so they are read from its two switches. */
+    rule: [...new Set([...ruleKinds, ...(index.includes('id="restOn"') ? ['rest'] : []),
+      ...(index.includes('id="benchOn"') ? ['bench'] : [])])],
     /* Every scope the swap sheet can offer: the keyed pair list, plus any bare
      * action button beside it. Both halves are open-ended on purpose -- a
      * fourth scope has to show up here whatever shape it arrives in. */

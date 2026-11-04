@@ -184,10 +184,11 @@ test('a v5 backup file still imports into today\'s app, with nothing lost', () =
 
   // and the team it did not know how to describe gets today's defaults, so the
   // restored app plans exactly as the file's own app did
-  for (const t of back.teams) {
-    assert.deepEqual(t.settings, { ...DEFAULT_SETTINGS },
+  // (#566: but a game that carried Plays at most 3 makes the team's number 3)
+  back.teams.forEach((t, i) => {
+    assert.deepEqual(t.settings, { ...DEFAULT_SETTINGS, ...(i === 0 ? { maxConsecutive: 3 } : {}) },
       'an absent settings block is a coach who never opened the page, not a broken one');
-  }
+  });
 
   // restoring the same file twice cannot drift: the second import is the first
   assert.deepEqual(readBackup(backupText(back), H), back);

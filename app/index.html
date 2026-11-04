@@ -1428,6 +1428,13 @@
     </div>
     <p class="pgrp-f" id="maxSubsRead" aria-live="polite"></p>
 
+    <!-- #566: League rules, one heading over four groups so each footnote
+         sits under its own rule (W3). The two "in a row" rules are team values
+         every new game starts from; their stepper rows and footnotes are built
+         and written by `renderSettings` (teams-view.js), the stepper by the
+         builder the rule's detail page shares (`runStepperRow`, game-setup.js).
+         `#minLive` is the minimum's live line, written only when it changes. -->
+    <h3 class="pgrp-h">League rules</h3>
     <div class="pgrp">
       <div class="prow">
         <span class="prow-t">Everyone plays at least</span>
@@ -1437,11 +1444,15 @@
           <select class="prow-select" id="minUnit" aria-label="Counted in">
             <option value="min">min</option>
             <option value="pct">% of game</option>
-            <option value="periods">periods</option>
-            <option value="full">full periods</option>
+            <option value="periods">quarters of time</option>
+            <option value="full">whole quarters</option>
           </select>
         </div>
       </div>
+    </div>
+    <p class="pgrp-f" id="minLive" aria-live="polite" hidden></p>
+
+    <div class="pgrp">
       <div class="prow">
         <span class="prow-t">Everyone plays in</span>
         <div class="seg wide" id="playsInSeg" role="group" aria-label="Everyone plays in">
@@ -1451,6 +1462,22 @@
         </div>
       </div>
     </div>
+
+    <div class="pgrp" id="restGrp">
+      <label class="prow prow-toggle" for="restOn">
+        <span class="prow-t">Limit time on the floor in a row</span>
+        <input type="checkbox" id="restOn" switch aria-label="Plays at most: limit time on the floor in a row">
+      </label>
+    </div>
+    <p class="pgrp-f" id="restNote" aria-live="polite" hidden></p>
+
+    <div class="pgrp" id="benchGrp">
+      <label class="prow prow-toggle" for="benchOn">
+        <span class="prow-t">Limit time on the bench in a row</span>
+        <input type="checkbox" id="benchOn" switch aria-label="Sits at most: limit time on the bench in a row">
+      </label>
+    </div>
+    <p class="pgrp-f" id="benchNote" aria-live="polite" hidden></p>
 
     <!-- #567: "Extra minutes go to" is a setting few coaches need, so it sits
          behind a "Fine-tuning" row: a button with aria-expanded and a hidden
@@ -1983,22 +2010,23 @@
         <dd>A pair you never want resting at the same time: your two ball handlers,
           or your two bigs. One of them is on the floor every stint. The mirror of
           “Apart”: that one is about the floor, this one is about the bench.</dd>
-        <dt>Plays at most N in a row</dt>
-        <dd>The most stints in a row a kid can play before a rest. A break
-          between periods is not a rest, so a kid who plays the end of one
-          period and the start of the next has played two in a row. Set it to
-          1 and all five change at every sub.</dd>
-        <dt>Sits at most N in a row</dt>
-        <dd>The most stints in a row a kid can sit. A break between periods
-          does not reset the count. With a big roster, this can need more
-          players to change at once than you allow. The plan tells you
-          when.</dd>
       </dl>
+      <p class="help-p"><b>League rules.</b> Four rules your whole team shares live together in
+          <b>Settings</b>: <b>Everyone plays at least</b>, <b>Everyone plays
+          in</b>, <b>Plays at most N in a row</b> and <b>Sits at most N in a
+          row</b>. Each new game starts from them, and so do this day's games
+          that have not started. A game can change its own in-a-row number:
+          open the rule on the Rules sheet. That changes that game only. A
+          break between periods is not a rest, so a kid who plays the end of
+          one period and the start of the next has played two in a row.
+          Sitting does not reset at a break. With a big roster, a sit limit
+          can need more players to change at once than you allow. The plan
+          tells you when.</p>
       <p class="help-p">If your league has a minimum playing time, set it once
         with <b>Everyone plays at least</b> in <b>Settings</b>. It covers
         every kid at every game. Count it in minutes, as a share of the game
-        ("half the game" is 50 % of game), in periods, or in <b>full
-        periods</b>, where each kid plays whole periods. Each game works it
+        ("half the game" is 50 % of game), in periods, or in <b>whole
+        quarters</b>, where each kid plays whole quarters. Each game works it
         out from its own length. <b>Everyone plays in</b> makes sure every kid
         gets on the floor in each half, or in each period. A Plays at least
         rule on one player still wins when it is higher, and a Plays at most
@@ -2060,7 +2088,7 @@
 
       <!-- #564: overtime. The four facts are tested or cited: Sits at most
            (test/bench-span.test.js, docs/design-decisions-sits-at-most.md),
-           Plays at most (test/rest-limit-replan.test.js), full periods (the
+           Plays at most (test/rest-limit-replan.test.js), whole quarters (the
            same doc) and minimums (test/overtime-minimums.test.js). -->
       <h3 class="help-h">Overtime</h3>
       <p class="help-p">When a game is tied, the <b>bench screen</b> shows
@@ -2086,9 +2114,9 @@
         <dt>Plays at most</dt>
         <dd>Counted. A kid who played a long stretch at the end of the game
           keeps counting through overtime.</dd>
-        <dt>Full periods</dt>
-        <dd>Never. Overtime is not a full period, so it adds nothing to a
-          minimum counted in full periods.</dd>
+        <dt>Whole quarters</dt>
+        <dd>Never. Overtime is not a whole quarter, so it adds nothing to a
+          minimum counted in whole quarters.</dd>
         <dt>Minimums</dt>
         <dd>Counted. Overtime minutes count toward a minimum you set for a kid and
           toward the league's, so a kid still short of one can be put on. The
