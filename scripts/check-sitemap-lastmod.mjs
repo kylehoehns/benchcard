@@ -5,7 +5,9 @@
    ignored, so a hand-set date is only worth having if something turns the
    promise to move it into a CI fact. The rule is deliberately one line: the
    page's HTML file is in the diff => its <lastmod> differs from the base's,
-   OR is not earlier than the date the check runs (the HEAD commit's date).
+   OR is not earlier than the date the check runs (the PR's last
+   commit date, `scripts/pr-commit-date.mjs`, not HEAD's: HEAD is a squash or
+   test merge dated when it was built).
    The second half is the same-day case, settled the way `check-about-date.mjs`
    settles it: a page edited on the day its <lastmod> already names is honest,
    and no other legal date exists (earlier is a lie, later is in the future).
@@ -26,6 +28,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { prCommitDate } from './pr-commit-date.mjs';
 
 const SITEMAP = 'app/sitemap.xml';
 const ORIGIN = 'https://benchcard.app';
@@ -78,8 +81,7 @@ function main() {
   const newDates = parseSitemap(readFileSync(new URL(`../${SITEMAP}`, import.meta.url), 'utf8'));
   const changed = git(['diff', '--name-only', base, 'HEAD']).split('\n').filter(Boolean);
 
-  let today = null;
-  try { today = git(['log', '-1', '--format=%cs', 'HEAD'], true).trim(); } catch {}
+  const today = prCommitDate();
 
   const found = problems(changed, oldDates, newDates, today);
   if (!found.length) {
