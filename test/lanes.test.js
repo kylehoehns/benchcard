@@ -157,19 +157,36 @@ describe('lane.sh', () => {
 /** A fake `gh` first on PATH. It logs every argv (one line per call) and answers
  *  the calls merge-one makes: the head sha, five SUCCESS checks, a title, and six
  *  `=success` check runs for the merge commit, all at once so no sleep runs. */
-function fakeGh(f, headSha) {
+function fakeGh(f, headSha, overrides = {}) {
   const bin = join(f.root, 'bin');
   mkdirSync(bin);
   const log = join(f.root, 'gh.log');
   writeFileSync(log, '');
+  // overrides: { head|rollup|title|api: { fail: 'stderr line', times?: n } | { empty: true } }
+  // `fail` exits 1 with that stderr line (the first `times` calls only, when given);
+  // `empty` answers nothing. A counter file per call kind lives in f.root.
+  const answers = {
+    head: headSha, rollup: 'SUCCESS,SUCCESS,SUCCESS,SUCCESS,SUCCESS', title: "Make Avery's card wider",
+    api: 'node 24=success,smoke=success,evals=success,service worker behind redirects=success,checks that need history=success,Workers Builds: benchcard=success',
+  };
+  const arm = (kind) => {
+    const o = overrides[kind];
+    const count = join(f.root, `count-${kind}`);
+    const say = `echo "${answers[kind].replace(/(["$`\\])/g, '\\$1')}"`;
+    if (!o) return say;
+    if (o.empty) return 'true';
+    const fail = `echo '${o.fail}' >&2; exit 1`;
+    if (!o.times) return fail;
+    return `n=$(cat '${count}' 2>/dev/null || echo 0); echo $((n+1)) > '${count}'; if [ $n -lt ${o.times} ]; then ${fail}; fi; ${say}`;
+  };
   const script = `#!/bin/bash
 echo "$*" >> '${log}'
 case "$*" in
-  *headRefOid*) echo ${headSha} ;;
-  *statusCheckRollup*) echo "SUCCESS,SUCCESS,SUCCESS,SUCCESS,SUCCESS" ;;
-  *"--json title"*) echo "Make Avery's card wider" ;;
+  *headRefOid*) ${arm('head')} ;;
+  *statusCheckRollup*) ${arm('rollup')} ;;
+  *"--json title"*) ${arm('title')} ;;
   "pr merge"*) exit 0 ;;
-  "api "*) echo "node 24=success,smoke=success,evals=success,service worker behind redirects=success,checks that need history=success,Workers Builds: benchcard=success" ;;
+  "api "*) ${arm('api')} ;;
   *) echo "fake gh: unexpected call: $*" >&2; exit 9 ;;
 esac
 `;
@@ -179,7 +196,7 @@ esac
 
 /** A fixture whose preview-check.mjs is a stub that exits `code`, plus a PR 77
  *  head (one commit on top of main) pushed to origin as refs/pull/77/head. */
-function mergeFixture(code) {
+function mergeFixture(code, overrides = {}) {
   const f = fixture((lanes) => writeFileSync(join(lanes, 'preview-check.mjs'),
     `import { appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -193,11 +210,11 @@ console.log('stub preview check for #' + process.argv[2]); process.exit(${code})
   const head = git(f.main, 'rev-parse', 'HEAD');
   git(f.main, 'push', '-q', 'origin', 'HEAD:refs/pull/77/head');
   git(f.main, 'checkout', '-q', 'main');
-  return { ...f, ...fakeGh(f, head) };
+  return { ...f, ...fakeGh(f, head, overrides) };
 }
 
 const mergeOne = (f) => run('bash', [join(f.main, 'scripts', 'lanes', 'merge-one.sh'), '77'], {
-  cwd: f.root, env: { ...GIT_ENV, PATH: `${f.bin}:${process.env.PATH}` },
+  cwd: f.root, env: { ...GIT_ENV, PATH: `${f.bin}:${process.env.PATH}`, LANES_GH_RETRY_WAIT: '0' },
 });
 
 const stubArgv = (f) => readFileSync(join(f.main, 'scripts', 'lanes', 'argv.log'), 'utf8');
@@ -224,6 +241,81 @@ describe('merge-one.sh', () => {
     const calls = readFileSync(f.log, 'utf8');
     assert.match(calls, /^pr merge 77 --squash/m);
     assert.equal(stubArgv(f), '["77"]\n', 'the preview check got the PR number');
+  });
+
+  test('the head-sha read fails every time: exit 5, names the error, 3 tries, 2 retry lines, not "behind", no merge', () => {
+    const f = mergeFixture(0, { head: { fail: 'TLS handshake timeout' } });
+    const r = mergeOne(f);
+    assert.equal(r.status, 5, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /couldn't read #77 from GitHub: TLS handshake timeout/);
+    assert.doesNotMatch(r.stdout, /behind\s+main/);
+    const calls = readFileSync(f.log, 'utf8');
+    assert.equal(calls.split('\n').filter(l => l.includes('headRefOid')).length, 3);
+    assert.equal(r.stdout.split('\n').filter(l => /attempt/.test(l) && l.includes('TLS handshake timeout')).length, 2, r.stdout);
+    assert.ok(!/^pr merge/m.test(calls), 'gh pr merge was not called');
+  });
+
+  test('the head-sha read answers empty: exit 5 with "gh returned nothing", not "behind main"', () => {
+    const f = mergeFixture(0, { head: { empty: true } });
+    const r = mergeOne(f);
+    assert.equal(r.status, 5, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /couldn't read #77 from GitHub: gh returned nothing/);
+    assert.doesNotMatch(r.stdout, /behind\s+main/);
+  });
+
+  test('the head-sha read fails once then answers: retried, merges, exit 0', () => {
+    const f = mergeFixture(0, { head: { fail: 'TLS handshake timeout', times: 1 } });
+    const r = mergeOne(f);
+    assert.equal(r.status, 0, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /merged #77 as [0-9a-f]{7}/);
+    assert.match(r.stdout, /attempt 1.*TLS handshake timeout/, 'the retry line names the attempt and error');
+  });
+
+  test('the title read answers empty: exit 5, gh pr merge never called', () => {
+    const f = mergeFixture(0, { title: { empty: true } });
+    const r = mergeOne(f);
+    assert.equal(r.status, 5, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /couldn't read #77 from GitHub: gh returned nothing/);
+    assert.ok(!/^pr merge/m.test(readFileSync(f.log, 'utf8')));
+  });
+
+  test('a PR that really is behind main: still exit 3 with the behind line', () => {
+    const f = mergeFixture(0);
+    writeFileSync(join(f.main, 'later.txt'), 'y\n');
+    git(f.main, 'add', 'later.txt');
+    git(f.main, 'commit', '-q', '-m', 'main moves on');
+    git(f.main, 'push', '-q', 'origin', 'main');
+    const r = mergeOne(f);
+    assert.equal(r.status, 3, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.ok(r.stdout.includes('#77 is behind main; the lane must rebase and rerun local CI'), r.stdout);
+  });
+
+  test('a head sha git cannot compare is exit 5, not "behind"', () => {
+    const f = mergeFixture(0, {});
+    const gh = join(f.root, 'bin', 'gh');
+    writeFileSync(gh, readFileSync(gh, 'utf8').replace(/(\*headRefOid\*\) ).*? ;;/, '$1echo deadbeefdeadbeefdeadbeefdeadbeefdeadbeef ;;'), { mode: 0o755 });
+    const r = mergeOne(f);
+    assert.equal(r.status, 5, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /couldn't read #77 from GitHub/);
+    assert.doesNotMatch(r.stdout, /behind\s+main/);
+  });
+
+  test('a preview check that exits 2 (could not read): merge-one exits 5, not 4, no merge', () => {
+    const f = mergeFixture(2);
+    const r = mergeOne(f);
+    assert.equal(r.status, 5, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /couldn't read #77 from GitHub/);
+    assert.doesNotMatch(r.stdout, /preview\s+check\s+failed/);
+    assert.ok(!/^pr merge/m.test(readFileSync(f.log, 'utf8')));
+  });
+
+  test('the post-merge check-runs read fails: exit 5, says #77 is already merged', () => {
+    const f = mergeFixture(0, { api: { fail: 'connection reset' } });
+    const r = mergeOne(f);
+    assert.equal(r.status, 5, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, /merged #77 as [0-9a-f]{7}/);
+    assert.match(r.stdout, /couldn't read #77 from GitHub: connection reset/);
+    assert.match(r.stdout, /#77 is already merged/);
   });
 });
 

@@ -5,11 +5,13 @@
  * the spec. Importing the module launches nothing. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
+import { readdirSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, realpathSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { aliasUrl, viewsFor, notChecked, urlsFromSummary, urlToCheck, lookFailure, verdict, commentText } from '../scripts/lanes/preview-check.mjs';
+import { aliasUrl, viewsFor, notChecked, urlsFromSummary, urlToCheck, lookFailure, verdict, commentText, capError } from '../scripts/lanes/preview-check.mjs';
 import { parseArgs } from '../scripts/look.mjs';
 
 const FIVE = ['today', 'games', 'team', 'season', 'settings'];
@@ -153,4 +155,59 @@ test('commentText: no pages says only that the alias answered, and a reason appe
   assert.match(t, /200/);
   const f = commentText({ ...BASE, views: [], shots: 0, pass: false, reason: 'the Workers build failed' });
   assert.ok(f.includes('the Workers build failed') && f.includes('FAIL'));
+});
+
+/* ---------- #613: a failed GitHub read is exit 2, never a FAIL verdict ---------- */
+
+const SCRIPT = join(dirname(dirname(fileURLToPath(import.meta.url))), 'scripts', 'lanes', 'preview-check.mjs');
+
+/** Run preview-check.mjs against a fake `gh` that logs every call. `prView` is the
+ *  shell that answers `pr view`. Returns the result plus the gh calls. */
+function runCheck(prView) {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'preview-check-test-')));
+  try {
+    mkdirSync(join(root, 'bin'));
+    writeFileSync(join(root, 'bin', 'gh'), `#!/bin/bash\necho "$*" >> '${join(root, 'gh.log')}'\ncase "$*" in\n  "pr view"*) ${prView} ;;\n  *) exit 0 ;;\nesac\n`, { mode: 0o755 });
+    writeFileSync(join(root, 'gh.log'), '');
+    mkdirSync(join(root, 'repo'));
+    const r = spawnSync('node', [SCRIPT, '77'], {
+      cwd: join(root, 'repo'), encoding: 'utf8', timeout: 60000,
+      env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, LANES_GH_RETRY_WAIT: '0' },
+    });
+    const calls = readFileSync(join(root, 'gh.log'), 'utf8').split('\n').filter(Boolean);
+    return { r, calls };
+  } finally { rmSync(root, { recursive: true, force: true }); }
+}
+
+test('a gh pr view that fails every time: exit 2, names the error, 3 tries, no comment', () => {
+  const { r, calls } = runCheck(`echo 'TLS handshake timeout' >&2; exit 1`);
+  assert.equal(r.status, 2, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+  assert.match(r.stdout + r.stderr, /couldn't read #77 from GitHub: TLS handshake timeout/);
+  assert.equal(calls.filter(c => c.startsWith('pr view')).length, 3);
+  assert.equal(calls.filter(c => c.startsWith('pr comment')).length, 0, calls.join('\n'));
+});
+
+test('a gh pr view with an empty headRefOid: exit 2, "gh returned nothing", no comment', () => {
+  const { r, calls } = runCheck(`echo '{"headRefName":"lane-613","headRefOid":""}'`);
+  assert.equal(r.status, 2, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+  assert.match(r.stdout + r.stderr, /couldn't read #77 from GitHub: gh returned nothing/);
+  assert.equal(calls.filter(c => c.startsWith('pr view')).length, 3);
+  assert.equal(calls.filter(c => c.startsWith('pr comment')).length, 0);
+});
+
+test('a git fetch that fails (no origin): exit 2, no comment', () => {
+  const { r, calls } = runCheck(`echo '{"headRefName":"lane-613","headRefOid":"0123456789abcdef0123456789abcdef01234567"}'`);
+  assert.equal(r.status, 2, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+  assert.match(r.stdout + r.stderr, /couldn't read #77 from GitHub/);
+  assert.equal(calls.filter(c => c.startsWith('pr comment')).length, 0);
+});
+
+test('capError: every read failed is a GitHub read error naming the last error; some answered is the build\'s fault', () => {
+  const unread = capError({ tried: 60, failed: 60, lastError: 'connection reset', N: '77', fallback: 'did not finish' });
+  assert.equal(unread.unreadable, true);
+  assert.equal(unread.message, "couldn't read #77 from GitHub: connection reset");
+  const slow = capError({ tried: 60, failed: 59, lastError: 'connection reset', N: '77', fallback: 'did not finish' });
+  assert.notEqual(slow.unreadable, true);
+  assert.equal(slow.message, 'did not finish');
+  assert.equal(capError({ tried: 0, failed: 0, lastError: '', N: '77', fallback: 'did not finish' }).message, 'did not finish');
 });

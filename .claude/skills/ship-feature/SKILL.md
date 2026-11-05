@@ -325,16 +325,23 @@ batch, the human otherwise. In order, it:
 
 1. waits until the five `tests` jobs (`node 24`, `smoke`, `evals`,
    `service worker behind redirects`, `checks that need history`) pass on a
-   head that contains `main`. Red is exit 1; behind `main` is exit 3;
+   head that contains `main`. Red is exit 1; behind `main` is exit 3; GitHub
+   not answering is exit 5 (below);
 2. runs the preview check, `scripts/lanes/preview-check.mjs <PR>`. It waits
    for Cloudflare's `Workers Builds: benchcard` check on the head commit and
    for `https://<branch>-benchcard.kyhoehns.workers.dev` to serve that build,
    picks the pages the PR changed, shoots them at 390×844 with `look.mjs`,
    fails on cut-off text or a console error, and posts what it measured as a
-   PR comment. A failure is exit 4, and nothing is merged;
+   PR comment. A failure is exit 4, and nothing is merged. A preview check that
+   could not read from GitHub is exit 5, with nothing merged;
 3. squash-merges, prints `merged #N as <sha>`, and watches `main` (§ A batch
    of tickets, **Watch `main` after each merge**): `main green + deployed at
    <sha>`, or exit 2 with `MAIN RED`.
+
+Exit 5 is "couldn't read from GitHub": each `gh` read was tried three times
+and failed or came back empty. Before the merge, nothing was merged: rerun the
+merge step. If the message says the PR is already merged, do not rerun it;
+check `main` and the deploy by hand.
 
 Where the human has not allowed the merge, run `node
 scripts/lanes/preview-check.mjs <PR>` alone: it posts the same comment and
