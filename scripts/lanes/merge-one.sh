@@ -26,7 +26,11 @@ done
 node "$HERE/preview-check.mjs" "$N" || { echo "#$N preview check failed; not merged"; exit 4; }
 t=$(gh pr view $N --json title -q .title)
 gh pr merge $N --squash --subject "$t (#$N)" --body "" || exit 1
-git pull -q --ff-only; sha=$(git rev-parse HEAD); echo "merged #$N as ${sha:0:7}"
+# watch the merge commit itself: the checkout may be on a lane branch, where a
+# pull would land on the PR head, whose checks already passed (#623, #625)
+sha=$(gh pr view $N --json mergeCommit -q .mergeCommit.oid)
+[ -n "$sha" ] || { echo "#$N merged but no merge commit reported"; exit 2; }
+git pull -q --ff-only; echo "merged #$N as ${sha:0:7}"
 while :; do
   runs=$(gh api repos/kylehoehns/benchcard/commits/$sha/check-runs -q '[.check_runs[]|select(.name|test("^(node 24|smoke|evals|service worker behind redirects|checks that need history|Workers Builds: benchcard)$"))|"\(.name)=\(.conclusion // .status)"]|join(",")')
   case "$runs" in *=failure*|*=cancelled*|*=timed_out*) echo "MAIN RED at ${sha:0:7}: $runs"; exit 2;; esac

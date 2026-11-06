@@ -157,6 +157,7 @@ describe('lane.sh', () => {
 /** A fake `gh` first on PATH. It logs every argv (one line per call) and answers
  *  the calls merge-one makes: the head sha, five SUCCESS checks, a title, and six
  *  `=success` check runs for the merge commit, all at once so no sleep runs. */
+const MERGE_SHA = 'abcdef0123456789abcdef0123456789abcdef01';
 function fakeGh(f, headSha) {
   const bin = join(f.root, 'bin');
   mkdirSync(bin);
@@ -166,6 +167,7 @@ function fakeGh(f, headSha) {
 echo "$*" >> '${log}'
 case "$*" in
   *headRefOid*) echo ${headSha} ;;
+  *mergeCommit*) echo ${MERGE_SHA} ;;
   *statusCheckRollup*) echo "SUCCESS,SUCCESS,SUCCESS,SUCCESS,SUCCESS" ;;
   *"--json title"*) echo "Make Avery's card wider" ;;
   "pr merge"*) exit 0 ;;
@@ -224,6 +226,17 @@ describe('merge-one.sh', () => {
     const calls = readFileSync(f.log, 'utf8');
     assert.match(calls, /^pr merge 77 --squash/m);
     assert.equal(stubArgv(f), '["77"]\n', 'the preview check got the PR number');
+  });
+
+  test('watches the merge commit, even when the main checkout sits on a lane branch (#625)', () => {
+    const f = mergeFixture(0);
+    git(f.main, 'checkout', '-q', 'pr-77');
+    const r = mergeOne(f);
+    assert.equal(r.status, 0, `stdout: ${r.stdout} stderr: ${r.stderr}`);
+    assert.match(r.stdout, new RegExp(`merged #77 as ${MERGE_SHA.slice(0, 7)}`));
+    assert.match(r.stdout, new RegExp(`main green \\+ deployed at ${MERGE_SHA.slice(0, 7)}`));
+    const calls = readFileSync(f.log, 'utf8');
+    assert.match(calls, new RegExp(`^api repos/kylehoehns/benchcard/commits/${MERGE_SHA}/check-runs`, 'm'));
   });
 });
 
