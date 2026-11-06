@@ -114,6 +114,7 @@
 .o.all { word-spacing: 0; }
 .s { font-weight: 600; font-size: 12px; word-spacing: .15em; }
 .nostay .g-stay { display: none; }
+.sub.stack .g-stay { flex-basis: 100%; }
 .card-ft { border-top: 1px solid #000; padding-top: 3px; font-size: 9px; font-weight: 600; white-space: nowrap; }
 .card-ft .key { letter-spacing: .01em; }
 .card-ft .mins { white-space: normal; font-size: 7px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; line-height: 8.5px; }
