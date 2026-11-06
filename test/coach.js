@@ -630,9 +630,9 @@ export class Coach {
     return evalIn(this.c, `[...document.querySelectorAll('#plan table.grid td.${column}')].map(td => td.textContent)`);
   }
 
-  /** The starting five the card prints, in card order, as it shows them. Needs Card view. */
+  /** The starting five the card prints under STARTING FIVE, in card order, as it shows them. Needs Card view. */
   starters() {
-    return evalIn(this.c, `[...(document.querySelector('#sheet .card .stint .five')?.querySelectorAll('.nm') ?? [])].map(e => e.textContent)`);
+    return evalIn(this.c, `(document.querySelector('#sheet .card:not(.card-copy) .crow .lineup')?.textContent ?? '').trim().split(/\\s+/).filter(Boolean)`);
   }
 
   /** The players whose Lock is on, in By hand order. */
@@ -1103,10 +1103,38 @@ export class Coach {
     await quiet(this.c);
   }
 
-  /** The Card's Change lines, top to bottom, as they read ("Q2 8:00 ▼ANA SAM THEO"). The first copy of the card only. */
-  changeLines() {
-    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .stint .chg')]
-      .map(e => e.innerText.replace(/\\s+/g, ' ').trim())`);
+  /** The Card's rows, top to bottom, as a coach reads them across: the period
+      and clock, the black boxes of who goes in, then each tag with its names.
+      "Q2 4:00 | DEVO JORD SAM | OUT CASE HANA NIA | STAY ANA THEO"; the first
+      row is "Q1 8:00 | STARTING FIVE ANA ... | BENCH ...". A tag the card
+      leaves off (STAY on a crowded pocket card) is not in the row. The first
+      copy of the card only. */
+  cardRows() {
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .crow')].map(r => {
+      const say = e => (e.children.length ? [...e.children].map(say).join(' ') : e.textContent).replace(/\\s+/g, ' ').trim();
+      return [...r.querySelectorAll('.ctime, .cchips, .lineup, .grp')].filter(e => e.checkVisibility()).map(e =>
+        e.matches('.lineup') ? say(r.querySelector('.eb')) + ' ' + say(e)
+          : e.matches('.cchips') ? [...e.querySelectorAll('.cchip')].map(say).join(' ')
+          : say(e)).join(' | ');
+    })`);
+  }
+
+  /** The note under the card, in words ("Hawks needs 2 cards: ..."), or '' when there is none. */
+  cardNote() {
+    return evalIn(this.c, `document.querySelector('#cardnote')?.textContent.trim() ?? ''`);
+  }
+
+  /** The thick-or-thin rule above each row of the first card, in px as drawn: 0
+      on the first row, 1 for a sub inside a period, 3 where a period starts. */
+  cardRules() {
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy)')[0].querySelectorAll('.crow')]
+      .map(r => parseFloat(getComputedStyle(r).borderTopWidth) || 0)`);
+  }
+
+  /** The footer of each card of the first copy, as printed: the key line, then the minutes strip when there is one. */
+  cardFooters() {
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .card-ft')].map(f =>
+      [...f.children].map(e => e.textContent.replace(/\\s+/g, ' ').trim()))`);
   }
 
   /** Each card's title as printed, scope included ("HAWKS Q1-Q2"), one per page of the first copy. */
@@ -1123,10 +1151,14 @@ export class Coach {
     })()`);
   }
 
-  /** Each Stint's five on the Card, top to bottom, as the card shows them (['ANA', 'CASE', ...]). */
+  /** The five on the floor at each row the Card prints, top to bottom
+      (['ANA', 'CASE', ...]): the starters, then each row's black boxes with
+      the names under STAY. Where a crowded pocket card leaves STAY off, the
+      row holds only its boxes. */
   cardFives() {
-    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .stint')]
-      .map(s => [...s.querySelectorAll('.five .nm')].map(e => e.textContent))`);
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .crow')].map(r =>
+      [...r.querySelectorAll('.lineup, .cchip, .g-stay .s')].filter(e => e.checkVisibility())
+        .flatMap(e => e.textContent.trim().split(/\\s+/)).filter(Boolean))`);
   }
 
   /** Pick `option` in the dropdown a coach would call `name`: tap it, then pick

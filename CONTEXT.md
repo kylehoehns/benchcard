@@ -134,8 +134,8 @@ _Avoid_: sitting, out
 _In code_: `sitting`
 
 **Comes on / comes off**:
-A player joining or leaving the floor at a break. On the card, who comes off is
-marked ▼ and who comes on is underlined.
+A player joining or leaving the floor at a break. On the card, who comes on is a
+black box with a white name, and who comes off follows an outlined OUT tag.
 _Avoid_: in / out, just came in, just on, subbed
 
 ## The plan

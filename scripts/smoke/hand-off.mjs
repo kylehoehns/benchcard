@@ -57,7 +57,7 @@ async function sendFromHere(c) {
 }
 
 /* What a coach would see as "the same game": stints, minutes, where it
-   stands, the hand swaps and the card's rows (clock and the number of kids, not the 5-letter
+   stands, the hand swaps and the card's rows (clock and the number of black boxes, not the 5-letter
    names, which the receiving phone derives from the call names itself). Read through the
    app's own accessors in the page. */
 const FINGERPRINT = `(async () => {
@@ -69,7 +69,7 @@ const FINGERPRINT = `(async () => {
     played: l.playedStints(g.live),
     hand: l.handStints(g.live),
     // the card prints every game of the day, the active one first
-    card: [...document.querySelectorAll('.card .stint')].slice(0, p.stints.length).map(r => [r.querySelector('.clk').textContent, r.querySelector('.io').textContent.replace(/[^▼ ]/g, '').length, r.querySelectorAll('.five .nm').length]),
+    card: [...document.querySelectorAll('.card .crow')].slice(0, p.stints.length).map(r => [r.querySelector('.cclk').textContent, r.querySelectorAll('.cchip').length, r.querySelectorAll('.grp .o').length]),
     players: s.team().players.length,
   });
 })()`;

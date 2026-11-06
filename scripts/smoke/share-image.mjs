@@ -46,6 +46,14 @@ export async function shareImageBranches(c, ck) {
     // covers about half of it, leaving ~466 device px of ground. The floor is well
     // under that, and a band with no mark has none.
     ck(png.bandOrange >= 300, `the band under the card holds ${png.bandOrange} #D2500A pixels, want at least 300 (the card mark's ground)`);
+    /* #622: the painted card keeps what makes it readable. The first box is a black
+       fill with white text in it, a tag is an outline with a clear inside, and
+       a tick box is a ring. (share.js used to paint only text and rules.) */
+    const bx = png.boxes || {};
+    ck(bx.chipDark >= 0.6 && bx.chipWhite >= 0.03, `the first black box in the PNG is ${bx.chipDark} dark and ${bx.chipWhite} white, want a filled box (>= 0.6 dark) with white text in it (>= 0.03 white)`);
+    ck(bx.chipLead !== null && Math.abs(bx.chipLead) <= 1, `the first black box's name starts ${bx.chipLead}px from where the card lays it out, want within 1px (the box's padding kept)`);
+    ck(bx.tagTop >= 0.8 && bx.tagInside >= 0.5, `an OUT tag in the PNG has its top edge ${bx.tagTop} dark and its inside ${bx.tagInside} clear, want an outline (>= 0.8) around a clear inside (>= 0.5)`);
+    ck(bx.tickLeft >= 0.9 && bx.tickInside > 200, `a tick box in the PNG has its left edge ${bx.tickLeft} dark and its middle at ${bx.tickInside}, want a ring (>= 0.9) around white (> 200)`);
     ck(same(r.toasts, [SAVED]), `saving the image toasted ${JSON.stringify(r.toasts)}, want ["${SAVED}"]`);
     ck(r.hosts === 0, `${r.hosts} offscreen host(s) left in the DOM after painting, want 0`);
 

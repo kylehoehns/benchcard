@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
    back to the ellipsis and reinstates the exact bug: three tournament cards
    all printing "VS RIVERSIDE REGIONAL TOURNAMENT QUART…". */
 const card = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');
+const sizes = readFileSync(new URL('../app/card-spec.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../app/card.css', import.meta.url), 'utf8');
 
 test('the card is marked with the bare domain', () => {
@@ -19,16 +20,16 @@ test('the card is marked with the bare domain', () => {
 });
 
 test('the mark comes out of the headline budget, not out of the ellipsis', () => {
-  const avail = card.slice(card.indexOf('const avail ='));
-  assert.match(avail.slice(0, avail.indexOf(';')), /- widthAt\(MARK, size\.markPx\) - gap/);
+  const avail = card.slice(card.indexOf('const avail = contentPx() - (whenTxt'));
+  assert.match(avail.slice(0, avail.indexOf(';')), /- widthAt\(MARK, size\.markPx, 600\) - gap/);
   // measured at the size it is drawn at, on both card shapes
-  assert.match(card, /pocket: \{[^}]*markPx: 7/);
-  assert.match(card, /half:\s*\{[^}]*markPx: 9/);
+  assert.match(sizes, /pocket: \{[^}]*markPx: 8\.5/);
+  assert.match(sizes, /half:\s*\{[^}]*markPx: 11/);
 });
 
 test('the mark is styled at both card sizes', () => {
-  assert.match(css, /\.card-hd \.card-mark \{[^}]*font-size: 7px/);
-  assert.match(css, /\.card\.half \.card-hd \.card-mark \{[^}]*font-size: 9px/);
+  assert.match(css, /\.card-hd \.card-mark \{[^}]*font-size: 8\.5px/);
+  assert.match(css, /\.card\.half \.card-hd \.card-mark \{[^}]*font-size: 11px/);
 });
 
 /* The share PNG repeats the domain in a taller bottom margin, because the

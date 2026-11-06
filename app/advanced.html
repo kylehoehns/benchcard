@@ -138,28 +138,40 @@
 .paper { background: #fff; color: #000; border-radius: 5px; padding: 12px 13px;
   box-shadow: var(--shadow-paper); max-width: 336px; margin: 0 auto;
   font-feature-settings: 'cv11' 1; }
-.paper .stint + .stint { margin-top: 10px; }
-.paper .stint.newper { border-top: 2.5px solid #000; padding-top: 7px; }
-.paper .chg { display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
-  color: #333; font-variant-numeric: tabular-nums; line-height: 1.25; font-size: 11.5px; }
-.paper .chg .clk { font-weight: 700; color: #000; white-space: nowrap; }
-.paper .chg .io { text-align: right; }
-.paper .chg .io.start { font-weight: 700; letter-spacing: .1em; }
-.paper .five { display: flex; justify-content: space-between; gap: 5px;
-  font-weight: 800; line-height: 1.12; letter-spacing: -.01em; font-size: 16px; }
-.paper .five .nm.fresh { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1.6px; }
+.paper .row { display: grid; grid-template-columns: 13px 38px 1fr; gap: 6px; align-items: start;
+  padding: 6px 0; border-top: 1px solid #000; }
+.paper .row.first { border-top: 0; padding-top: 0; }
+.paper .row.newper { border-top: 3px solid #000; }
+.paper .tick { width: 11px; height: 11px; border: 1.5px solid #000; border-radius: 2px; margin-top: 2px; }
+.paper .when { font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; font-size: 10px; }
+.paper .when small { display: block; font-size: 13px; letter-spacing: -.01em; }
+.paper .eb { font-size: 8px; font-weight: 800; letter-spacing: .1em; }
+.paper .lineup { font-weight: 800; font-size: 14px; line-height: 1.15; letter-spacing: -.01em; }
+.paper .boxes { display: flex; flex-wrap: wrap; gap: 5px; }
+.paper .inbox { background: #000; color: #fff; font-weight: 800; font-size: 15px; line-height: 1.15;
+  padding: 3px 5px; border-radius: 3px; }
+.paper .sub { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 4px; font-size: 11px; line-height: 1.25; }
+.paper .tag { display: inline-block; min-width: 31px; margin-right: 4px; padding: 0 3px; border: 1px solid #000;
+  border-radius: 2px; font-size: 8.5px; font-weight: 900; letter-spacing: .04em; text-align: center; }
+.paper .nm { white-space: nowrap; }
+.paper .sub .o { font-weight: 800; }
+.paper .sub .s { font-weight: 600; }
 .legend { display: grid; grid-template-columns: auto 1fr; gap: .5rem .75rem; align-items: baseline;
   margin-top: 1.1rem; font-size: .88rem; color: var(--ink-2); }
 .legend .tok { background: #fff; color: #000; border-radius: 4px; padding: .18rem .4rem;
   font-size: .78rem; font-weight: 800; white-space: nowrap; justify-self: start;
   box-shadow: 0 0 0 1px rgba(20,20,20,.14); }
-.legend .tok.u { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1.6px; }
+.legend .tok.inblk { background: #000; color: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
+.legend .tok.tick { display: inline-block; width: 11px; height: 11px; padding: 0; border: 1.5px solid #000; border-radius: 2px; }
 .legend .tok.sm { font-weight: 700; letter-spacing: .08em; font-size: .72rem; }
 
 @media (min-width: 46rem) {
   .paper { max-width: 384px; padding: 15px 16px; }
-  .paper .five { font-size: 19px; }
-  .paper .chg { font-size: 13px; }
+  .paper .lineup { font-size: 17px; }
+  .paper .inbox { font-size: 18px; }
+  .paper .row { grid-template-columns: 13px 44px 1fr; }
+  .paper .when { font-size: 12px; }
+  .paper .when small { font-size: 16px; }
 }
 /* Four `nowrap` labels across need about 345px, and the pill they sit in is
    357px wide only from a 430px phone up at a 16px root, so 30rem (480px) keeps
@@ -185,15 +197,13 @@
 
   /* The card legend's token column and its explanation cannot both fit, so the
      explanation goes under its token rather than beside it. */
-  .legend { grid-template-columns: 1fr; gap: .15rem .75rem; }
+  .legend { grid-template-columns: minmax(0, 1fr); gap: .15rem .75rem; }
+  .legend .tok { white-space: normal; }
   .legend span:nth-child(even) { margin-bottom: .45rem; }
 
-  /* Five 16px names in a 246px column is about.html's recorded 7px overflow,
-     and this page is pinned at ZERO in `scripts/smoke.mjs` rather than
-     inheriting that allowance. Wrapping is not resizing: the type stays at the
-     size it prints, the row just takes a second line in the one cell where
-     five names have nowhere to go. */
-  .paper .five { flex-wrap: wrap; justify-content: flex-start; gap: 5px 10px; }
+  /* Five names in a narrow column: wrapping is not resizing. The type stays at
+     the size it prints, the starting five just takes a second line. */
+  .paper .lineup { overflow-wrap: anywhere; }
 }
 </style>
 </head>
@@ -498,33 +508,43 @@
 
   <section>
     <h2 id="card">The card, and its two sizes</h2>
-    <p class="lead">Three blocks of a printed card, at the size they print.</p>
+    <p class="lead">Three rows of a printed card, at the size they print.</p>
 
     <figure class="art">
       <div class="plate">
         <div class="paper">
-          <div class="stint">
-            <div class="chg"><span class="clk">Q1 8:00</span><span class="io start">START</span></div>
-            <div class="five"><span class="nm">BRIA</span><span class="nm">COLE</span><span class="nm">NOAH</span><span class="nm">RAFA</span><span class="nm">TY</span></div>
+          <div class="row first">
+            <div class="tick"></div>
+            <div class="when">Q1<small>8:00</small></div>
+            <div><div class="eb">STARTING FIVE</div>
+              <div class="lineup"><span class="nm">BRIA</span> <span class="nm">COLE</span> <span class="nm">NOAH</span> <span class="nm">RAFA</span> <span class="nm">TY</span></div>
+              <div class="sub"><span><span class="tag">BENCH</span><span class="s">AMAR MIA ELEN KADE</span></span></div></div>
           </div>
-          <div class="stint">
-            <div class="chg"><span class="clk">4:00</span><span class="io">▼RAFA TY</span></div>
-            <div class="five"><span class="nm">BRIA</span><span class="nm">COLE</span><span class="nm">NOAH</span><span class="nm fresh">AMAR</span><span class="nm fresh">MIA</span></div>
+          <div class="row">
+            <div class="tick"></div>
+            <div class="when">Q1<small>4:00</small></div>
+            <div><div class="boxes"><span class="inbox nm">AMAR</span><span class="inbox nm">MIA</span></div>
+              <div class="sub"><span><span class="tag">OUT</span><span class="o">RAFA TY</span></span>
+                <span><span class="tag">STAY</span><span class="s">BRIA COLE NOAH</span></span></div></div>
           </div>
-          <div class="stint newper">
-            <div class="chg"><span class="clk">Q2 8:00</span><span class="io">▼BRIA COLE NOAH MIA</span></div>
-            <div class="five"><span class="nm fresh">RAFA</span><span class="nm fresh">TY</span><span class="nm">AMAR</span><span class="nm fresh">ELEN</span><span class="nm fresh">KADE</span></div>
+          <div class="row newper">
+            <div class="tick"></div>
+            <div class="when">Q2<small>8:00</small></div>
+            <div><div class="boxes"><span class="inbox nm">RAFA</span><span class="inbox nm">TY</span><span class="inbox nm">ELEN</span><span class="inbox nm">KADE</span></div>
+              <div class="sub"><span><span class="tag">OUT</span><span class="o">BRIA COLE NOAH MIA</span></span>
+                <span><span class="tag">STAY</span><span class="s">AMAR</span></span></div></div>
           </div>
         </div>
         <div class="legend">
-          <span class="tok">Q2 8:00</span><span>eight minutes left in the second period</span>
-          <span class="tok">▼</span><span>the names after it are coming off</span>
-          <span class="tok u">KADE</span><span>underlined — just came on</span>
-          <span class="tok sm">START</span><span>your starting five</span>
-          <span class="tok sm">NO SUBS</span><span>nobody changes at this break</span>
+          <span class="tok tick"></span><span>tick it when you make the sub</span>
+          <span class="tok">Q2 4:00</span><span>four minutes left in the second period</span>
+          <span class="tok inblk">KADE</span><span>a black box goes in</span>
+          <span class="tok sm">OUT</span><span>comes off</span>
+          <span class="tok sm">STAY</span><span>stays on the floor</span>
+          <span class="tok sm">STARTING FIVE</span><span>who starts, with the bench below</span>
         </div>
       </div>
-      <figcaption>The first three lineups of an eleven-player plan. Card names
+      <figcaption>The first three rows of a nine-player plan. Card names
         come from your roster, and you can change any of them.</figcaption>
     </figure>
 
@@ -532,9 +552,9 @@
     <ul>
       <li><b>Pocket size</b> — 3.45 × 5 in, one column. Folds into a shirt
         pocket and survives a gym.</li>
-      <li><b>Half sheet</b> — 8 × 5.1 in, two columns. Bigger type at arm&rsquo;s
-        length, and the second column is what keeps a long game on one card
-        instead of two.</li>
+      <li><b>Half sheet</b> — 8 × 5.1 in. Bigger type at arm&rsquo;s length.
+        A long game splits into cards by period, one card for each stretch
+        of the game.</li>
     </ul>
     <p>Both print straight from your browser, with nothing to install and no account. Both are easy to read on a clipboard in a dim gym.</p>
   </section>

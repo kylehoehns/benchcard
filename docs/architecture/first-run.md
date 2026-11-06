@@ -97,7 +97,7 @@ below it (#421).
 
 **How it works** (Settings → *How it works*) is the reference sheet — the strategies and when a
 coach would pick each, what every rule does, how a tournament day carries over,
-how to read the card (`▼` is who comes off, underlined is who just came on) and
+how to read the card (black boxes go in, `OUT` is who comes off, `STAY` is who stays on) and
 what the app does with a roster. It is static markup in `index.html`, not
 built in JS: it is prose, it never depends on state, and generating it would
 only make it harder to edit. It ends with **Show me around again**, which closes

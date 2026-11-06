@@ -68,6 +68,7 @@ import {
 
 import { CHARTS } from '../charts.mjs';
 import { cardFontPass } from './card-font.mjs';
+import { cardLayoutPass } from './card-layout.mjs';
 import { fixturePass } from './rich-fixture.mjs';
 import { fontDrawsPass } from './font-draws.mjs';
 import { seasonPass } from './season.mjs';
@@ -178,6 +179,10 @@ export const ROWS = Object.freeze([
   { id: 'fcp', name: 'first contentful paint (informational)', selectable: true, setup: 'cold' },
   { id: 'cardfont', name: 'card font loads before the card is fitted', selectable: true, setup: 'rich',
     run: ctx => cardFontPass(ctx.c, ctx.origin, ctx.rec) },
+  // #622's own guard (docs/specs/622-card-redesign.md, Proof: Smoke): the card's
+  // layout on the four reference games at both sizes -- see card-layout.mjs.
+  { id: 'cardlayout', name: 'card layout: four reference games, both sizes, 16px and 32px', selectable: true, setup: 'rich',
+    run: ctx => cardLayoutPass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich',
     run: ctx => fixturePass(ctx.c, ctx.rec) },
   // #177's own guard (see docs/specs/177-smoke-font.md's Proof section, item

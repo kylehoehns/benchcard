@@ -27,13 +27,13 @@ async function measureCard(c) {
     if (!card) return JSON.stringify(null);
     const z = card.currentCSSZoom || 1;
     const r = card.getBoundingClientRect();
-    const five = card.querySelector('.five');
-    const chg = card.querySelector('.chg');
+    const chip = card.querySelector('.cchip');
+    const clock = card.querySelector('.ctime .cclk');
     return JSON.stringify({
       w: Math.round(r.width / z * 100) / 100,
       h: Math.round(r.height / z * 100) / 100,
-      five: five ? getComputedStyle(five).fontSize : null,
-      chg: chg ? getComputedStyle(chg).fontSize : null,
+      chip: chip ? getComputedStyle(chip).fontSize : null,
+      clock: clock ? getComputedStyle(clock).fontSize : null,
     });
   })()`));
 }
@@ -77,9 +77,9 @@ export async function cardAt32Pass(c, origin, report) {
     } else {
       rec.check(Math.abs(at32.w - at16.w) <= 1 && Math.abs(at32.h - at16.h) <= 1,
         `card measures ${at32.w}×${at32.h}px at a 32px root, ${at16.w}×${at16.h}px at 16px`);
-      rec.check(at16.five === at32.five, `.five is ${at32.five} at a 32px root, ${at16.five} at 16px`);
-      rec.check(at16.chg === at32.chg, `.chg is ${at32.chg} at a 32px root, ${at16.chg} at 16px`);
-      rec.ok(`32px root: unchanged (${at32.w}×${at32.h}px, .five ${at32.five}, .chg ${at32.chg})`);
+      rec.check(at16.chip === at32.chip, `a box is ${at32.chip} at a 32px root, ${at16.chip} at 16px`);
+      rec.check(at16.clock === at32.clock, `the time column is ${at32.clock} at a 32px root, ${at16.clock} at 16px`);
+      rec.ok(`32px root: unchanged (${at32.w}×${at32.h}px, box ${at32.chip}, time ${at32.clock})`);
     }
   });
 

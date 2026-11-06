@@ -48,24 +48,14 @@ const PAGES = readdirSync(ROOT).filter((f) => f.endsWith('.html'));
  * the reason on the line: the point of the list is that a new entry cannot be
  * added without someone saying why the two rules never meet. */
 const ALLOWED = new Map([
-  // `td.clk` is the plan table's clock column; `.chg .clk` is the printed
-  // change line. No element carries both -- checked in a live DOM.
-  ['clk app.css|card.css', 'plan-table column vs. printed change line'],
-  // `.plr .nm` / `.tl-lab .nm` / `.tl-skel .nm` are roster and timeline
-  // labels; `.five .nm.fresh` is a name on the card.
-  ['nm app.css|card.css', 'roster and timeline labels vs. a name on the card'],
   // card.css owns `.stage` as an object; app.css only adds the empty state.
   ['stage app.css|card.css', 'card.css owns the stage; app.css adds `.stage.blank`'],
-  // `.gm-p.fresh .nm` is a just-on bench floor row (#147); `.five .nm.fresh`
-  // is a name on the printed card's starting five. No element carries both.
-  ['fresh app.css|card.css', 'a just-on bench floor row vs. a name on the printed card'],
   /* #434: the timeline rules moved out of app.css into timeline.css, and
      these are the pairs they leave behind on index.html, which were
      app.css's own entries while the rules still lived there. */
   // `.tl-lab .nm` is the timeline's label; `.plr .nm`, `.srow .nm` are roster
-  // and Team-page rows; `.five .nm.fresh` is a name on the card.
+  // and Team-page rows.
   ['nm app.css|timeline.css', 'timeline label vs. roster and Team-page row names'],
-  ['nm timeline.css|card.css', 'timeline label vs. a name on the printed card'],
   // `.tl-lab .dot` is the timeline's player dot; `.srow .nm .dot` and
   // `.dayrow .nm .dot` are the Team page's and day list's own dots.
   ['dot app.css|timeline.css', 'timeline player dot vs. the Team page and day-list dots'],

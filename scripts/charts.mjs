@@ -43,6 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { faviconHref, logoSvg } from './mark.mjs';
 import { sampleRoster } from '../app/roster.js';
 import { generatePlan, fmtClock, fmtMinutes } from '../app/engine.js';
+import { CARD_SIZES, KEY_LINE, printable, clockWidth, timeColumn } from '../app/card-spec.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -110,13 +111,24 @@ export const planForHalves = () => planOf(10, HALVES_FORMAT);
  * Class-for-class what `buildCard` in app/card.js emits, so app/card.css
  * styles it and prints it with no page-local rules at all.
  * ------------------------------------------------------------------ */
-const IN = 96;
-// Must match CARD_SIZES.pocket in app/card.js.
-const CARD = { w: 3.45, h: 5.0, pad: 0.11, header: 26, footer: 18, minName: 16, maxName: 26 };
-const SAFETY_PX = 10, CHG_RATIO = 0.70;
-const contentPx = (CARD.w - 2 * CARD.pad) * IN;
-const bodyPx = (CARD.h - 2 * CARD.pad) * IN - CARD.header - SAFETY_PX - CARD.footer;
-const stintPx = px => px * 1.12 + px * CHG_RATIO * 1.3;
+// The pocket card's numbers are the app's own (app/card-spec.js), not copies:
+// what the real card leaves for the boxes is its content width, less the tick
+// box, the time column, the column gaps and the boxes' right padding.
+const K = CARD_SIZES.pocket;
+const CARD = {
+  chipMax: K.chip, chipMin: K.chipMin, padX: 2 * K.padFew, gap: K.gapFew, startMax: K.st,
+  avail: K.w * 96 - 2 * K.padX - K.tick - K.tCol - 2 * K.colGap - K.midPadR - K.chipsPadR,
+};
+/* The time column, by the app's own rule (`timeColumn` in app/card-spec.js):
+   wider than the designed 38px when a row prints a two-digit clock, as the
+   halves page's 20:00 does. The colon is measured like WIDTH_AT_100 below
+   (InterVar, `900 100px`, card.js's CARD_FONT); the period label ("Q1", "H2")
+   is estimated at ADVANCE, above its true width, and is far narrower than any
+   clock anyway. Whatever the column gains comes out of the boxes' width. */
+const COLON_AT_100 = 37.30;
+const periodLabel = r => r.periodName || 'Q' + r.period;
+const timeCol = rows => timeColumn(K, rows.map(r => Math.max(periodLabel(r).length * ADVANCE * 13,
+  clockWidth(fmtClock(r.startSec), 16, COLON_AT_100 / 100 * 16, -0.01))));
 
 /* Type widths, measured rather than guessed.
  *
@@ -151,16 +163,32 @@ const nameWidth = (s, px) => (WIDTH_AT_100[s] != null ? WIDTH_AT_100[s] / 100 : 
 const rowWidth = (names, px) =>
   names.reduce((a, s) => a + nameWidth(s, px), 0) + (names.length - 1) * 0.42 * px;
 
+/* The static fit: every row sends in at most three kids on these pages, so one
+   box size serves them all. It is the largest size, in 0.5px steps, at which
+   the widest row of boxes still fits the width the real card gives them. The
+   app's own fit (`fitCard` in card.js) also shrinks to a floor, wraps, and
+   fits the height; none of that can be needed here because the names are the
+   fixed sample cast and the row counts are at most ten. */
+const printed = plan => printable(plan.stints);
+const chipsWidth = (names, px) =>
+  names.reduce((a, s) => a + nameWidth(s, px) + 0.02 * px * s.length + CARD.padX, 0) + (names.length - 1) * CARD.gap;
 export function cardMetrics(plan) {
-  const rows = plan.stints.map(r => r.onFloor.map(id => plan.shortNames[id]));
-  const at100 = Math.max(...rows.map(r => rowWidth(r, 100)));
-  const widthFit = 100 * contentPx / at100;
-  const heightFit = bodyPx / (plan.stints.length * stintPx(1));
-  const five = Math.max(CARD.minName, Math.min(widthFit, heightFit, CARD.maxName));
-  const chg = Math.min(five * CHG_RATIO, CARD.maxName * 0.65);
-  return { five: round(five), chg: round(chg), widest: round(rowWidth(rows[widestRow(rows)], five)) };
+  const sh = plan.shortNames;
+  const tCol = timeCol(printed(plan));
+  const avail = CARD.avail - (tCol - K.tCol);
+  const ins = printed(plan).filter(r => r.index > 0).map(r => r.in.map(id => sh[id]));
+  let chip = CARD.chipMax;
+  while (chip > CARD.chipMin && ins.some(n => chipsWidth(n, chip) > avail)) chip -= 0.5;
+  const widest = Math.max(...ins.map(n => chipsWidth(n, chip)));
+  const first = plan.stints[0].onFloor.map(id => sh[id]);
+  let start = CARD.startMax;
+  while (start > K.stMin && rowWidth(first, start) > avail) start -= 0.5;
+  // BENCH sits on one line when it can: the tag, its gap, then the names at weight 600
+  const bench = plan.players.map(p => p.id).filter(id => !plan.stints[0].onFloor.includes(id)).map(id => sh[id]);
+  let benchPx = K.s;
+  while (benchPx > K.minB && rowWidth(bench, benchPx) + K.tagMin + K.tagGap > avail) benchPx -= 0.5;
+  return { tCol, bench: benchPx, chip: round(chip), start: round(start), out: round(Math.max(K.oMin, Math.min(K.o, Math.floor(chip * K.oCap * 2) / 2))), widest: round(widest), rows: printed(plan).length };
 }
-const widestRow = rows => rows.reduce((best, r, i) => (rowWidth(r, 100) > rowWidth(rows[best], 100) ? i : best), 0);
 const round = n => Math.round(n * 100) / 100;
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -168,27 +196,40 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 function cardHtml(chart, plan) {
   const m = cardMetrics(plan);
   const sh = plan.shortNames;
+  const rows = printed(plan);
+  // ten rows do not fit at the app's 44px minimum, so the halves page's card
+  // lets them run tighter; the app itself splits that many rows over two cards
+  const tight = rows.length > 9 ? ' style="min-height:0;padding-block:3px"' : '';
   const out = [];
-  out.push('<div class="card">');
+  out.push(`<div class="card nostay"${m.tCol !== K.tCol ? ` style="--tcol:${m.tCol}px"` : ''}>`);
   out.push(`<div class="card-hd"><span class="opp">${chart.players}-PLAYER ROTATION</span>` +
     `<span class="when">${chart.when}</span></div>`);
-  out.push('<div class="stints">');
-  for (const r of plan.stints) {
-    const newPeriod = r.index === 0 || plan.stints[r.index - 1].period !== r.period;
-    const cls = 'stint' + (r.index > 0 && newPeriod ? ' newper' : '');
-    const clk = (newPeriod ? `${r.periodName || 'Q' + r.period} ` : '') + fmtClock(r.startSec);
-    const io = r.out.length
-      ? `<span class="io">▼${r.out.map(id => sh[id]).join(' ')}</span>`
-      : `<span class="io start">${r.index === 0 ? 'START' : 'NO SUBS'}</span>`;
-    const five = r.onFloor
-      .map(id => `<span class="nm${r.in.includes(id) ? ' fresh' : ''}">${sh[id]}</span>`).join('');
-    out.push(`<div class="${cls}">` +
-      `<div class="chg" style="font-size:${m.chg}px"><span class="clk">${clk}</span>${io}</div>` +
-      `<div class="five" style="font-size:${m.five}px">${five}</div></div>`);
+  out.push('<div class="list">');
+  const names = ids => ids.map(id => sh[id]).join(' ');
+  for (const r of rows) {
+    const prev = r.index > 0 ? plan.stints[r.index - 1] : null;
+    const newPeriod = r.index === 0 || prev.period !== r.period;
+    const cls = 'crow' + (r.index > 0 && newPeriod ? ' newq' : '');
+    const time = `<div class="ctime"><span class="cq">${periodLabel(r)}</span>` +
+      `<span class="cclk">${fmtClock(r.startSec)}</span></div>`;
+    let body, sub;
+    if (r.index === 0) {
+      const bench = plan.players.map(p => p.id).filter(id => !r.onFloor.includes(id));
+      body = `<div class="eb">STARTING FIVE</div><div class="lineup" style="font-size:${m.start}px">${names(r.onFloor)}</div>`;
+      sub = `<div class="sub"><div class="grp"><span class="ctag">BENCH</span><span class="s" style="font-size:${m.bench}px">${names(bench)}</span></div></div>`;
+    } else {
+      body = `<div class="cchips" style="font-size:${m.chip}px">` +
+        r.in.map(id => `<span class="cchip">${sh[id]}</span>`).join('') + '</div>';
+      const all = r.out.length === 5;
+      sub = `<div class="sub"><div class="grp"><span class="ctag">OUT</span>` +
+        `<span class="o${all ? ' all' : ''}" style="font-size:${m.out}px">${all ? 'ALL 5' : names(r.out)}</span></div></div>`;
+    }
+    out.push(`<div class="${cls}"${tight}><div class="tick"></div>${time}<div class="b">${body}${sub}</div></div>`);
   }
   out.push('</div>');
-  out.push(`<div class="card-ft">${Object.entries(plan.minutes).sort((a, b) => b[1] - a[1])
-    .map(([id, mins]) => `${sh[id]} ${fmtMinutes(mins)}`).join('   ')}</div>`);
+  out.push(`<div class="card-ft"><div class="key">${KEY_LINE}</div>` +
+    `<div class="mins">${Object.entries(plan.minutes).sort((a, b) => b[1] - a[1])
+      .map(([id, mins]) => `${sh[id]} ${fmtMinutes(mins)}`).join('   ')}</div></div>`);
   out.push('</div>');
   return out.join('\n    ');
 }
@@ -257,7 +298,7 @@ const COPY = {
     `playing time as the math allows.`,
   caption: (n, f) =>
     `Each box is one stint, the time between two subs. The clock shows time ` +
-    `left in the period, and the underlined names just came on. ${f.stints} ` +
+    `left in the period, and the black boxes are who comes on. ${f.stints} ` +
     `stints with five on the floor, and it cuts out to fit a pocket.`,
   /* The trust line, and the one thing these pages were missing. A coach who
      arrives here from a search result meets a rotation chart and two buttons

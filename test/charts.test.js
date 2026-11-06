@@ -58,14 +58,14 @@ test('every roster-size page on disk matches what scripts/charts.mjs renders', (
 test('each card names exactly as many players as its page claims', () => {
   for (const n of SIZES) {
     const page = html.get(n);
-    const names = new Set([...page.matchAll(/<span class="nm(?: fresh)?">([^<]+)<\/span>/g)].map(m => m[1]));
+    const names = playersOn(page);
     assert.equal(names.size, n,
       `${file(n)} prints ${names.size} distinct players on the floor, not ${n}`);
 
     /* The minutes footer is the other half of the claim, and it is the part a
        coach checks: one entry per player, and they must add up to the whole
        game five players at a time. */
-    const ft = page.match(/<div class="card-ft">([^<]*)<\/div>/)[1].trim();
+    const ft = page.match(/<div class="mins">([^<]*)<\/div>/)[1].trim();
     const entries = ft.split(/\s{3}/).filter(Boolean);
     assert.equal(entries.length, n, `${file(n)}'s minutes footer lists ${entries.length} players, not ${n}`);
     const total = entries.reduce((a, e) => a + Number(e.split(' ')[1]), 0);
@@ -74,13 +74,16 @@ test('each card names exactly as many players as its page claims', () => {
   }
 });
 
-test('every stint puts five on the floor and the substitutions are consistent', () => {
+test('the card prints the starting five, then who goes in at each sub', () => {
   for (const n of SIZES) {
     const page = html.get(n);
-    const stints = [...page.matchAll(/<div class="five"[^>]*>([\s\S]*?)<\/div>/g)]
-      .map(m => [...m[1].matchAll(/>([^<]+)</g)].map(x => x[1]));
-    assert.equal(stints.length, 8, `${file(n)} does not print 8 stints`);
-    for (const s of stints) assert.equal(new Set(s).size, 5, `${file(n)} has a stint that is not five players`);
+    assert.equal(rowCount(page), 8, `${file(n)} does not print 8 rows`);
+    const five = page.match(/<div class="lineup"[^>]*>([^<]*)<\/div>/)[1].split(' ');
+    assert.equal(new Set(five).size, 5, `${file(n)}'s starting five is not five players`);
+    const boxes = [...page.matchAll(/<div class="cchips"[^>]*>([\s\S]*?)<\/div>/g)]
+      .map(m => [...m[1].matchAll(/>([^<]+)</g)].length);
+    assert.equal(boxes.length, 7, `${file(n)} has ${boxes.length} rows of boxes, want 7`);
+    for (const k of boxes) assert.ok(k >= 1 && k <= 5, `${file(n)} sends in ${k} at once`);
   }
 });
 
@@ -174,7 +177,7 @@ test('the card uses the same class vocabulary app/card.js emits', () => {
      module that builds the real one. */
   const cardjs = read('card.js');
   const used = new Set();
-  for (const m of html.get(9).matchAll(/class="((?:card|stint|chg|clk|io|five|nm|opp|when)[^"]*)"/g)) {
+  for (const m of html.get(9).matchAll(/class="((?:card|crow|ctime|cq|cclk|cchips|cchip|ctag|grp|opp|when)[^"]*)"/g)) {
     for (const c of m[1].split(/\s+/)) used.add(c);
   }
   assert.ok(used.size >= 10, 'the card markup no longer looks like the app card');
@@ -188,12 +191,12 @@ test('the printed rows fit inside the card, at the size the generator baked in',
   /* card.js measures type on a canvas; the generator cannot, so it uses a
      deliberately pessimistic advance constant. If a name ever got long enough
      to overflow at the chosen size, this is where it shows up. */
-  const contentPx = (3.45 - 2 * 0.11) * 96;
+  const contentPx = 244; // what the real card leaves for the boxes (CARD.avail in scripts/charts.mjs)
   for (const n of SIZES) {
     const m = cardMetrics(planFor(n));
     assert.ok(m.widest <= contentPx + 0.5,
       `${file(n)}'s widest row is ${m.widest}px in a ${contentPx}px card`);
-    assert.ok(m.five >= 16, `${file(n)} prints names at ${m.five}px, below the legibility floor`);
+    assert.ok(m.chip >= 13, `${file(n)} prints boxes at ${m.chip}px, below the legibility floor`);
   }
 });
 
@@ -253,7 +256,7 @@ test('the pages read correctly with JavaScript off', () => {
     assert.ok(!/opacity:\s*0\s*[;}]|visibility:\s*hidden/.test(style),
       `${c.file} hides content in CSS with no script to unhide it`);
     // and the card is in the markup, not built at runtime
-    assert.ok(page.includes('<div class="card">'), `${c.file} has no card in the HTML itself`);
+    assert.ok(/<div class="card nostay"[ >]/.test(page), `${c.file} has no card in the HTML itself`);
   }
 });
 
@@ -347,8 +350,14 @@ test('each lede says substitution, printable and equal playing time, and still h
 /* ---------------- 5. six players, and two halves (#425) ---------------- */
 
 const lede = page => (page.match(/<p class="lede[^"]*"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? '').replace(/\s+/g, ' ');
+const rowCount = page => (page.match(/<div class="crow[ "]/g) || []).length;
+const playersOn = page => new Set([
+  ...(page.match(/<div class="lineup"[^>]*>([^<]*)<\/div>/)?.[1].split(' ') ?? []),
+  ...[...page.matchAll(/<span class="cchip">([^<]+)<\/span>/g)].map(m => m[1]),
+  ...[...page.matchAll(/<span class="s"[^>]*>([^<]+)<\/span>/g)].flatMap(m => m[1].split(' ')),
+]);
 const meta = (page, re) => page.match(re)?.[1];
-const footerMinutes = page => page.match(/<div class="card-ft">([^<]*)<\/div>/)[1].trim()
+const footerMinutes = page => page.match(/<div class="mins">([^<]*)<\/div>/)[1].trim()
   .split(/\s{3}/).filter(Boolean).map(e => Number(e.split(' ')[1]));
 
 test('SIZES is 6 to 12, and the 6-player page prints 24 to 28 minutes each over 8 stints', () => {
@@ -357,7 +366,7 @@ test('SIZES is 6 to 12, and the 6-player page prints 24 to 28 minutes each over 
   const mins = footerMinutes(page);
   assert.equal(mins.length, 6);
   assert.ok(Math.min(...mins) >= 24 && Math.max(...mins) <= 28, `minutes are ${mins}`);
-  assert.equal((page.match(/<div class="stint(?: newper)?"/g) || []).length, 8);
+  assert.equal(rowCount(page), 8);
   assert.ok(page.includes('6-PLAYER ROTATION') && page.includes('4 QUARTERS · 8 MIN'));
 });
 
@@ -372,11 +381,11 @@ test('the halves page is 10 players, two 20-minute halves, 10 stints of 20 minut
   const page = read(HALVES_FILE);
   assert.ok(page.includes('<span class="opp">10-PLAYER ROTATION</span><span class="when">2 HALVES · 20 MIN</span>'));
   assert.deepEqual(footerMinutes(page), Array(10).fill(20));
-  assert.equal((page.match(/<div class="stint(?: newper)?"/g) || []).length, 10);
-  const names = new Set([...page.matchAll(/<span class="nm(?: fresh)?">([^<]+)<\/span>/g)].map(m => m[1]));
+  assert.equal(rowCount(page), 10);
+  const names = playersOn(page);
   assert.equal(names.size, 10);
-  const clocks = [...page.matchAll(/<span class="clk">([^<]*)<\/span>/g)].map(m => m[1]);
-  assert.equal(clocks.filter(c => /^H\d /.test(c)).map(c => c.slice(0, 2)).join(), 'H1,H2');
+  const clocks = [...page.matchAll(/<span class="cq">([^<]*)<\/span>/g)].map(m => m[1]);
+  assert.equal(clocks.filter((c, i) => c !== clocks[i - 1]).join(), 'H1,H2');
   assert.ok(lacks(page, '4 QUARTERS'), 'the halves card says quarters');
   assert.ok(!page.includes('data-draft="1"'), 'the halves page is a draft');
   assert.ok(page.includes('<meta name="robots" content="index, follow'));
@@ -392,7 +401,7 @@ test('the halves page copy is exactly the spec\'s', () => {
   assert.ok(desc.length <= 160);
   assert.equal(lede(page), 'A printable substitution chart for 10 players over two 20-minute halves, ' +
     'subbing every 4 minutes. That is 20 minutes each, as close to equal playing time as the math allows.');
-  assert.match(page, /<figcaption[^>]*>Each box is one stint, the time between two subs\. The clock shows time left in the period, and the underlined names just came on\. 10 stints with five on the floor, and it cuts out to fit a pocket\.<\/figcaption>/);
+  assert.match(page, /<figcaption[^>]*>Each box is one stint, the time between two subs\. The clock shows time left in the period, and the black boxes are who comes on\. 10 stints with five on the floor, and it cuts out to fit a pocket\.<\/figcaption>/);
   assert.ok(page.includes('<p class="trust noprint">Free, and there is no account. Your roster never leaves your device.</p>'));
   assert.ok(page.includes('<a class="btn primary" href="./?try=10&halves">Try it with 10 sample players</a>'));
   assert.ok(page.includes('<link rel="canonical" href="https://benchcard.app/basketball-rotation-chart-two-halves">'));
@@ -406,10 +415,27 @@ test('the halves card is a real generatePlan run and fits the card', () => {
   const plan = planForHalves();
   assert.equal(plan.stints.length, 10);
   assert.deepEqual(plan.players.map(p => p.name), sampleRoster(10).map(p => p.name));
-  const contentPx = (3.45 - 2 * 0.11) * 96;
+  const contentPx = 244; // what the real card leaves for the boxes (CARD.avail in scripts/charts.mjs)
   const m = cardMetrics(plan);
-  assert.ok(m.widest <= contentPx + 0.5 && m.five >= 16, `halves card: ${JSON.stringify(m)}`);
+  assert.ok(m.widest <= contentPx + 0.5 && m.chip >= 13, `halves card: ${JSON.stringify(m)}`);
   for (const s of Object.values(plan.shortNames)) assert.ok(measuredNames().includes(s), `no width for ${s}`);
+});
+
+test('the halves card widens its time column for a 20:00 clock, as the app does', () => {
+  /* A 20-minute half prints 20:00, 16:00 and 12:00, which at 16px need 45px
+     against the 38px column an 8:00 clock fits (the #622 preview check caught
+     them running into the boxes). The app widens the column with --tcol; the
+     page does too, by the same rule (clockWidth in app/card-spec.js), and
+     the boxes get what is left. */
+  const m = cardMetrics(planForHalves());
+  assert.equal(m.tCol, 46, `halves card time column: ${JSON.stringify(m)}`);
+  assert.ok(m.widest <= 244 - (46 - 38) + 0.5, `halves boxes overflow the narrower space: ${JSON.stringify(m)}`);
+  assert.ok(read(HALVES_FILE).includes('<div class="card nostay" style="--tcol:46px">'),
+    'the halves page does not set the wider time column on its card');
+  for (const n of SIZES) {
+    assert.equal(cardMetrics(planFor(n)).tCol, 38, `${file(n)}: an 8:00 clock fits the designed column`);
+    assert.ok(!read(file(n)).includes('--tcol'), `${file(n)} sets --tcol it does not need`);
+  }
 });
 
 test('size pages and the halves page link to each other', () => {
@@ -447,9 +473,9 @@ test('the sitemap lists the 6-player page before the 7 and the halves page after
   const at = loc => entries.findIndex(e => e[0] === `https://benchcard.app/${loc}`);
   assert.equal(at(slug(6)) + 1, at(slug(7)));
   assert.equal(at('basketball-rotation-chart-two-halves'), at(slug(12)) + 1);
-  // every chart page moved with the #608 line-break and footer-email fixes
-  assert.deepEqual(entries[at(slug(6))].slice(1), ['2026-11-04', '0.7'], slug(6));
-  assert.deepEqual(entries[at('basketball-rotation-chart-two-halves')].slice(1), ['2026-11-04', '0.7']);
+  // every chart page moved with the #622 card redesign
+  assert.deepEqual(entries[at(slug(6))].slice(1), ['2026-11-06', '0.7'], slug(6));
+  assert.deepEqual(entries[at('basketball-rotation-chart-two-halves')].slice(1), ['2026-11-06', '0.7']);
 });
 
 /* ---------------- 6. try first, chart above the fold, Print, Hardwood (#433) ---------------- */

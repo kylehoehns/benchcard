@@ -165,7 +165,7 @@ function issuesList(p) {
      so unshifting puts it first among the infos. */
   if (p.ok && availIds(game()).length === 5) {
     list.unshift({ severity: 'info', code: 'NO_SUBS_ALL_GAME', playerIds: [],
-      message: 'Five available, so nobody comes off. Every stint on the card reads NO SUBS.' });
+      message: 'Five available, so nobody comes off. The card shows just your starting five.' });
   }
   /* Closers with an empty closing group is the one strategy that can silently
      do nothing: the engine only forces anyone on when the group has players, so

@@ -458,7 +458,7 @@ text left open, and a future reader needs them to read the plan.
   the overrides as well as the other auto names -- otherwise overriding one Jack
   to `JACK` silently collides with `Jackson`.
 - **Short names are a card constraint, not a naming scheme.** Five letters exist
-  so five columns fit a pocket card. Everywhere with room for the real name uses
+  so five black boxes fit across a pocket card. Everywhere with room for the real name uses
   it -- including the timeline, whose rows put the name above a full-width bar
   and which read `AUST` until 2026-08-24 while already announcing "Austin
   Schumacher" to a screen reader; `tlName` in `timeline.js` is the single answer

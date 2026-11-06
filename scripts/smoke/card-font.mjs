@@ -1,4 +1,6 @@
 import { evalIn } from './dom.mjs';
+import { land } from './page-state.mjs';
+import { referenceGame } from './fixtures.mjs';
 
 /* #21 item 8: the UI no longer uses Inter, so nothing else on the page starts
    loading InterVar, and the coach's card must never stay sized for the
@@ -6,7 +8,7 @@ import { evalIn } from './dom.mjs';
    re-fits once that settles (`AGENTS.md` § Traps names the general shape of
    this trap).
 
-   THE CHECK: read `.five`'s on-screen font-size, then call the page's own
+   THE CHECK: read a black box's on-screen font-size, then call the page's own
    `renderCards()` again -- dynamic-imported from `${origin}/card.js` (an
    absolute specifier, because a relative one would resolve against this
    Runtime.evaluate call's own base rather than the page and 404) so it is the
@@ -18,12 +20,15 @@ import { evalIn } from './dom.mjs';
    produces now that the font is loaded, nothing was ever wrong; if it does
    not, the rendered card is still sized for a font it did not measure.
 
-   WHAT THIS CATCHES, VERIFIED: deleting the whole `document.fonts...then(()
-   => render('cards'))` block (so nothing ever re-fits) turns this row red --
-   `.five` stays at its boot-time size while a fresh fit reports a different
-   one. `node scripts/smoke.mjs --only "card font loads before the card is
-   fitted"` printed FAIL with both numbers named; restoring the block turned
-   it back to PASS.
+   WHAT THIS CATCHES, VERIFIED: making the `document.fonts...then(() =>
+   render('cards'))` block in app.js never re-render (so nothing ever re-fits)
+   turns this row red -- the black boxes stay at their boot-time size while a
+   fresh fit reports a different one. On the rich day that mutation stayed
+   GREEN, because its boxes are 14px with either face, so the row now lands
+   the `lines` reference game, whose boxes are 14px sized with the fallback and
+   13.5px with InterVar. `node scripts/smoke.mjs --only "card font loads before
+   the card is fitted"` printed FAIL with both numbers named; restoring the
+   block turned it back to PASS.
 
    WHAT THIS DOES NOT CATCH, ALSO VERIFIED: swapping the explicit
    `document.fonts.load(...)` for a bare `document.fonts.ready` -- the exact
@@ -42,14 +47,18 @@ import { evalIn } from './dom.mjs';
    see. Reported rather than hidden behind a check that would only ever be
    green. */
 export async function cardFontPass(c, origin, rec) {
+  // Landed on the reference game whose boxes sit between two steps: sized with
+  // the fallback face they come out 14px, with InterVar 13.5px. The rich day's
+  // boxes are 14px either way and could not tell the two apart.
+  await land(c, origin, { record: referenceGame('lines', 'pocket'), ready: `document.querySelector('#sheet .card .cchip')` });
   const probe = await evalIn(c, `(async () => {
-    const five = document.querySelector('.card .five');
-    if (!five) return JSON.stringify({ error: 'no .card .five in the DOM' });
-    const before = getComputedStyle(five).fontSize;
+    const chip = document.querySelector('.card .cchip');
+    if (!chip) return JSON.stringify({ error: 'no .card .cchip in the DOM' });
+    const before = getComputedStyle(chip).fontSize;
     const loaded = document.fonts.check('800 16px InterVar');
     const mod = await import(${JSON.stringify(origin)} + '/card.js');
     mod.renderCards();
-    const again = document.querySelector('.card .five');
+    const again = document.querySelector('.card .cchip');
     const after = again ? getComputedStyle(again).fontSize : null;
     return JSON.stringify({ loaded, before, after });
   })()`);
@@ -57,11 +66,11 @@ export async function cardFontPass(c, origin, rec) {
   if (r.error) rec.fail(r.error);
   else {
     rec.check(r.loaded, 'document.fonts.check(\'800 16px InterVar\') is false after settle');
-    if (r.after === null) rec.fail('no .card .five left in the DOM after re-rendering');
+    if (r.after === null) rec.fail('no .card .cchip left in the DOM after re-rendering');
     else if (r.before !== r.after) {
-      rec.fail(`.five was fitted at ${r.before} but the loaded font fits it at ${r.after} — `
+      rec.fail(`a box was fitted at ${r.before} but the loaded font fits it at ${r.after} — `
         + 'the card was sized before InterVar arrived and never re-fit');
     }
   }
-  rec.ok(`InterVar loaded, .five stays at ${r.before} once it has`);
+  rec.ok(`InterVar loaded, a box stays at ${r.before} once it has`);
 }
