@@ -156,7 +156,10 @@ function lineBoxes(n, x, y, h) {
   const range = document.createRange();
   range.selectNodeContents(n);
   const rows = [...range.getClientRects()].filter(r => r.width);
-  if (rows.length < 2) return [{ text, x, y, h }];
+  // One line still starts where the browser put its text, inside the box's
+  // border and padding: from the box's own edge, a black box's name touched
+  // its left side and a tag's outline ran through its first letter.
+  if (rows.length < 2) return [{ text, x: rows.length ? x + rows[0].left - n.getBoundingClientRect().left : x, y, h }];
   const parts = rows.map(() => '');
   let k = 0;
   for (let i = 0; i < text.length; i++) {

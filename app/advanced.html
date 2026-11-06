@@ -138,13 +138,13 @@
 .paper { background: #fff; color: #000; border-radius: 5px; padding: 12px 13px;
   box-shadow: var(--shadow-paper); max-width: 336px; margin: 0 auto;
   font-feature-settings: 'cv11' 1; }
-.paper .row { display: grid; grid-template-columns: 13px 40px 1fr; gap: 6px; align-items: start;
+.paper .row { display: grid; grid-template-columns: 13px 38px 1fr; gap: 6px; align-items: start;
   padding: 6px 0; border-top: 1px solid #000; }
 .paper .row.first { border-top: 0; padding-top: 0; }
 .paper .row.newper { border-top: 3px solid #000; }
 .paper .tick { width: 11px; height: 11px; border: 1.5px solid #000; border-radius: 2px; margin-top: 2px; }
-.paper .when { font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; font-size: 12px; }
-.paper .when small { display: block; font-size: 9px; letter-spacing: .02em; }
+.paper .when { font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; font-size: 10px; }
+.paper .when small { display: block; font-size: 13px; letter-spacing: -.01em; }
 .paper .eb { font-size: 8px; font-weight: 800; letter-spacing: .1em; }
 .paper .lineup { font-weight: 800; font-size: 14px; line-height: 1.15; letter-spacing: -.01em; }
 .paper .boxes { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -161,7 +161,7 @@
 .legend .tok { background: #fff; color: #000; border-radius: 4px; padding: .18rem .4rem;
   font-size: .78rem; font-weight: 800; white-space: nowrap; justify-self: start;
   box-shadow: 0 0 0 1px rgba(20,20,20,.14); }
-.legend .tok.inblk { background: #000; color: #fff; }
+.legend .tok.inblk { background: #000; color: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
 .legend .tok.tick { display: inline-block; width: 11px; height: 11px; padding: 0; border: 1.5px solid #000; border-radius: 2px; }
 .legend .tok.sm { font-weight: 700; letter-spacing: .08em; font-size: .72rem; }
 
@@ -169,7 +169,9 @@
   .paper { max-width: 384px; padding: 15px 16px; }
   .paper .lineup { font-size: 17px; }
   .paper .inbox { font-size: 18px; }
-  .paper .when { font-size: 14px; }
+  .paper .row { grid-template-columns: 13px 44px 1fr; }
+  .paper .when { font-size: 12px; }
+  .paper .when small { font-size: 16px; }
 }
 /* Four `nowrap` labels across need about 345px, and the pill they sit in is
    357px wide only from a 430px phone up at a 16px root, so 30rem (480px) keeps
@@ -542,7 +544,7 @@
           <span class="tok sm">STARTING FIVE</span><span>who starts, with the bench below</span>
         </div>
       </div>
-      <figcaption>The first three rows of an eleven-player plan. Card names
+      <figcaption>The first three rows of a nine-player plan. Card names
         come from your roster, and you can change any of them.</figcaption>
     </figure>
 
