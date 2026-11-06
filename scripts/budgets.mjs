@@ -393,8 +393,14 @@ export const NODES_BASELINE = 1_653;
    #434: `app/timeline.css` joins the cold load. The timeline rules moved out
    of app.css into a sheet About can also link, so index.html loads one more
    stylesheet and the measured count goes 44 -> 45; the pin moves 43 -> 44,
-   one under it. */
-export const REQUESTS_BASELINE = 44;
+   one under it.
+
+   #622: `app/card-spec.js` joins the boot graph. The card's sizes, key line and
+   the rule for which rows print moved out of card.js into a module with no DOM,
+   so scripts/charts.mjs reads the app's own numbers instead of typed copies.
+   The cold load at 390x844 measures 46 with it (45 before), so the pin moves
+   44 -> 45, one under the measured 46. */
+export const REQUESTS_BASELINE = 45;
 
 export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };
 

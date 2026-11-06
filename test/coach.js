@@ -1119,6 +1119,18 @@ export class Coach {
     })`);
   }
 
+  /** The note under the card, in words ("Hawks needs 2 cards: ..."), or '' when there is none. */
+  cardNote() {
+    return evalIn(this.c, `document.querySelector('#cardnote')?.textContent.trim() ?? ''`);
+  }
+
+  /** The thick-or-thin rule above each row of the first card, in px as drawn: 0
+      on the first row, 1 for a sub inside a period, 3 where a period starts. */
+  cardRules() {
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy)')[0].querySelectorAll('.crow')]
+      .map(r => parseFloat(getComputedStyle(r).borderTopWidth) || 0)`);
+  }
+
   /** The footer of each card of the first copy, as printed: the key line, then the minutes strip when there is one. */
   cardFooters() {
     return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .card-ft')].map(f =>

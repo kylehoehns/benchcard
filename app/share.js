@@ -101,8 +101,8 @@ const CLEAR = 'rgba(0, 0, 0, 0)';
    then its borders, then its outline. A border drawn the same on all four
    sides is one rounded stroke (the tick box); otherwise each side is a
    rectangle, which is all the rules (header, period, footer) ever were. */
-function drawBox(ctx, cs, x, y, w, h) {
-  const r = Math.min(px(cs.borderTopLeftRadius), w / 2, h / 2);
+function drawBox(ctx, cs, x, y, w, h, z = 1) {
+  const r = Math.min(px(cs.borderTopLeftRadius) * z, w / 2, h / 2);
   const path = (ix, iy, iw, ih, ir) => {
     ctx.beginPath();
     if (ctx.roundRect && ir > 0) ctx.roundRect(ix, iy, iw, ih, ir); else ctx.rect(ix, iy, iw, ih);
@@ -113,7 +113,7 @@ function drawBox(ctx, cs, x, y, w, h) {
     ctx.fill();
   }
   const sides = ['Top', 'Right', 'Bottom', 'Left'].map(side => {
-    const width = px(cs[`border${side}Width`]);
+    const width = px(cs[`border${side}Width`]) * z;
     return { side, width, color: cs[`border${side}Color`], on: cs[`border${side}Style`] !== 'none' && width > 0 };
   });
   if (sides.every(b => b.on && b.width === sides[0].width && b.color === sides[0].color)) {
@@ -132,10 +132,10 @@ function drawBox(ctx, cs, x, y, w, h) {
       else ctx.fillRect(x + w - width, y, width, h);
     }
   }
-  const ow = px(cs.outlineWidth);
+  const ow = px(cs.outlineWidth) * z;
   if (ow && cs.outlineStyle !== 'none') {
     // an outline sits outside the edge `outline-offset` puts it at; a negative offset draws inward
-    const inset = -px(cs.outlineOffset) - ow / 2;
+    const inset = -px(cs.outlineOffset) * z - ow / 2;
     ctx.strokeStyle = cs.outlineColor;
     ctx.lineWidth = ow;
     path(x + inset, y + inset, w - 2 * inset, h - 2 * inset, Math.max(0, r - inset));
@@ -173,13 +173,14 @@ function lineBoxes(n, x, y, h) {
     ({ text: parts[i], x: x + r.left - box.left, y: y + r.top - box.top, h: r.height }));
 }
 
-function drawText(ctx, n, cs, x, y, h) {
+function drawText(ctx, n, cs, x, y, h, z = 1) {
   if (!n.textContent.trim()) return;
-  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const size = px(cs.fontSize) * z;
+  ctx.font = `${cs.fontWeight} ${size}px ${cs.fontFamily}`;
   // Chrome and Safari both honour this; where they do not, the fallback is
   // slightly tighter text, not wrong text.
-  ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing;
-  ctx.wordSpacing = cs.wordSpacing === 'normal' ? '0px' : cs.wordSpacing;
+  ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : px(cs.letterSpacing) * z + 'px';
+  ctx.wordSpacing = cs.wordSpacing === 'normal' ? '0px' : px(cs.wordSpacing) * z + 'px';
   ctx.fillStyle = cs.color;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
@@ -190,13 +191,13 @@ function drawText(ctx, n, cs, x, y, h) {
     const text = ln.text.replace(/\s+/g, ' ').trim();
     if (!text) continue;
     const m = ctx.measureText(text);
-    const asc = m.fontBoundingBoxAscent || px(cs.fontSize) * 0.8;
-    const desc = m.fontBoundingBoxDescent || px(cs.fontSize) * 0.2;
+    const asc = m.fontBoundingBoxAscent || size * 0.8;
+    const desc = m.fontBoundingBoxDescent || size * 0.2;
     const base = ln.y + (ln.h - (asc + desc)) / 2 + asc;
     ctx.fillText(text, ln.x, base);
     if (cs.textDecorationLine.includes('underline')) {
-      const thick = px(cs.textDecorationThickness) || Math.max(1, px(cs.fontSize) * 0.06);
-      const off = px(cs.textUnderlineOffset) || thick;
+      const thick = px(cs.textDecorationThickness) * z || Math.max(1, size * 0.06);
+      const off = px(cs.textUnderlineOffset) * z || thick;
       ctx.fillRect(ln.x, base + off + thick, m.width, thick);
     }
   }
@@ -204,16 +205,21 @@ function drawText(ctx, n, cs, x, y, h) {
 
 function paint(ctx, root, ox, oy) {
   const base = root.getBoundingClientRect();
-  const walk = n => {
+  /* `zoom` scales a box's rect but not its computed lengths (a 13px name in a
+     zoom-0.8 box still reads 13px), so a squeezed card (card.js `fitCard`
+     zooms the names area, inline) carries the zoom down to be applied to every
+     length drawn: type, spacing, borders, radius, outline. */
+  const walk = (n, z) => {
     const cs = getComputedStyle(n);
     if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    z *= parseFloat(n.style.zoom) || 1;
     const r = n.getBoundingClientRect();
     const x = r.left - base.left + ox, y = r.top - base.top + oy;
-    drawBox(ctx, cs, x, y, r.width, r.height);
-    if (!n.firstElementChild) drawText(ctx, n, cs, x, y, r.height);
-    else for (const c of n.children) walk(c);
+    drawBox(ctx, cs, x, y, r.width, r.height, z);
+    if (!n.firstElementChild) drawText(ctx, n, cs, x, y, r.height, z);
+    else for (const c of n.children) walk(c, z);
   };
-  for (const c of root.children) walk(c);
+  for (const c of root.children) walk(c, 1);
 }
 
 /** Paint one or more `.card` elements onto a canvas. Synchronous. */

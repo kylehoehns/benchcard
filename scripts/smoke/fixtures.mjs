@@ -320,3 +320,17 @@ export function referenceGame(name, cardSize = 'pocket', ui = {}) {
     }],
   };
 }
+
+/* The reference games' worst case (#622): `long5`'s ten five-letter kids, with
+   the first five and the other five swapping places at every one of the eight
+   stints, so every row sends in all five and every name is as long as the app
+   prints one. `swaps` is how many rows do that (7 is all of them); with 6 the
+   card is squeezed but still one card. */
+export function squeezeGame(cardSize = 'pocket', swaps = 7) {
+  const rec = referenceGame('long5', cardSize);
+  const ids = rec.teams[0].players.map(p => p.id);
+  const fives = [ids.slice(0, 5), ids.slice(5)];
+  // `swaps` rows send all five in; any stint after them repeats the last five, so it prints no row
+  rec.teams[0].days[0].games[0].live.overrides = Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i, fives[Math.min(i, swaps) % 2]]));
+  return rec;
+}

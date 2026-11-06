@@ -149,7 +149,7 @@ async function cellChecks(c, page, where, rec) {
 /* EMPTY, and it should stay that way. It held `{'/about.html': 8}` for one
    week: five 16px names in a narrow column inside that page's drawn card mock.
    Slice 2 declined to copy the 8 onto `advanced.html` and fixed the same
-   overflow ON that page instead (`.paper .five` wraps inside the `19em` cell);
+   overflow ON that page instead (the starting five wraps inside the `19em` cell);
    A20 slice 3 then moved the mock off `about.html` altogether, so the last
    recorded residue on the site went with it -- re-measured at 0 rather than
    assumed. A number here is an accepted defect on a crawlable page; add one

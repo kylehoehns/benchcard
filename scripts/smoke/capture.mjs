@@ -27,7 +27,10 @@ const PAGE_SIDE = `(() => {
     ctx: HTMLCanvasElement.prototype.getContext,
   };
   const blobs = new Map();
-  const cap = window.__cap = { clicks: [], shares: [], clips: [], toasts: [], opts: {} };
+  const cap = window.__cap = { clicks: [], shares: [], clips: [], toasts: [], texts: [], opts: {} };
+  // every string painted onto a canvas, with the width it was painted at
+  const C2D = CanvasRenderingContext2D.prototype, fillText = C2D.fillText;
+  C2D.fillText = function (text, ...rest) { cap.texts.push({ text, width: this.measureText(text).width }); return fillText.call(this, text, ...rest); };
   U.createObjectURL = function (b) { const u = orig.create.call(U, b); blobs.set(u, b); return u; };
   A.click = function () {
     if (!this.hasAttribute('download')) return orig.click.call(this);
@@ -62,11 +65,12 @@ const PAGE_SIDE = `(() => {
     } } : undefined);
     HTMLCanvasElement.prototype.getContext = o.noContext ? () => null : orig.ctx;
   };
-  cap.reset = () => { cap.clicks = []; cap.shares = []; cap.clips = []; cap.toasts = []; };
+  cap.reset = () => { cap.texts = []; cap.clicks = []; cap.shares = []; cap.clips = []; cap.toasts = []; };
   cap.restore = () => {
     A.click = orig.click; U.createObjectURL = orig.create;
     HTMLCanvasElement.prototype.getContext = orig.ctx;
     for (const k of ['canShare', 'share', 'clipboard']) delete N[k];
+    C2D.fillText = fillText;
     seen.disconnect(); delete window.__cap;
   };
   /* The brand orange in the band under the cards, counted off the decoded
@@ -96,6 +100,9 @@ const PAGE_SIDE = `(() => {
     const cr = card.getBoundingClientRect();
     const rel = sel => { const r = card.querySelector(sel).getBoundingClientRect(); return { x: r.left - cr.left, y: r.top - cr.top, w: r.width, h: r.height }; };
     const want = { chip: rel('.cchip'), tag: rel('.ctag'), tick: rel('.tick') };
+    const first = card.querySelector('.cchip'), rg = document.createRange(); rg.selectNodeContents(first);
+    const laid = rg.getBoundingClientRect().width;
+    const chipInk = (cap.texts.find(t => t.text === first.textContent.trim().replace(/\\s+/g, ' '))?.width ?? 0) / laid;
     host.remove();
     const bmp = await createImageBitmap(blob);
     const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
@@ -104,6 +111,8 @@ const PAGE_SIDE = `(() => {
     const frac = (b, test) => { let n = 0, t = 0; for (let i = 0; i < 20; i++) for (let j = 0; j < 8; j++) { t++; if (test(at(b, (i + .5) / 20, (j + .5) / 8))) n++; } return Math.round(n / t * 100) / 100; };
     return {
       chipDark: frac(want.chip, v => v < 60), chipWhite: frac(want.chip, v => v > 200),
+      // how wide the first name was drawn, over how wide the card laid it out: 1 when it is the same size
+      chipInk,
       tagTop: frac({ ...want.tag, x: want.tag.x + 4, w: want.tag.w - 8, h: 1 }, v => v < 140), tagInside: frac({ x: want.tag.x + 3, y: want.tag.y + 3, w: want.tag.w - 6, h: 1 }, v => v > 200),
       tickLeft: frac({ ...want.tick, w: 1 }, v => v < 60), tickInside: at(want.tick, .5, .5),
     };

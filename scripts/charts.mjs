@@ -43,6 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { faviconHref, logoSvg } from './mark.mjs';
 import { sampleRoster } from '../app/roster.js';
 import { generatePlan, fmtClock, fmtMinutes } from '../app/engine.js';
+import { CARD_SIZES, KEY_LINE, printable } from '../app/card-spec.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -110,10 +111,14 @@ export const planForHalves = () => planOf(10, HALVES_FORMAT);
  * Class-for-class what `buildCard` in app/card.js emits, so app/card.css
  * styles it and prints it with no page-local rules at all.
  * ------------------------------------------------------------------ */
-// Must match CARD_SIZES.pocket in app/card.js (the pocket card's content width,
-// less the tick box, the time column and the column gaps, less the boxes' own
-// right padding).
-const CARD = { chipMax: 19, chipMin: 13, avail: 244, padX: 10, gap: 6, startMax: 16 };
+// The pocket card's numbers are the app's own (app/card-spec.js), not copies:
+// what the real card leaves for the boxes is its content width, less the tick
+// box, the time column, the column gaps and the boxes' right padding.
+const K = CARD_SIZES.pocket;
+const CARD = {
+  chipMax: K.chip, chipMin: K.chipMin, padX: 2 * K.padFew, gap: K.gapFew, startMax: K.st,
+  avail: K.w * 96 - 2 * K.padX - K.tick - K.tCol - 2 * K.colGap - K.midPadR - K.chipsPadR,
+};
 
 /* Type widths, measured rather than guessed.
  *
@@ -154,7 +159,7 @@ const rowWidth = (names, px) =>
    app's own fit (`fitCard` in card.js) also shrinks to a floor, wraps, and
    fits the height; none of that can be needed here because the names are the
    fixed sample cast and the row counts are at most ten. */
-const printed = plan => plan.stints.filter(r => r.index === 0 || r.in.length > 0);
+const printed = plan => printable(plan.stints);
 const chipsWidth = (names, px) =>
   names.reduce((a, s) => a + nameWidth(s, px) + 0.02 * px * s.length + CARD.padX, 0) + (names.length - 1) * CARD.gap;
 export function cardMetrics(plan) {
@@ -165,12 +170,12 @@ export function cardMetrics(plan) {
   const widest = Math.max(...ins.map(n => chipsWidth(n, chip)));
   const first = plan.stints[0].onFloor.map(id => sh[id]);
   let start = CARD.startMax;
-  while (start > CARD.chipMin && rowWidth(first, start) > CARD.avail) start -= 0.5;
+  while (start > K.stMin && rowWidth(first, start) > CARD.avail) start -= 0.5;
   // BENCH sits on one line when it can: the tag, its gap, then the names at weight 600
   const bench = plan.players.map(p => p.id).filter(id => !plan.stints[0].onFloor.includes(id)).map(id => sh[id]);
-  let benchPx = 12;
-  while (benchPx > 10.5 && rowWidth(bench, benchPx) + 35 > CARD.avail) benchPx -= 0.5;
-  return { bench: benchPx, chip: round(chip), start: round(start), out: round(Math.min(13, chip * 0.8)), widest: round(widest), rows: printed(plan).length };
+  let benchPx = K.s;
+  while (benchPx > K.minB && rowWidth(bench, benchPx) + K.tagMin + K.tagGap > CARD.avail) benchPx -= 0.5;
+  return { bench: benchPx, chip: round(chip), start: round(start), out: round(Math.max(K.oMin, Math.min(K.o, Math.floor(chip * K.oCap * 2) / 2))), widest: round(widest), rows: printed(plan).length };
 }
 const round = n => Math.round(n * 100) / 100;
 
@@ -210,7 +215,7 @@ function cardHtml(chart, plan) {
     out.push(`<div class="${cls}"${tight}><div class="tick"></div>${time}<div class="b">${body}${sub}</div></div>`);
   }
   out.push('</div>');
-  out.push(`<div class="card-ft"><div class="key">BLACK BOX = send in · tick the box as you sub</div>` +
+  out.push(`<div class="card-ft"><div class="key">${KEY_LINE}</div>` +
     `<div class="mins">${Object.entries(plan.minutes).sort((a, b) => b[1] - a[1])
       .map(([id, mins]) => `${sh[id]} ${fmtMinutes(mins)}`).join('   ')}</div></div>`);
   out.push('</div>');

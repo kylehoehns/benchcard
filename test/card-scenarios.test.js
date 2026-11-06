@@ -9,6 +9,7 @@
 import { describe, test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Coach, hasChrome } from './coach.js';
+import { KEY_LINE as KEY } from '../app/card-spec.js';
 
 const skip = !(await hasChrome()) && 'no Chrome on this machine';
 
@@ -79,7 +80,6 @@ describe('a coach prints or hands off a game', { skip }, () => {
   });
 
   /* Items 9, 10 and 12 of spec 622. */
-  const KEY = 'BLACK BOX = send in · tick the box as you sub';
 
   test('every card prints the key line, and the minutes strip sits below it only while Settings shows minutes', async () => {
     await openHawksCard();
@@ -116,10 +116,16 @@ describe('a coach prints or hands off a game', { skip }, () => {
   });
 
   /* #370: overtime on a reprinted card. */
-  async function cardOf(edits) {
-    await coach.onGameDayWith(edits);
+  async function cardOf(edits, rosterSize) {
+    await coach.onGameDayWith(edits, rosterSize);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Card');
+  }
+
+  async function halfSheet() {
+    await coach.tap('Share or hand off');
+    await coach.choose('Size', 'Half sheet · 8 × 5.1 in');
+    await coach.tap('Close');
   }
 
   test('an overtime stint prints as OT, and a second one as OT2, never Q5', async () => {
@@ -142,8 +148,58 @@ describe('a coach prints or hands off a game', { skip }, () => {
     assert.ok(titles.every(t => !/Q5/.test(t)), `a title says Q5: ${titles}`);
   });
 
-  test('a regulation game split into two pages still reads Q1-Q2 and Q3-Q4', async () => {
+  test('a regulation game split into two pages still reads Q1-Q2 and Q3-Q4, at both sizes', async () => {
     await cardOf({ granValue: 2 });
     assert.deepEqual(await coach.cardTitles(), ['HAWKS Q1-Q2', 'HAWKS Q3-Q4']);
+    await halfSheet();
+    assert.deepEqual(await coach.cardTitles(), ['HAWKS Q1-Q2', 'HAWKS Q3-Q4']);
+  });
+
+  test('the note on a split game counts the rows the cards print, not the stints the game has', async () => {
+    // stints 2 and 3 repeat stint 1's five, so nobody goes in for them and they are not printed
+    const five = ['p0', 'p1', 'p2', 'p3', 'p4'];
+    await cardOf({ granValue: 2, live: { at: 0, overrides: { 1: five, 2: five, 3: five } } });
+    const printed = (await coach.cardRows()).length;
+    assert.ok(printed < 16, `${printed} rows printed, the test needs fewer than the 16 stints`);
+    assert.equal(await coach.cardNote(), `Hawks needs 2 cards: all ${printed} lines will not fit one at a readable size. Sub less often for a single card.`);
+  });
+
+  test('the key line and the minutes strip print on every card at the half size too', async () => {
+    await openHawksCard();
+    await halfSheet();
+    assert.deepEqual(await coach.cardFooters(), [[KEY, 'DEVO 16 ELI 16 ANA 16 JORD 16 CASE 16 THEO 16 NIA 16 MARC 12 HANA 12 SAM 12 RILE 12']]);
+    await coach.tap('Share or hand off');
+    await coach.tap('Minutes strip');
+    await coach.tap('Close');
+    assert.deepEqual(await coach.cardFooters(), [[KEY]]);
+  });
+
+  test('with jersey numbers chosen on the half sheet, every name on the card is a number', async () => {
+    await openHawksCard();
+    await halfSheet();
+    await coach.tap('Share or hand off');
+    await coach.choose('Names', 'Jersey numbers');
+    await coach.tap('Close');
+    const rows = await coach.cardRows();
+    assert.equal(rows.length, 8);
+    for (const line of rows) assert.ok(!/[A-Z]{3}/.test(line.replace(/STARTING FIVE|BENCH|OUT|STAY|ALL/g, '')), `a name printed: ${line}`);
+    assert.match(rows[0], /^Q1 8:00 \| STARTING FIVE (\d+ ){4}\d+ \| BENCH (\d+ ){5}\d+$/);
+    assert.match(rows[1], /^Q1 4:00 \| (\d+ ){2}\d+ \| OUT (\d+ ){2}\d+ \| STAY \d+ \d+$/);
+  });
+
+  /* Item 2 and 3 of spec 622. */
+  test('five available prints the starting five and an empty bench, and nothing else', async () => {
+    await cardOf({}, 5);
+    assert.deepEqual(await coach.cardRows(), ['Q1 8:00 | STARTING FIVE ANA DEVO ELI HANA MARC | BENCH']);
+  });
+
+  test('a stint where nobody goes in has no row, and the next row of that period carries the thick rule', async () => {
+    // Q1 4:00 puts DEVO JORD SAM in with ANA THEO staying: that five (p4 p9 p1 p5 p6)
+    // stays on for Q2 8:00, so Q2's first stint has no sub to print.
+    await cardOf({ live: { at: 0, overrides: { 2: ['p4', 'p9', 'p1', 'p5', 'p6'] } } });
+    const rows = await coach.cardRows();
+    assert.ok(!rows.some(l => l.startsWith('Q2 8:00')), `a no-sub row printed: ${rows.join(' / ')}`);
+    assert.deepEqual(rows.map(l => l.split(' | ')[0]), ['Q1 8:00', 'Q1 4:00', 'Q2 4:00', 'Q3 8:00', 'Q3 4:00', 'Q4 8:00', 'Q4 4:00']);
+    assert.deepEqual(await coach.cardRules(), [0, 1, 3, 3, 1, 3, 1]);
   });
 });

@@ -85,7 +85,7 @@
    Rules are 1px because Chrome floors 1.25px and 1.5px to 1px at 1x and not at 2x: one number
    keeps the row heights `fitCard` computes true on every screen. */
 .list { flex: 1; display: flex; flex-direction: column; }
-.crow { flex: 1 1 auto; display: grid; grid-template-columns: 13px 38px 1fr; column-gap: 6px; align-items: center;
+.crow { flex: 1 1 auto; display: grid; grid-template-columns: 13px var(--tcol, 38px) 1fr; column-gap: 6px; align-items: center;
   padding: 5px 0; min-height: 44px; border-top: 1px solid #000; }
 .crow.newq { border-top: 3px solid #000; }
 .crow:first-child { border-top: 0; }
@@ -120,7 +120,7 @@
 
 /* the half-sheet: tick | time | boxes | OUT over STAY */
 .card.half { --rw: 230px; }
-.card.half .crow { grid-template-columns: 20px 104px 1fr var(--rw); column-gap: 12px; padding: 6px 0; min-height: 50px; }
+.card.half .crow { grid-template-columns: 20px var(--tcol, 104px) 1fr var(--rw); column-gap: 12px; padding: 6px 0; min-height: 50px; }
 .card.half .tick { width: 20px; height: 20px; }
 .card.half .ctime .cq, .card.half .ctime .cclk { display: inline; }
 .card.half .ctime .cq { font-size: 18px; margin-right: 5px; }
