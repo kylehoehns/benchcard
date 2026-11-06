@@ -256,7 +256,7 @@ test('the pages read correctly with JavaScript off', () => {
     assert.ok(!/opacity:\s*0\s*[;}]|visibility:\s*hidden/.test(style),
       `${c.file} hides content in CSS with no script to unhide it`);
     // and the card is in the markup, not built at runtime
-    assert.ok(page.includes('<div class="card nostay">'), `${c.file} has no card in the HTML itself`);
+    assert.ok(/<div class="card nostay"[ >]/.test(page), `${c.file} has no card in the HTML itself`);
   }
 });
 
@@ -419,6 +419,23 @@ test('the halves card is a real generatePlan run and fits the card', () => {
   const m = cardMetrics(plan);
   assert.ok(m.widest <= contentPx + 0.5 && m.chip >= 13, `halves card: ${JSON.stringify(m)}`);
   for (const s of Object.values(plan.shortNames)) assert.ok(measuredNames().includes(s), `no width for ${s}`);
+});
+
+test('the halves card widens its time column for a 20:00 clock, as the app does', () => {
+  /* A 20-minute half prints 20:00, 16:00 and 12:00, which at 16px need 45px
+     against the 38px column an 8:00 clock fits (the #622 preview check caught
+     them running into the boxes). The app widens the column with --tcol; the
+     page does too, by the same rule (clockWidth in app/card-spec.js), and
+     the boxes get what is left. */
+  const m = cardMetrics(planForHalves());
+  assert.equal(m.tCol, 46, `halves card time column: ${JSON.stringify(m)}`);
+  assert.ok(m.widest <= 244 - (46 - 38) + 0.5, `halves boxes overflow the narrower space: ${JSON.stringify(m)}`);
+  assert.ok(read(HALVES_FILE).includes('<div class="card nostay" style="--tcol:46px">'),
+    'the halves page does not set the wider time column on its card');
+  for (const n of SIZES) {
+    assert.equal(cardMetrics(planFor(n)).tCol, 38, `${file(n)}: an 8:00 clock fits the designed column`);
+    assert.ok(!read(file(n)).includes('--tcol'), `${file(n)} sets --tcol it does not need`);
+  }
 });
 
 test('size pages and the halves page link to each other', () => {

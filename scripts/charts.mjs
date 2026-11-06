@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { faviconHref, logoSvg } from './mark.mjs';
 import { sampleRoster } from '../app/roster.js';
 import { generatePlan, fmtClock, fmtMinutes } from '../app/engine.js';
-import { CARD_SIZES, KEY_LINE, printable } from '../app/card-spec.js';
+import { CARD_SIZES, KEY_LINE, printable, clockWidth, timeColumn } from '../app/card-spec.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -119,6 +119,16 @@ const CARD = {
   chipMax: K.chip, chipMin: K.chipMin, padX: 2 * K.padFew, gap: K.gapFew, startMax: K.st,
   avail: K.w * 96 - 2 * K.padX - K.tick - K.tCol - 2 * K.colGap - K.midPadR - K.chipsPadR,
 };
+/* The time column, by the app's own rule (`timeColumn` in app/card-spec.js):
+   wider than the designed 38px when a row prints a two-digit clock, as the
+   halves page's 20:00 does. The colon is measured like WIDTH_AT_100 below
+   (InterVar, `900 100px`, card.js's CARD_FONT); the period label ("Q1", "H2")
+   is estimated at ADVANCE, above its true width, and is far narrower than any
+   clock anyway. Whatever the column gains comes out of the boxes' width. */
+const COLON_AT_100 = 37.30;
+const periodLabel = r => r.periodName || 'Q' + r.period;
+const timeCol = rows => timeColumn(K, rows.map(r => Math.max(periodLabel(r).length * ADVANCE * 13,
+  clockWidth(fmtClock(r.startSec), 16, COLON_AT_100 / 100 * 16, -0.01))));
 
 /* Type widths, measured rather than guessed.
  *
@@ -164,18 +174,20 @@ const chipsWidth = (names, px) =>
   names.reduce((a, s) => a + nameWidth(s, px) + 0.02 * px * s.length + CARD.padX, 0) + (names.length - 1) * CARD.gap;
 export function cardMetrics(plan) {
   const sh = plan.shortNames;
+  const tCol = timeCol(printed(plan));
+  const avail = CARD.avail - (tCol - K.tCol);
   const ins = printed(plan).filter(r => r.index > 0).map(r => r.in.map(id => sh[id]));
   let chip = CARD.chipMax;
-  while (chip > CARD.chipMin && ins.some(n => chipsWidth(n, chip) > CARD.avail)) chip -= 0.5;
+  while (chip > CARD.chipMin && ins.some(n => chipsWidth(n, chip) > avail)) chip -= 0.5;
   const widest = Math.max(...ins.map(n => chipsWidth(n, chip)));
   const first = plan.stints[0].onFloor.map(id => sh[id]);
   let start = CARD.startMax;
-  while (start > K.stMin && rowWidth(first, start) > CARD.avail) start -= 0.5;
+  while (start > K.stMin && rowWidth(first, start) > avail) start -= 0.5;
   // BENCH sits on one line when it can: the tag, its gap, then the names at weight 600
   const bench = plan.players.map(p => p.id).filter(id => !plan.stints[0].onFloor.includes(id)).map(id => sh[id]);
   let benchPx = K.s;
-  while (benchPx > K.minB && rowWidth(bench, benchPx) + K.tagMin + K.tagGap > CARD.avail) benchPx -= 0.5;
-  return { bench: benchPx, chip: round(chip), start: round(start), out: round(Math.max(K.oMin, Math.min(K.o, Math.floor(chip * K.oCap * 2) / 2))), widest: round(widest), rows: printed(plan).length };
+  while (benchPx > K.minB && rowWidth(bench, benchPx) + K.tagMin + K.tagGap > avail) benchPx -= 0.5;
+  return { tCol, bench: benchPx, chip: round(chip), start: round(start), out: round(Math.max(K.oMin, Math.min(K.o, Math.floor(chip * K.oCap * 2) / 2))), widest: round(widest), rows: printed(plan).length };
 }
 const round = n => Math.round(n * 100) / 100;
 
@@ -189,7 +201,7 @@ function cardHtml(chart, plan) {
   // lets them run tighter; the app itself splits that many rows over two cards
   const tight = rows.length > 9 ? ' style="min-height:0;padding-block:3px"' : '';
   const out = [];
-  out.push('<div class="card nostay">');
+  out.push(`<div class="card nostay"${m.tCol !== K.tCol ? ` style="--tcol:${m.tCol}px"` : ''}>`);
   out.push(`<div class="card-hd"><span class="opp">${chart.players}-PLAYER ROTATION</span>` +
     `<span class="when">${chart.when}</span></div>`);
   out.push('<div class="list">');
@@ -198,7 +210,7 @@ function cardHtml(chart, plan) {
     const prev = r.index > 0 ? plan.stints[r.index - 1] : null;
     const newPeriod = r.index === 0 || prev.period !== r.period;
     const cls = 'crow' + (r.index > 0 && newPeriod ? ' newq' : '');
-    const time = `<div class="ctime"><span class="cq">${r.periodName || 'Q' + r.period}</span>` +
+    const time = `<div class="ctime"><span class="cq">${periodLabel(r)}</span>` +
       `<span class="cclk">${fmtClock(r.startSec)}</span></div>`;
     let body, sub;
     if (r.index === 0) {

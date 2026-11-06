@@ -14,7 +14,7 @@ import { icon } from './icons.js';
 import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
 import { cornerLabel } from './storage.js';
 import { resumeAt, finishedGame } from './live.js';
-import { CARD_SIZES, KEY_LINE, printable, isBigRow } from './card-spec.js';
+import { CARD_SIZES, KEY_LINE, printable, isBigRow, clockWidth, timeColumn } from './card-spec.js';
 
 /* The one thing that says a game is already underway. A reload drops the coach
    back here with bench mode shut -- on iOS, switching to the clock app and back
@@ -305,20 +305,11 @@ function layoutOf(plan, rows, minutes) {
     const lines = linesOf(minsText.split(/\s{3}/), size.stripPx, 600, contentPx());
     stripH = Math.max(size.strip, lines * size.stripLh + 3);
   }
-  /* The time column is sized for 8:00. A 12-minute quarter or a 20-minute half
-     prints a two-digit clock, so the column grows to the widest "Q2 12:00" the
-     card prints (and never shrinks under its designed width). */
-  /* `.cclk` is tabular-nums, which canvas cannot ask for: Inter's tabular digits
-     advance 0.61em (read off the laid-out clock), the colon is the plain glyph. */
-  const TABULAR = 0.61;
-  const clockW = (t, px) => {
-    const colons = (t.match(/:/g) || []).length;
-    return (t.length - colons) * TABULAR * px + colons * widthAt(':', px, 900) + t.length * (isHalf ? 0 : -0.01) * px;
-  };
-  const tCol = Math.max(size.tCol, Math.ceil(Math.max(...rows.map(r => {
+  const clk$ = (t, px) => clockWidth(t, px, widthAt(':', px, 900), isHalf ? 0 : -0.01);
+  const tCol = timeColumn(size, rows.map(r => {
     const { q, clk } = when$(r);
-    return isHalf ? textW(q, 18, 900) + 5 + clockW(clk, 26) : Math.max(textW(q, 13, 900), clockW(clk, 16));
-  }))) + 1);
+    return isHalf ? textW(q, 18, 900) + 5 + clk$(clk, 26) : Math.max(textW(q, 13, 900), clk$(clk, 16));
+  }));
   const fit = fitCard(specs, { ...size, tCol }, isHalf, stripH);
   return { specs, fit, tCol, size, isHalf, minsText };
 }

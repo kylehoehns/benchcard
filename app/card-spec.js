@@ -32,6 +32,20 @@ export const CARD_SIZES = {
     ebH: 13, ebMb: 3, tagPx: 12, tagH: 19, tagMin: 52, tagGap: 8, subTop: 0, stackGap: 3, txtLs: 0, ws: 0.3, stripPx: 9, stripLh: 11,
   },
 };
+/* The time column is sized for 8:00. A 12-minute quarter or a 20-minute half
+   prints a two-digit clock, so the column grows to the widest clock the card
+   prints (and never shrinks under its designed width): `timeColumn` is that
+   rule, for the app's fit and for the chart pages alike.
+   `.cclk` is tabular-nums, which canvas cannot ask for: Inter's tabular digits
+   advance 0.61em (read off the laid-out clock); the colon is the plain glyph,
+   whose width at the clock's size the caller measures (`colonW`). */
+const TABULAR = 0.61;
+export const clockWidth = (t, px, colonW, ls = 0) => {
+  const colons = (t.match(/:/g) || []).length;
+  return (t.length - colons) * TABULAR * px + colons * colonW + t.length * ls * px;
+};
+export const timeColumn = (size, widths) => Math.max(size.tCol, Math.ceil(Math.max(...widths)) + 1);
+
 export const KEY_LINE = 'BLACK BOX = send in · tick the box as you sub';
 
 /* A row sending in this many kids gets the smaller "big" boxes. */
