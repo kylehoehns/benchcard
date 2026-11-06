@@ -25,12 +25,9 @@
    #459: CI runs the parts as separate jobs and the `smoke` job merges them;
    `scripts/smoke/shard.mjs` says how. No flag still runs everything here.
 
-   #628: the Coach scenario files run apart from the coverage-counted suite.
-   `--shard suite` runs the unit files only; CI runs the scenarios as their own
-   `scenario part` jobs (`scripts/scenarios.mjs`, the file list in
-   `scripts/suite-files.mjs`) and `node 24` judges them. A run with no flag
-   runs both beside each other and its one `node --test` row fails if either
-   half does.
+   #628: `--shard suite` runs the unit files only; the Coach scenarios are
+   `scripts/scenarios.mjs`'s (AGENTS.md § Layout has why). A run with no
+   flag runs both halves, and its one `node --test` row fails if either does.
 
    #178: BENCHCARD_SMOKE_HANG=<check name> makes that one row hang for real
    (a CDP call that never resolves) instead of running its own check — for
@@ -64,7 +61,7 @@
 
 import { execFile } from 'node:child_process';
 import { readFile, writeFile, readdir, mkdtemp, mkdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { tmpdir, availableParallelism } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compare, pinned, summarize } from './budgets.mjs';
@@ -329,9 +326,9 @@ async function browserChecks(origin, only, folded, shard) {
 
 /* One `node --test` child over `files`, resolved (never rejected) with its
    counts and failures. Registered in `liveTests` so a hang or a signal kills it. */
-function nodeTest(files, env) {
+function nodeTest(files, env, concurrency) {
   return new Promise(ok => {
-    const child = execFile(process.execPath, ['--test', ...files], { cwd: ROOT, env, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+    const child = execFile(process.execPath, ['--test', ...(concurrency ? [`--test-concurrency=${concurrency}`] : []), ...files], { cwd: ROOT, env, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
       liveTests.delete(child);
       // node --test prints `ℹ tests 157` (spec reporter) or `# tests 157` (tap)
       const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
@@ -348,24 +345,30 @@ const countText = r => r.total ? `${r.pass}/${r.total} passing` : (r.ok ? 'passe
    written as one JSON file per process into a temp dir that is read and
    removed here. Its entries have the shape Chrome's `takePreciseCoverage`
    gives, so the one converter in coverage.mjs serves both.
-   #628: the Coach scenarios (`suite-files.mjs`) take no coverage, so a full run
-   starts them beside the units without it, and `node --test` is one row that
-   fails if either half does. `--shard suite` passes `scenarios: false`: CI runs
-   the scenarios as their own parts. */
+   #628: a full run starts the scenarios (`suite-files.mjs`) beside the units,
+   without coverage; `--shard suite` passes `scenarios: false`. */
 async function runTests({ scenarios }) {
   const covDir = await mkdtemp(join(tmpdir(), 'benchcard-cov-'));
   try {
     const plain = { ...process.env };
     delete plain.NODE_V8_COVERAGE;
+    /* Two `node --test` parents at once would each take node's default of
+       availableParallelism() - 1 processes, doubling the load beside Chrome, so
+       the two halves split that default between them. */
+    const total = Math.max(2, availableParallelism() - 1);
+    const unitSlots = scenarios ? Math.ceil(total / 2) : undefined;
     const [units, scen] = await Promise.all([
-      nodeTest(unitFiles(), { ...process.env, NODE_V8_COVERAGE: covDir }),
-      scenarios ? nodeTest(scenarioFiles(), plain) : null,
+      nodeTest(unitFiles(), { ...process.env, NODE_V8_COVERAGE: covDir }, unitSlots),
+      scenarios ? nodeTest(scenarioFiles(), plain, total - unitSlots) : null,
     ]);
+    /* A failure names its half, so a reader of the one row knows which list to rerun. */
+    const tag = (half, r) => r.failures.map(f => ({ ...f, name: `[${half}] ${f.name}` }));
+    const failures = scen ? [...tag('units', units), ...tag('scenarios', scen)] : units.failures;
     const row = {
       name: nameOf('nodetest'),
       pass: units.ok && (scen?.ok ?? true),
       detail: scen ? `units ${countText(units)}, scenarios ${countText(scen)}` : countText(units),
-      ...((units.failures.length || scen?.failures.length) && { failures: [...units.failures, ...(scen?.failures || [])] }),
+      ...(failures.length && { failures }),
     };
     /* Only app/ scripts are kept: a node process reports every module it
        loaded, tests and node's own included. */

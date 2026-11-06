@@ -140,6 +140,7 @@ test('the required node 24 job runs even when a scenario part fails, and judges 
   assert.deepEqual(ks.map(([k]) => k).sort((a, b) => a - b), Array.from({ length: n }, (_, i) => i + 1),
     `the parts must be every k/n for k = 1..n, each once: ${list}`);
   assert.match(parts, /run: node scripts\/scenarios\.mjs --shard \$\{\{ matrix\.part \}\}$/m, 'each part must run its own shard of the scenarios');
+  assert.match(parts, /^    timeout-minutes: \d+$/m, 'a hung scenario part must time out, not hold the required node 24 check for hours');
   assert.match(parts, /fail-fast: false/, 'one failed part must not cancel the others');
   assert.doesNotMatch(job + parts, /continue-on-error/, 'continue-on-error would let a failed part report green');
 });

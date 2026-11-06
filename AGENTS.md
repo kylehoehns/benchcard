@@ -288,8 +288,8 @@ The CI job is named `smoke` (the ruleset requires it by that name). CI splits
 the one run into parts that run at once, the suite (`--shard suite`) and the
 browser rows across three Chromes (`--shard k/3`), and `smoke` judges them
 together with `--merge` (#459; `scripts/smoke/shard.mjs`). The suite part is
-the unit files only. The Coach scenario files, the ones named
-`*-scenarios.test.js`, take no coverage and run in their own three CI parts
+the unit files only. The Coach scenario files take no coverage
+and run in their own three CI parts
 (`node scripts/scenarios.mjs --shard k/3`), which the `node 24` check judges
 (#628); `scripts/suite-files.mjs` is the one place that says which file is
 which. A local run with no flag still runs everything in one process, the

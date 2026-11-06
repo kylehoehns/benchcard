@@ -21,16 +21,22 @@ has the detail (#595).
 
 `node --test` — no install step, because there are no dependencies. (The one
 run that needs a package the repo does not ship is the WebKit check below.)
-`.github/workflows/test.yml` runs it on every push and PR against `main`, on
-Node 24, one leg. The repo is private, so the badge above only renders for
+`.github/workflows/test.yml` runs every test file on every push and PR against
+`main`, on Node 24, one leg. The unit files run in the `smoke part suite` job,
+where coverage counts them. The Coach scenario files (which files those are is
+`scripts/suite-files.mjs`'s to say) run in three `scenario part k/3` jobs through
+`scripts/scenarios.mjs`, and the required `node 24` check fails unless all three
+succeed (#628). The repo is private, so the badge above only renders for
 someone signed in with access.
 
-There are **nine** CI jobs in total: the `node --test` job above, then
-`smoke part` (a matrix of four: the unit suite under coverage with `--shard
-suite`, and the browser rows dealt across three Chromes with `--shard 1/3` to
-`3/3`), `smoke` (the required check: `node scripts/smoke.mjs --merge` over the
-four parts' partials, judging every row, the budgets and the line-coverage
-floor on the whole run, and failing if any part failed or is missing; #459),
+There are **ten** CI jobs in total: `node 24` (the required check that judges
+the scenario parts; it runs no tests itself), `scenario part` (a matrix of
+three, `scripts/scenarios.mjs --shard k/3`), `smoke part` (a matrix of four: the
+unit suite under coverage with `--shard suite`, and the browser rows dealt across
+three Chromes with `--shard 1/3` to `3/3`), `smoke` (the required check:
+`node scripts/smoke.mjs --merge` over the four parts' partials, judging every
+row, the budgets and the line-coverage floor on the whole run, and failing if
+any part failed or is missing; #459),
 `evals` (`node scripts/evals.mjs`, which
 checks the harness's evals still pass), `redirect` (`redirect-check.mjs`,
 the service worker behind Cloudflare's trailing-slash 307s), `checks that need
@@ -38,7 +44,7 @@ history` (three steps: `check-about-date.mjs`, `check-sitemap-lastmod.mjs` and `
 and `vendor drift` (below), plus the weekly `lighthouse scores` (below that),
 and the advisory `webkit` job (its own workflow, below), which cannot block a merge.
 Three of these went unmentioned here for months while this paragraph counted
-to three; if you add a tenth, say so here.
+to three; if you add an eleventh, say so here.
 
 When the unit suite fails, the `node --test` row names the tests that failed.
 Under that row each failing test prints its name, its `file:line:col` and the
@@ -47,7 +53,8 @@ the `smoke` job's log, because the merge prints the same row. The first 20 are
 printed, then `… and N more`; the part's partial keeps all of them as
 `nodeRow.failures`. A run with no failure block, such as a crash or TAP output,
 prints no names, and nothing else from the child's output is printed. The
-parser is `scripts/smoke/suite-failures.mjs` (#480).
+parser is `scripts/smoke/suite-failures.mjs` (#480). A failing scenario shows in
+its `scenario part` log, as `node --test` prints it, and has no row of its own.
 
 The `checks that need history` job runs `scripts/check-sitemap-lastmod.mjs`,
 which fails when a branch changes `app/<page>.html` for a page in the sitemap
