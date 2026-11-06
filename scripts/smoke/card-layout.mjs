@@ -1,6 +1,6 @@
 import { evalIn } from './dom.mjs';
 import { land } from './page-state.mjs';
-import { REFERENCE_GAMES, referenceGame, squeezeGame } from './fixtures.mjs';
+import { REFERENCE_GAMES, referenceGame, squeezeGame, fourInGame } from './fixtures.mjs';
 import { LARGE_TEXT_PX } from './sizes.mjs';
 import { isBigRow } from '../../app/card-spec.js';
 import { capInstall, capUse, capRead, capRestore } from './capture.mjs';
@@ -24,7 +24,8 @@ import { capInstall, capUse, capRead, capRestore } from './capture.mjs';
 const WANT = {
   pocket: {
     std: { few: 16 }, lines: { big: 14 }, mixed: { few: 17.5, big: 15 },
-    long5: { few: 14, big: 13.5, wrapped: [1], nostay: true },
+    // the prototype dropped STAY here; it now takes its own line under OUT (stayOwnLine below)
+    long5: { few: 14, big: 13.5, wrapped: [1] },
   },
   half: {
     std: { few: 23 }, lines: { big: 19 }, mixed: { few: 21, big: 18 },
@@ -148,7 +149,33 @@ async function titleFits(c, origin, rec, size) {
   rec.check(t === 'VS ' + FITS[size].toUpperCase(), `the title that fits ${size} was printed as "${t}"`);
 }
 
+/* Four in at every sub leaves one kid on, and that kid is the one a coach
+   cannot work out at a glance. STAY did not fit beside a four-name OUT, so the
+   pocket card used to drop it from every row. Now it takes its own line under
+   OUT, and the card stays one card: the usual squeeze (padding, then the names
+   area down to 85%) makes the room. STAY comes off only when even that is not
+   enough. */
+const STAY_LINE = `(() => {
+  const card = document.querySelector('#sheet .card:not(.card-copy)');
+  const rows = [...card.querySelectorAll('.crow')].slice(1);
+  const own = rows.filter(r => { const o = r.querySelector('.g-out'), s = r.querySelector('.g-stay');
+    return o && s && s.checkVisibility() && s.getBoundingClientRect().top >= o.getBoundingClientRect().bottom - 1; }).length;
+  return JSON.stringify({ own });
+})()`;
+async function stayOwnLine(c, origin, rec, textPx) {
+  const where = `four in at every sub, pocket at ${textPx ?? 16}px`;
+  await land(c, origin, { record: fourInGame('pocket'), textPx, ready: `document.querySelector('#sheet .card .crow')` });
+  const m = JSON.parse(await evalIn(c, MEASURE));
+  if (!m) { rec.fail(`${where}: no card on screen`); return; }
+  const { own } = JSON.parse(await evalIn(c, STAY_LINE));
+  rec.check(m.cards === 1 && m.rows === 8, `${where}: ${m.rows} rows on ${m.cards} card(s), want 8 on 1`);
+  rec.check(!m.nostay && m.stays === 7, `${where}: STAY shows on ${m.stays} rows${m.nostay ? ' (dropped)' : ''}, want all 7 sub rows`);
+  rec.check(own === 7, `${where}: STAY is on its own line under OUT on ${own} rows, want 7`);
+  for (const p of m.problems) rec.fail(`${where}: ${p}`);
+}
+
 export async function cardLayoutPass(c, origin, rec) {
+  for (const textPx of [undefined, LARGE_TEXT_PX]) await stayOwnLine(c, origin, rec, textPx);
   for (const size of ['pocket', 'half']) await titleFits(c, origin, rec, size);
   for (const size of ['pocket', 'half']) await squeezedShare(c, origin, rec, size);
   for (const textPx of [undefined, LARGE_TEXT_PX]) for (const size of ['pocket', 'half']) await squeezePass(c, origin, rec, size, textPx);

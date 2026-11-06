@@ -68,7 +68,10 @@ header behavior. The footer follows this spec, not the prototype's
    and `--smin`. OUT is weight 800. STAY is weight 600. Both are black.
 6. **Pocket card.** OUT and STAY share one line under the boxes. If any row
    can't fit both on one line, even with both shrunk to their floors, STAY
-   is left off **every** row of that card. OUT is never dropped.
+   gets its own line under OUT on that row (`.stack`). Only if the card
+   then can't fit even after the usual squeeze is STAY left off **every**
+   row (`.nostay`). OUT is never dropped. (Changed after #622 shipped; the
+   prototype dropped STAY outright.)
 7. **Half-sheet.** The columns are tick, time, boxes, then OUT over STAY.
    The OUT/STAY column is as wide as its longest line plus the tag, clamped
    to 205-230px. The boxes get the rest of the width.
@@ -98,8 +101,8 @@ header behavior. The footer follows this spec, not the prototype's
     - **No overlaps:** no row overlaps another.
     - **Same decisions as the prototype:** the same box sizes per tier
       (±0.5px), the same rows wrapped, and STAY shown or dropped the same
-      way. That means STAY shows on std, lines and mixed, and is dropped on
-      long5's pocket card.
+      way. That means STAY shows on std, lines and mixed, and takes its own
+      line on long5's pocket card (see item 6).
 12. **Jersey numbers.** With the card set to show numbers
     (`state.ui.cardId === 'number'`), the boxes, OUT, STAY, the starters and
     BENCH all print numbers.

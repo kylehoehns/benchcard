@@ -135,6 +135,8 @@ function linesOf(names, px, wt, avail, ls = 0, ws = 0) {
    row, OUT/STAY sizes, whether STAY is dropped, the half-sheet's right column,
    the row padding and the names-area zoom. */
 const SLACK = 0.5;
+// `.sub`'s row-gap in card.css: the space between OUT and a STAY on its own line
+const SUB_GAP = 2;
 const half$ = (a, b) => Math.floor(a * b * 2) / 2;
 function fitCard(R, K, isHalf, stripH) {
   const listH = listPx(K, stripH);
@@ -159,7 +161,7 @@ function fitCard(R, K, isHalf, stripH) {
       + (r.ins.length - 1) * (big ? K.gapBig : K.gapFew) + K.chipsPadR;
   };
 
-  const layout = dec => {
+  const layout = (dec, drop) => {
     const rows = R.map(r => ({ r }));
     const chipRows = rows.filter(x => !x.r.first);
     for (const x of chipRows) {
@@ -180,15 +182,17 @@ function fitCard(R, K, isHalf, stripH) {
       x.sz = isBigRow(x.r.ins.length) ? big : few;
       x.wrap = chipsW(x.r, x.sz) > avail + SLACK;
     }
-    const caps = () => {
-      for (const x of chipRows) {
+    const caps = (which = chipRows) => {
+      for (const x of which) {
         x.o = Math.max(K.oMin, Math.min(K.o, half$(x.sz, K.oCap)));
         x.s = Math.max(K.sMin, Math.min(K.s, half$(x.sz, K.sCap)));
       }
     };
     caps();
-    // pocket: OUT and STAY share a line, shrunk a little if need be; if any row
-    // still cannot, STAY is dropped from every row (OUT is never dropped)
+    // pocket: OUT and STAY share a line, shrunk a little if need be. A row that
+    // still cannot puts STAY on a line of its own under OUT (`stack`); `drop`
+    // instead leaves STAY off every row, for when that extra line would cost
+    // the black boxes size (see the end). OUT is never dropped.
     const grpW = (label, str, px, wt, wsp) => tagW(label) + K.tagGap + textW(str, px, wt, K.txtLs, wsp);
     let nostay = false;
     if (!isHalf) {
@@ -199,9 +203,11 @@ function fitCard(R, K, isHalf, stripH) {
           if (x.o > K.oMin) x.o -= 0.5;
           if (x.s > K.sMin) x.s -= 0.5;
         }
-        if (both(x) > avail) stuck = true;
+        if (both(x) > avail) stuck = x.stack = true;
       }
-      if (stuck) { nostay = true; caps(); }
+      // dropped: every row gets its full size back; stacked: only the stacked
+      // rows do, since the others still share one line at their shrunk size
+      if (stuck) { nostay = drop; caps(drop ? chipRows : chipRows.filter(x => x.stack)); }
     }
     // text lines: shrink a little, then wrap as a unit
     const settle = (label, names, wt, wsp, fs, min) => {
@@ -234,7 +240,8 @@ function fitCard(R, K, isHalf, stripH) {
     for (const x of rows) {
       const gh = g => Math.max(K.tagH, g.lines * g.fs * 1.1);
       const subs = x.grps.map(gh);
-      x.hSub = isHalf ? subs.reduce((a, b) => a + b, 0) + (subs.length - 1) * K.stackGap : K.subTop + Math.max(...subs);
+      x.hSub = isHalf ? subs.reduce((a, b) => a + b, 0) + (subs.length - 1) * K.stackGap
+        : K.subTop + (x.stack && !nostay ? subs.reduce((a, b) => a + b, 0) + (subs.length - 1) * SUB_GAP : Math.max(...subs));
       if (x.r.first) x.hMid = K.ebH + K.ebMb + x.st.lines * x.st.fs * 1.05;
       else {
         const lh = x.sz + 2 * K.chipPadY;
@@ -251,13 +258,19 @@ function fitCard(R, K, isHalf, stripH) {
 
   // too tall: shrink the boxes a step at a time before touching the padding;
   // never squash rows into each other
-  let dec = 0, out = layout(0);
-  while (tall(out.rows, K.rowPad, 1) && dec < 5) { dec += 0.5; out = layout(dec); }
-  let pad = K.rowPad, z = 1;
-  if (tall(out.rows, pad, z)) pad = 3;
-  // still too tall: scale only the names area, never the time column or the tick
-  while (tall(out.rows, pad, z) && z > 0.8) z = Math.round((z - 0.01) * 100) / 100;
-  return { ...out, rw, pad, z, tooTall: tall(out.rows, pad, z) };
+  const squeeze = drop => {
+    let dec = 0, out = layout(0, drop);
+    while (tall(out.rows, K.rowPad, 1) && dec < 5) { dec += 0.5; out = layout(dec, drop); }
+    let pad = K.rowPad, z = 1;
+    if (tall(out.rows, pad, z)) pad = 3;
+    // still too tall: scale only the names area, never the time column or the tick
+    while (tall(out.rows, pad, z) && z > 0.8) z = Math.round((z - 0.01) * 100) / 100;
+    return { ...out, rw, pad, z, tooTall: tall(out.rows, pad, z) };
+  };
+  // STAY on its own line is kept unless the card cannot fit it even after the
+  // usual squeeze; only then does it come off every row
+  const kept = squeeze(false);
+  return kept.tooTall ? squeeze(true) : kept;
 }
 
 function labelsFor(plan) {
@@ -377,7 +390,7 @@ function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minu
       });
       mid.append(chips);
     }
-    const sub = el('div', 'sub');
+    const sub = el('div', 'sub' + (x.stack && !fit.nostay ? ' stack' : ''));
     for (const g of x.grps) sub.append(grpEl(g, spec));
     if (isHalf) { row.append(mid, sub); if (fit.z < 1) mid.style.zoom = sub.style.zoom = fit.z; }
     else { mid.append(sub); row.append(mid); if (fit.z < 1) mid.style.zoom = fit.z; }

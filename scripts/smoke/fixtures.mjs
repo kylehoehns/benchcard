@@ -321,6 +321,26 @@ export function referenceGame(name, cardSize = 'pocket', ui = {}) {
   };
 }
 
+/* Four in at every sub (the card that showed STAY was missing): nine kids, two
+   16-minute halves, a sub every 4 minutes, and each sub sends four in, so one
+   kid stays on. OUT's four names leave no room for STAY beside them on the
+   pocket card, so STAY takes a line of its own. The stints are the coach's
+   card, row for row. */
+const FOUR_IN = ['BRODY', 'BROOK', 'HAYW', 'JACK', 'KADE', 'COOP', 'DAMAR', 'HAYS', 'TATE'];
+const FOUR_IN_FLOORS = [
+  'BRODY BROOK HAYW JACK KADE', 'JACK COOP DAMAR HAYS TATE', 'DAMAR BRODY BROOK HAYW KADE', 'BRODY COOP HAYS JACK TATE',
+  'TATE BROOK DAMAR HAYW KADE', 'BROOK BRODY COOP HAYS JACK', 'COOP DAMAR HAYW KADE TATE', 'HAYW BRODY BROOK HAYS JACK',
+];
+export function fourInGame(cardSize = 'pocket') {
+  const rec = referenceGame('std', cardSize);
+  const t = rec.teams[0];
+  t.players = FOUR_IN.map((n, i) => ({ id: 'p' + i, name: n[0] + n.slice(1).toLowerCase() + ' Lee', number: '', shortName: n, tier: 3 }));
+  const g = t.days[0].games[0];
+  Object.assign(g, { label: 'ACA 6th Blue', periods: 2, periodMinutes: 16 });
+  g.live.overrides = Object.fromEntries(FOUR_IN_FLOORS.map((f, i) => [i, f.split(' ').map(n => 'p' + FOUR_IN.indexOf(n))]));
+  return rec;
+}
+
 /* The reference games' worst case (#622): `long5`'s ten five-letter kids, with
    the first five and the other five swapping places at every one of the eight
    stints, so every row sends in all five and every name is as long as the app
