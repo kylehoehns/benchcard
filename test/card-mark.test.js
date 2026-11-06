@@ -19,16 +19,16 @@ test('the card is marked with the bare domain', () => {
 });
 
 test('the mark comes out of the headline budget, not out of the ellipsis', () => {
-  const avail = card.slice(card.indexOf('const avail ='));
+  const avail = card.slice(card.indexOf('const avail = contentPx() - (whenTxt'));
   assert.match(avail.slice(0, avail.indexOf(';')), /- widthAt\(MARK, size\.markPx\) - gap/);
   // measured at the size it is drawn at, on both card shapes
-  assert.match(card, /pocket: \{[^}]*markPx: 7/);
-  assert.match(card, /half:\s*\{[^}]*markPx: 9/);
+  assert.match(card, /pocket: \{[^}]*markPx: 8\.5/);
+  assert.match(card, /half:\s*\{[^}]*markPx: 11/);
 });
 
 test('the mark is styled at both card sizes', () => {
-  assert.match(css, /\.card-hd \.card-mark \{[^}]*font-size: 7px/);
-  assert.match(css, /\.card\.half \.card-hd \.card-mark \{[^}]*font-size: 9px/);
+  assert.match(css, /\.card-hd \.card-mark \{[^}]*font-size: 8\.5px/);
+  assert.match(css, /\.card\.half \.card-hd \.card-mark \{[^}]*font-size: 11px/);
 });
 
 /* The share PNG repeats the domain in a taller bottom margin, because the

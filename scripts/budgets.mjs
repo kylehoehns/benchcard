@@ -326,7 +326,15 @@
    in `app/strategy.js`. The new room is 1392810 * 2% + 24576 = 52432 bytes,
    still under 60000. `requests` measured 44 of its 46 ceiling and DOM nodes
    1503 of 1617, both unchanged by the pin. */
-export const BYTES_BASELINE = 1_392_810;
+/* #622 re-pinned it: a full cold load of the #622 branch measured 1447690
+   bytes at 390x844 with `node scripts/smoke.mjs --json --no-tests`, 1413.8 KB
+   against the old 1411.4 KB ceiling. The growth is the new printed card:
+   `app/card.js` +8.1 KB (the canvas-measured fit), `app/card.css` +3.6 KB,
+   `app/share.js` +1.6 KB (painting the black boxes and tags), and the welcome
+   screen's card picture, `app/wel-card@2x.png`, +18.9 KB because the new card
+   has more ink. The new room is 1447690 * 2% + 24576 = 53530 bytes, still
+   under 60000. `requests` measured 45 of its 46 ceiling, unchanged. */
+export const BYTES_BASELINE = 1_447_690;
 
 /* #37: the node baseline, re-pinned DOWNWARD. `budgets.json` records 1519 from
    a 2026-08-24 run; a full cold load of the commit this ships with measures
@@ -345,8 +353,14 @@ export const BYTES_BASELINE = 1_392_810;
    WHEN A TICKET GENUINELY ADDS NODES: this is a regression alarm, not a design
    constraint (see the note at the top of this file). Measure your own cold
    load, re-pin here, and say what you measured -- do not widen `SLACK.nodes`
-   instead, and do not reach for `--update-budgets`. */
-export const NODES_BASELINE = 1_367;
+   instead, and do not reach for `--update-budgets`.
+
+   #622 re-pinned it: a full cold load of the #622 branch measured 1653 nodes
+   at 390x844 with `node scripts/smoke.mjs --json --no-tests`, against the old
+   1617 ceiling (1503 at #547). The growth is the new printed card: each row
+   now has a tick box, a time column, one box per kid going in and tagged OUT
+   and STAY groups, where the old row was two lines of text. */
+export const NODES_BASELINE = 1_653;
 
 /* #123: the request baseline, re-pinned by hand for the first time. Every
    note above says `requests` is the one real constraint, held one under the

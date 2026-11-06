@@ -603,7 +603,7 @@ try {
       const el = document.querySelector('.card');
       el.style.boxShadow = 'none';
       const r = el.getBoundingClientRect();
-      return { w: Math.round(r.width), h: Math.round(r.height), names: el.querySelectorAll('.five .nm').length };
+      return { w: Math.round(r.width), h: Math.round(r.height), rows: el.querySelectorAll('.crow').length };
     })()`);
     if (typeof box === 'string' || !box) throw new Error(`could not reach the card: ${box}`);
     await evalJS('document.fonts.ready.then(() => 1)');
@@ -625,7 +625,7 @@ try {
       throw new Error(`card densities are not 1:2 — ${s1.w}×${s1.h} vs ${s2.w}×${s2.h}`);
     await writeFile(CARD_OUT, one);
     await writeFile(CARD_OUT_2X, two);
-    console.log(`card: ${CARD_OUT} — ${s1.w}×${s1.h}, ${(one.length / 1024).toFixed(1)} KB (${box.names} name cells)`);
+    console.log(`card: ${CARD_OUT} — ${s1.w}×${s1.h}, ${(one.length / 1024).toFixed(1)} KB (${box.rows} rows)`);
     console.log(`card: ${CARD_OUT_2X} — ${s2.w}×${s2.h}, ${(two.length / 1024).toFixed(1)} KB`);
   }
 
@@ -653,7 +653,7 @@ try {
       el.style.boxShadow = 'none';
       const r = el.getBoundingClientRect();
       return { w: Math.round(r.width), h: Math.round(r.height),
-               five: el.querySelectorAll('.five .nm').length };
+               rows: el.querySelectorAll('.crow').length };
     })()`);
     if (typeof box === 'string' || !box) throw new Error(`could not reach the welcome card: ${box}`);
     await evalJS('document.fonts.ready.then(() => 1)');

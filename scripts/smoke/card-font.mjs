@@ -6,7 +6,7 @@ import { evalIn } from './dom.mjs';
    re-fits once that settles (`AGENTS.md` § Traps names the general shape of
    this trap).
 
-   THE CHECK: read `.five`'s on-screen font-size, then call the page's own
+   THE CHECK: read a black box's on-screen font-size, then call the page's own
    `renderCards()` again -- dynamic-imported from `${origin}/card.js` (an
    absolute specifier, because a relative one would resolve against this
    Runtime.evaluate call's own base rather than the page and 404) so it is the
@@ -20,7 +20,7 @@ import { evalIn } from './dom.mjs';
 
    WHAT THIS CATCHES, VERIFIED: deleting the whole `document.fonts...then(()
    => render('cards'))` block (so nothing ever re-fits) turns this row red --
-   `.five` stays at its boot-time size while a fresh fit reports a different
+   the box stays at its boot-time size while a fresh fit reports a different
    one. `node scripts/smoke.mjs --only "card font loads before the card is
    fitted"` printed FAIL with both numbers named; restoring the block turned
    it back to PASS.
@@ -43,13 +43,13 @@ import { evalIn } from './dom.mjs';
    green. */
 export async function cardFontPass(c, origin, rec) {
   const probe = await evalIn(c, `(async () => {
-    const five = document.querySelector('.card .five');
-    if (!five) return JSON.stringify({ error: 'no .card .five in the DOM' });
-    const before = getComputedStyle(five).fontSize;
+    const chip = document.querySelector('.card .cchip');
+    if (!chip) return JSON.stringify({ error: 'no .card .cchip in the DOM' });
+    const before = getComputedStyle(chip).fontSize;
     const loaded = document.fonts.check('800 16px InterVar');
     const mod = await import(${JSON.stringify(origin)} + '/card.js');
     mod.renderCards();
-    const again = document.querySelector('.card .five');
+    const again = document.querySelector('.card .cchip');
     const after = again ? getComputedStyle(again).fontSize : null;
     return JSON.stringify({ loaded, before, after });
   })()`);
@@ -57,11 +57,11 @@ export async function cardFontPass(c, origin, rec) {
   if (r.error) rec.fail(r.error);
   else {
     rec.check(r.loaded, 'document.fonts.check(\'800 16px InterVar\') is false after settle');
-    if (r.after === null) rec.fail('no .card .five left in the DOM after re-rendering');
+    if (r.after === null) rec.fail('no .card .cchip left in the DOM after re-rendering');
     else if (r.before !== r.after) {
-      rec.fail(`.five was fitted at ${r.before} but the loaded font fits it at ${r.after} — `
+      rec.fail(`a box was fitted at ${r.before} but the loaded font fits it at ${r.after} — `
         + 'the card was sized before InterVar arrived and never re-fit');
     }
   }
-  rec.ok(`InterVar loaded, .five stays at ${r.before} once it has`);
+  rec.ok(`InterVar loaded, a box stays at ${r.before} once it has`);
 }

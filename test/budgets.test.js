@@ -59,15 +59,16 @@ test('the hand-pinned bytes baseline catches a 60 KB regression at the real size
 });
 
 /* #37: what this adds over the bytes test above is the other half of the
-   swap -- that `budgets.json` still holds the looser number, so `pinned()`
-   is doing real work rather than agreeing with the file. The reasoning for
+   swap -- that `budgets.json` still holds a different number, so `pinned()`
+   is doing real work rather than agreeing with the file. (#622 re-pinned it
+   above the recorded 1519, so "different" rather than "looser".) The reasoning for
    the pin itself lives at `NODES_BASELINE` in `scripts/budgets.mjs` and is
    not retold here; the number is imported from there for the same reason,
    so re-pinning it (which that comment tells the next ticket to do) cannot
    fail this test with a message about `pinned()`. */
 test('the DOM-node baseline is the hand pin, not the stale recorded number', () => {
-  assert.ok(recorded.initialPayload.nodes > NODES_BASELINE,
-    'budgets.json no longer holds the looser number this pin exists to replace');
+  assert.notEqual(recorded.initialPayload.nodes, NODES_BASELINE,
+    'budgets.json holds the pinned number, so this test cannot tell pinned() from the file');
   const real = pinned({ ...recorded.initialPayload });
   assert.equal(real.nodes, NODES_BASELINE, 'pinned() must take nodes from the hand pin, not budgets.json');
   assert.equal(

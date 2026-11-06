@@ -9,10 +9,9 @@
    already measured. It clones the card into an offscreen host (outside
    `#sheet`, so `--cardzoom` is unset and `zoom` resolves to 1 and every rect
    is in real 96dpi print pixels), walks it, and draws each leaf's text and
-   each horizontal rule onto a canvas at 3x. No library, no `foreignObject`
+   each box (fill, borders, outline) onto a canvas at 3x. No library, no `foreignObject`
    (which cannot see the vendored font without inlining the whole woff2), and
-   nothing to keep in sync with the card CSS beyond "borders are horizontal
-   and text lives in leaves" -- both of which the card has always been.
+   nothing to keep in sync with the card CSS beyond "text lives in leaves".
 
    Everything up to the share call is synchronous on purpose. `navigator.share`
    needs transient activation, and an `await` between the tap and the call
@@ -95,15 +94,52 @@ function offscreen(cards) {
 
 const px = v => parseFloat(v) || 0;
 
-/* Only horizontal rules exist on the card (the header underline, the period
-   divider, the minutes strip), so this draws top and bottom borders and skips
-   the sides rather than pretending to be a general box painter. */
-function drawBorders(ctx, cs, x, y, w, h) {
-  for (const [side, top] of [['Top', true], ['Bottom', false]]) {
+const CLEAR = 'rgba(0, 0, 0, 0)';
+
+/* The card is boxes now: black fills with white text, outlined tags, square
+   tick boxes, and the horizontal rules. So this paints a node's background,
+   then its borders, then its outline. A border drawn the same on all four
+   sides is one rounded stroke (the tick box); otherwise each side is a
+   rectangle, which is all the rules (header, period, footer) ever were. */
+function drawBox(ctx, cs, x, y, w, h) {
+  const r = Math.min(px(cs.borderTopLeftRadius), w / 2, h / 2);
+  const path = (ix, iy, iw, ih, ir) => {
+    ctx.beginPath();
+    if (ctx.roundRect && ir > 0) ctx.roundRect(ix, iy, iw, ih, ir); else ctx.rect(ix, iy, iw, ih);
+  };
+  if (cs.backgroundColor !== CLEAR) {
+    ctx.fillStyle = cs.backgroundColor;
+    path(x, y, w, h, r);
+    ctx.fill();
+  }
+  const sides = ['Top', 'Right', 'Bottom', 'Left'].map(side => {
     const width = px(cs[`border${side}Width`]);
-    if (!width || cs[`border${side}Style`] === 'none') continue;
-    ctx.fillStyle = cs[`border${side}Color`];
-    ctx.fillRect(x, top ? y : y + h - width, w, width);
+    return { side, width, color: cs[`border${side}Color`], on: cs[`border${side}Style`] !== 'none' && width > 0 };
+  });
+  if (sides.every(b => b.on && b.width === sides[0].width && b.color === sides[0].color)) {
+    const k = sides[0].width;
+    ctx.strokeStyle = sides[0].color;
+    ctx.lineWidth = k;
+    path(x + k / 2, y + k / 2, w - k, h - k, Math.max(0, r - k / 2));
+    ctx.stroke();
+  } else {
+    for (const { side, width, color, on } of sides) {
+      if (!on) continue;
+      ctx.fillStyle = color;
+      if (side === 'Top') ctx.fillRect(x, y, w, width);
+      else if (side === 'Bottom') ctx.fillRect(x, y + h - width, w, width);
+      else if (side === 'Left') ctx.fillRect(x, y, width, h);
+      else ctx.fillRect(x + w - width, y, width, h);
+    }
+  }
+  const ow = px(cs.outlineWidth);
+  if (ow && cs.outlineStyle !== 'none') {
+    // an outline sits outside the edge `outline-offset` puts it at; a negative offset draws inward
+    const inset = -px(cs.outlineOffset) - ow / 2;
+    ctx.strokeStyle = cs.outlineColor;
+    ctx.lineWidth = ow;
+    path(x + inset, y + inset, w - 2 * inset, h - 2 * inset, Math.max(0, r - inset));
+    ctx.stroke();
   }
 }
 
@@ -143,6 +179,7 @@ function drawText(ctx, n, cs, x, y, h) {
   // Chrome and Safari both honour this; where they do not, the fallback is
   // slightly tighter text, not wrong text.
   ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing;
+  ctx.wordSpacing = cs.wordSpacing === 'normal' ? '0px' : cs.wordSpacing;
   ctx.fillStyle = cs.color;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
@@ -172,7 +209,7 @@ function paint(ctx, root, ox, oy) {
     if (cs.display === 'none' || cs.visibility === 'hidden') return;
     const r = n.getBoundingClientRect();
     const x = r.left - base.left + ox, y = r.top - base.top + oy;
-    drawBorders(ctx, cs, x, y, r.width, r.height);
+    drawBox(ctx, cs, x, y, r.width, r.height);
     if (!n.firstElementChild) drawText(ctx, n, cs, x, y, r.height);
     else for (const c of n.children) walk(c);
   };
@@ -217,6 +254,7 @@ function drawCards(cards) {
        leaves both set on the context from the last leaf it painted. */
     ctx.font = `${MARK_PX}px ${getComputedStyle(nodes[0]).fontFamily}`;
     ctx.letterSpacing = '0px';
+    ctx.wordSpacing = '0px';
     ctx.fillStyle = MARK_INK;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

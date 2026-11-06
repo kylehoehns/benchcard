@@ -84,6 +84,30 @@ const PAGE_SIDE = `(() => {
       if (Math.abs(d[i] - gr) <= 2 && Math.abs(d[i + 1] - gg) <= 2 && Math.abs(d[i + 2] - gb) <= 2) n++;
     return n;
   };
+  /* Where the card's black boxes, a tag and a tick box landed in the decoded PNG,
+     measured on a throwaway unzoomed clone (the same host share.js paints from)
+     and sampled at 3x: a filled box is dark with some white text in it, a
+     tag's edge is dark and its inside is not, a tick box is a ring. */
+  const boxes = async blob => {
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:-10000px;top:0;width:0;height:0;';
+    const card = document.querySelector('#sheet .card:not(.card-copy)').cloneNode(true);
+    host.append(card); document.body.append(host);
+    const cr = card.getBoundingClientRect();
+    const rel = sel => { const r = card.querySelector(sel).getBoundingClientRect(); return { x: r.left - cr.left, y: r.top - cr.top, w: r.width, h: r.height }; };
+    const want = { chip: rel('.cchip'), tag: rel('.ctag'), tick: rel('.tick') };
+    host.remove();
+    const bmp = await createImageBitmap(blob);
+    const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+    const g = orig.ctx.call(cv, '2d'); g.drawImage(bmp, 0, 0);
+    const at = (b, fx, fy) => { const d = g.getImageData(Math.round((${PAD} + b.x + b.w * fx) * ${SCALE}), Math.round((${PAD} + b.y + b.h * fy) * ${SCALE}), 1, 1).data; return (d[0] + d[1] + d[2]) / 3; };
+    const frac = (b, test) => { let n = 0, t = 0; for (let i = 0; i < 20; i++) for (let j = 0; j < 8; j++) { t++; if (test(at(b, (i + .5) / 20, (j + .5) / 8))) n++; } return Math.round(n / t * 100) / 100; };
+    return {
+      chipDark: frac(want.chip, v => v < 60), chipWhite: frac(want.chip, v => v > 200),
+      tagTop: frac({ ...want.tag, x: want.tag.x + 4, w: want.tag.w - 8, h: 1 }, v => v < 140), tagInside: frac({ x: want.tag.x + 3, y: want.tag.y + 3, w: want.tag.w - 6, h: 1 }, v => v > 200),
+      tickLeft: frac({ ...want.tick, w: 1 }, v => v < 60), tickInside: at(want.tick, .5, .5),
+    };
+  };
   cap.read = async () => {
     const clicks = [];
     for (const k of cap.clicks) {
@@ -93,6 +117,7 @@ const PAGE_SIDE = `(() => {
       clicks.push({
         download: k.download, type: k.blob.type, size: bytes.length, png,
         w: png ? dv.getUint32(16) : null, h: png ? dv.getUint32(20) : null,
+        boxes: png ? await boxes(k.blob) : null,
         bandOrange: png ? await bandOrange(k.blob, ${FOOT * SCALE}) : null,
         text: png ? null : new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes),
       });

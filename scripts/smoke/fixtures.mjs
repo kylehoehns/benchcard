@@ -1,6 +1,7 @@
 /* The fixtures the browser passes drive: a lean SEED for the cold-load
    measurement and a RICH record for everything else. Moved out of
    `smoke.mjs` unchanged. */
+import { readFileSync } from 'node:fs';
 import { screenReadyExpr } from './dom.mjs';
 /* The app's own sample cast, for `SAMPLE_TEAM` below -- `app/roster.js` is
    where it lives and the only place it is written down. */
@@ -289,4 +290,33 @@ export function withSecondTeam(record) {
   second.name = 'JV Ravens';
   withTwo.teams.push(second);
   return withTwo;
+}
+
+/* #622: the four reference games the judged card prototype was drawn from
+   (docs/specs/622-card-redesign/game-<name>.json): 3 swap every time (std), all
+   5 every time (lines), 5-2-4-1-3-4-4 (mixed), and mixed with every name five
+   letters long (long5, the app's real worst case: `deriveShortNames` never
+   prints more than five). The solver would not choose these swaps, so each
+   stint's five is set the way a coach sets it by hand, as `live.overrides` on a
+   4 x 8 game subbed every 4 minutes (8 stints). The roster is the JSON's ten
+   kids, with its short names as call names; the day is a one-game day at
+   `cardSize`, on the Card view, minutes strip off (the prototype has none). */
+export const REFERENCE_GAMES = ['std', 'lines', 'mixed', 'long5'];
+export function referenceGame(name, cardSize = 'pocket', ui = {}) {
+  const g = JSON.parse(readFileSync(new URL(`../../docs/specs/622-card-redesign/game-${name}.json`, import.meta.url), 'utf8'));
+  const id = Object.fromEntries(g.players.map((p, i) => [p.short, 'p' + i]));
+  const overrides = Object.fromEntries(g.stints.map((s, i) => [i, s.onFloor.map(n => id[n])]));
+  return {
+    version: 7, onboarded: true, tourSeen: true, activeTeam: 0, view: 'games',
+    ui: { ...UI, gameView: 'card', printScope: 'game', showMinutes: false, copies: 1, cardSize, ...ui },
+    teams: [{
+      id: 't0', name: 'Hawks', activeDay: 0, activeGame: 0, season: { games: [] },
+      players: g.players.map((p, i) => ({ id: 'p' + i, name: p.full, number: p.number ?? '', shortName: p.short, tier: 3 })),
+      days: [{
+        name: '', date: '2099-01-03',
+        games: [{ id: 'g0', label: 'Hawks', tipoff: '09:00', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
+          out: [], strategy: 'balanced', seed: 1234, live: { at: 0, overrides } }],
+      }],
+    }],
+  };
 }

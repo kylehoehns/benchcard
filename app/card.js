@@ -49,13 +49,32 @@ function labelBench(blocked) {
 /* Two shapes, both cut from one letter sheet: the pocket card two-up across,
    the clipboard half-sheet two-up down the page (2 × 5.1in + the .15in
    gutter is 10.35in, comfortably inside the .25in margins). Everything downstream reads
-   these numbers, so the auto-fit and the pagination follow the shape. */
+   these numbers, so the auto-fit and the pagination follow the shape.
+
+   The rest of each entry is the judged prototype's (docs/specs/622-card-redesign/):
+   box sizes (`chip*`), the OUT/STAY caps and floors, and the fixed geometry of a
+   row. `header`/`key` are the measured heights of the header and the key line;
+   `strip` is what a two-line (pocket) or one-line (half) minutes strip adds. */
 const CARD_SIZES = {
-  // oppPx/whenPx must match `.card-hd .opp` / `.card-hd .when` in index.html
-  // (and their `.card.half` overrides): the header elision is measured from
-  // them, so a mismatch elides at the wrong width.
-  pocket: { w: 3.45, h: 5.0, pad: 0.11, header: 26, footer: 18, minName: 16, maxName: 26, oppPx: 11, whenPx: 8, markPx: 7, cols: 1 },
-  half:   { w: 8.0, h: 5.1, pad: 0.2, header: 34, footer: 22, minName: 20, maxName: 44, oppPx: 15, whenPx: 11, markPx: 9, cols: 2 },
+  // oppPx/whenPx/markPx must match `.card-hd .opp` / `.when` / `.card-mark`
+  // in card.css (and their `.card.half` overrides): the header elision is
+  // measured from them, so a mismatch elides at the wrong width.
+  pocket: {
+    w: 3.45, h: 5.0, padX: 9, padTop: 7, padBot: 5, header: 27, key: 15, strip: 20, minRow: 44,
+    oppPx: 15, whenPx: 11, markPx: 8.5,
+    tick: 13, tCol: 38, tH: 29, colGap: 6, rowPad: 5, midPadR: 0,
+    chip: 19, chipMin: 13, chipPadY: 3, padFew: 5, padBig: 4, gapFew: 6, gapBig: 5, chipsPadR: 6, rowGap: 3,
+    o: 13, oMin: 11, oCap: 0.8, s: 12, sMin: 10.5, sCap: 0.74, st: 16, stMin: 12, minO: 11, minS: 10.5, minB: 10.5,
+    ebH: 9.5, ebMb: 2, tagPx: 9, tagH: 14.5, tagMin: 31, tagGap: 4, subTop: 4, stackGap: 0, txtLs: -0.01, ws: 0.15, stripPx: 7, stripLh: 8.5,
+  },
+  half: {
+    w: 8.0, h: 5.1, padX: 16, padTop: 10, padBot: 6, header: 37, key: 19, strip: 14, minRow: 50,
+    oppPx: 24, whenPx: 16, markPx: 11,
+    tick: 20, tCol: 104, tH: 26, colGap: 12, rowPad: 6, midPadR: 16, rwLo: 205, rwHi: 230,
+    chip: 28, chipMin: 16, chipPadY: 4, padFew: 9, padBig: 7, gapFew: 10, gapBig: 7, chipsPadR: 0, rowGap: 4,
+    o: 17, oMin: 14, oCap: 0.72, s: 15.5, sMin: 13.5, sCap: 0.66, st: 21, stMin: 15, minO: 14, minS: 13, minB: 14,
+    ebH: 13, ebMb: 3, tagPx: 12, tagH: 19, tagMin: 52, tagGap: 8, subTop: 0, stackGap: 3, txtLs: 0, ws: 0.3, stripPx: 9, stripLh: 11,
+  },
 };
 /* Nothing on the card said where it came from, and coaches hand these to
    parents. Bare domain, no wordmark, no toggle: it is a fact, not a message.
@@ -64,42 +83,25 @@ const CARD_SIZES = {
    below. Insert it without doing that and the CSS tail ellipsis takes the job
    back off `fitHeadline`, which is the bug `fitHeadline` exists to fix. */
 const MARK = 'benchcard.app';
+const KEY_LINE = 'BLACK BOX = send in · tick the box as you sub';
 const cardSize = () => CARD_SIZES[state.ui.cardSize] || CARD_SIZES.pocket;
-const SAFETY_PX = 10, CHG_RATIO = 0.70;
-const contentPx = () => { const c = cardSize(); return (c.w - 2 * c.pad) * 96; };
-const stintPx = px => px * 1.12 + px * CHG_RATIO * 1.3;
-const bodyHeightPx = () => {
-  const c = cardSize();
-  return (c.h - 2 * c.pad) * 96 - c.header - SAFETY_PX - (state.ui.showMinutes ? c.footer : 0);
-};
-
-/* The half-sheet is height-bound and width-unbound: at 8in wide its width-fit
-   ceiling is 44.96px against a `maxName` of 44, so the width does nothing and
-   the type is only large because the auto-fit has nowhere else to spend the
-   horizontal space. The consequence was absurd -- the big sheet held 9 stints
-   against the pocket card's 12, and told the coach to sub less often.
-
-   A second column of stints spends that width. But NOT unconditionally: the
-   half-sheet exists to print bigger names, and two columns on a card that
-   already fits would shrink an 8-stint sheet from 23.7px to 21.95px, which is
-   the "merely wider" card the shape was invented to avoid. So the width is
-   only spent when the alternative is a second card. Up to one column's worth
-   the half-sheet is exactly what it always was; past it the second column buys
-   `maxPer` 9 -> 18, at type still a third larger than the pocket card's. The
-   `minName` floor of 20 is untouched -- it never binds below twenty stints. */
-const COL_GUTTER = 0.18;   // inches; must match `.stintcols` gap in card.css
-const columnPx = cols => (contentPx() - (cols - 1) * COL_GUTTER * 96) / cols;
-const perColumn = () => Math.max(1, Math.floor(bodyHeightPx() / stintPx(cardSize().minName)));
-const columnsFor = n => Math.max(1, Math.min(cardSize().cols, Math.ceil(n / perColumn())));
+const contentPx = () => { const c = cardSize(); return c.w * 96 - 2 * c.padX; };
+const listPx = (c, strip) => c.h * 96 - c.padTop - c.padBot - c.header - c.key - strip;
+/* A card holds the rows that fit at the minimum row height; the fit below then
+   spends whatever is left on bigger boxes. The minutes strip is reserved here
+   as a constant so RICH (8 stints, 11 players) stays on one card with it on. */
+const rowsPerCard = () => { const c = cardSize(); return Math.max(1, Math.floor(listPx(c, state.ui.showMinutes ? c.strip : 0) / c.minRow)); };
 
 // Must match .card's font-family exactly: the auto-fit sizes the card from
 // these measurements, so a mismatch silently mis-sizes the print output.
 export const CARD_FONT = `'InterVar', "Helvetica Neue", Arial, sans-serif`;
-function widthAt(text, px) {
-  ctx2d.font = `800 ${px}px ${CARD_FONT}`;
+function widthAt(text, px, weight = 800) {
+  ctx2d.font = `${weight} ${px}px ${CARD_FONT}`;
   return ctx2d.measureText(text).width;
 }
-const rowWidth = (names, px) => names.reduce((a, n) => a + widthAt(n, px), 0) + (names.length - 1) * 0.42 * px;
+/* Width of a run as the card lays it out: the glyphs, plus the letter-spacing
+   after every character and the word-spacing on every space. */
+const textW = (t, px, weight, ls = 0, ws = 0) => widthAt(t, px, weight) + t.length * ls * px + (t.split(' ').length - 1) * ws * px;
 
 /* `.card-hd .opp` clips with a tail ellipsis, which eats exactly the words that
    tell two games apart -- three tournament cards all printed "VS RIVERSIDE
@@ -110,21 +112,22 @@ const rowWidth = (names, px) => names.reduce((a, n) => a + widthAt(n, px), 0) + 
    header height are untouched, and the CSS ellipsis stays as the backstop. */
 const HEAD_LS = 0.02;  // .card-hd .opp letter-spacing, in em
 const HEAD_SLACK = 2;  // canvas metrics land a subpixel under the laid-out box
-const headWidth = (t, px) => widthAt(t, px) + t.length * HEAD_LS * px + HEAD_SLACK;
+const headWidth = (t, px) => widthAt(t, px, 900) + t.length * HEAD_LS * px + HEAD_SLACK;
 function fitHeadline(text, px, avail) {
   if (avail <= 0 || headWidth(text, px) <= avail) return text;
   let n = text.length - 1;
   while (n > 6 && headWidth(elideMiddle(text, n), px) > avail) n--;
   return elideMiddle(text, n);
 }
-function fitSize(rows, avail, lo, hi) {
-  const at100 = Math.max(...rows.map(r => rowWidth(r, 100)));
-  return Math.max(lo, Math.min(hi, 100 * avail / at100));
-}
+
+/* A row with no sub has nothing to say: it is not printed (the first row, the
+   starting five, always is). Dropped before paginating, so the period rule
+   lands on the first row that is. */
+const printable = stints => stints.filter(s => s.index === 0 || s.in.length > 0);
 
 // Past a legibility floor the answer is a second card, not smaller type.
 function paginate(stints) {
-  const maxPer = perColumn() * cardSize().cols;
+  const maxPer = rowsPerCard();
   if (stints.length <= maxPer) return [stints];
   const periods = [...new Set(stints.map(s => s.period))];
   const perCard = Math.ceil(periods.length / Math.ceil(stints.length / maxPer));
@@ -137,6 +140,147 @@ function paginate(stints) {
   const flat = [];
   for (let i = 0; i < stints.length; i += maxPer) flat.push(stints.slice(i, i + maxPer));
   return flat;
+}
+
+/* The fit, from canvas widths. A port of the judged prototype's decisions
+   (docs/specs/622-card-redesign/prototype.mjs) with `measureText` standing in
+   for the DOM, because `#sheet` can be hidden and the previews are clones that
+   are never fitted. Each row is `{ first, newq, ins, outs, outAll, stays, bench,
+   lineup }` of printed names. It returns what to apply: box size and wrap per
+   row, OUT/STAY sizes, whether STAY is dropped, the half-sheet's right column,
+   the row padding and the names-area zoom. */
+const SLACK = 0.5;
+const half$ = (a, b) => Math.floor(a * b * 2) / 2;
+function fitCard(R, K, isHalf, stripH) {
+  const listH = listPx(K, stripH);
+  const ws = r => (r.outAll ? 0 : K.ws);
+  const outStr = r => (r.outAll ? 'ALL 5' : r.outs.join(' '));
+  const tagW = t => (isHalf ? K.tagMin : Math.max(K.tagMin, textW(t, K.tagPx, 900, 0.04) + 8));
+  const sp = (px, wt) => textW(' ', px, wt, K.txtLs, K.ws);
+  const linesOf = (names, px, wt, avail) => {
+    let lines = 1, cur = 0;
+    for (const n of names) {
+      const w = textW(n, px, wt, K.txtLs, K.ws);
+      if (cur && cur + sp(px, wt) + w > avail) { lines++; cur = w; } else cur += (cur ? sp(px, wt) : 0) + w;
+    }
+    return lines;
+  };
+
+  let rw = 0;
+  if (isHalf) {
+    let w = 0;
+    for (const r of R) if (!r.first) {
+      w = Math.max(w, 60 + textW(outStr(r), K.o, 800, 0, ws(r)));
+      if (r.stays.length) w = Math.max(w, 60 + textW(r.stays.join(' '), K.s, 600, 0, K.ws));
+    }
+    rw = Math.min(K.rwHi, Math.max(K.rwLo, Math.ceil(w) + 4));
+  }
+  const avail = contentPx() - K.tick - K.tCol - (isHalf ? 3 : 2) * K.colGap - K.midPadR - rw;
+  const chipsW = (r, p) => {
+    const big = r.ins.length >= 4;
+    return r.ins.reduce((a, n) => a + textW(n, p, 800, big ? 0 : 0.02) + 2 * (big ? K.padBig : K.padFew), 0)
+      + (r.ins.length - 1) * (big ? K.gapBig : K.gapFew) + K.chipsPadR;
+  };
+
+  const layout = dec => {
+    const rows = R.map(r => ({ r }));
+    const chipRows = rows.filter(x => !x.r.first);
+    for (const x of chipRows) {
+      let p = K.chip - dec;
+      while (chipsW(x.r, p) > avail + SLACK && p > K.chipMin) p -= 0.5;
+      x.fit = chipsW(x.r, p) > avail + SLACK ? null : p;
+    }
+    const tier = big => {
+      const mine = chipRows.filter(x => (x.r.ins.length >= 4) === big);
+      if (!mine.length) return null;
+      const ok = mine.map(x => x.fit).filter(Boolean);
+      return ok.length ? Math.min(...ok) : K.chipMin;
+    };
+    let few = tier(false);
+    const big = tier(true);
+    if (few && big) few = Math.min(few, Math.floor(big / 0.85 * 2) / 2);
+    for (const x of chipRows) {
+      x.sz = x.r.ins.length >= 4 ? big : few;
+      x.wrap = chipsW(x.r, x.sz) > avail + SLACK;
+    }
+    const caps = () => {
+      for (const x of chipRows) {
+        x.o = Math.max(K.oMin, Math.min(K.o, half$(x.sz, K.oCap)));
+        x.s = Math.max(K.sMin, Math.min(K.s, half$(x.sz, K.sCap)));
+      }
+    };
+    caps();
+    // pocket: OUT and STAY share a line, shrunk a little if need be; if any row
+    // still cannot, STAY is dropped from every row (OUT is never dropped)
+    const grpW = (label, str, px, wt, wsp) => tagW(label) + K.tagGap + textW(str, px, wt, K.txtLs, wsp);
+    let nostay = false;
+    if (!isHalf) {
+      const both = x => grpW('OUT', outStr(x.r), x.o, 800, ws(x.r)) + 8 + grpW('STAY', x.r.stays.join(' '), x.s, 600, K.ws);
+      let stuck = false;
+      for (const x of chipRows.filter(y => y.r.stays.length)) {
+        while (both(x) > avail && (x.o > K.oMin || x.s > K.sMin)) {
+          if (x.o > K.oMin) x.o -= 0.5;
+          if (x.s > K.sMin) x.s -= 0.5;
+        }
+        if (both(x) > avail) stuck = true;
+      }
+      if (stuck) { nostay = true; caps(); }
+    }
+    // text lines: shrink a little, then wrap as a unit
+    const settle = (label, names, wt, wsp, fs, min) => {
+      const str = names.join(' ');
+      const w = f => (isHalf ? 60 : tagW(label) + K.tagGap) + textW(str, f, wt, isHalf ? 0 : K.txtLs, wsp);
+      const lim = isHalf ? rw : avail;
+      let f = fs;
+      while (w(f) > lim + SLACK && f > min) f -= 0.5;
+      if (w(f) <= lim + SLACK) return { fs: f, lines: 1, wrap: false };
+      const col = lim - (isHalf ? 60 : tagW(label) + K.tagGap);
+      return { fs: f, lines: linesOf(names, f, wt, col), wrap: true };
+    };
+    for (const x of rows) {
+      const r = x.r;
+      x.grps = [];
+      if (r.first) {
+        const f = { fs: K.st, wrap: false, lines: 1 };
+        const str = r.lineup.join(' ');
+        const w = p => textW(str, p, 800, K.txtLs, K.ws);
+        while (w(f.fs) > avail + SLACK && f.fs > K.stMin) f.fs -= 0.5;
+        if (w(f.fs) > avail + SLACK) { f.wrap = true; f.lines = linesOf(r.lineup, f.fs, 800, avail); }
+        x.st = f;
+        x.grps.push({ kind: 'bench', label: 'BENCH', ...settle('BENCH', r.bench, 600, K.ws, K.s, K.minB) });
+        continue;
+      }
+      x.grps.push({ kind: 'out', label: 'OUT', ...settle('OUT', r.outAll ? ['ALL 5'] : r.outs, 800, ws(r), x.o, K.minO) });
+      if (r.stays.length && !nostay) x.grps.push({ kind: 'stay', label: 'STAY', ...settle('STAY', r.stays, 600, K.ws, x.s, K.minS) });
+    }
+    // heights, before padding and zoom
+    for (const x of rows) {
+      const gh = g => Math.max(K.tagH, g.lines * g.fs * 1.1);
+      const subs = x.grps.map(gh);
+      x.hSub = isHalf ? subs.reduce((a, b) => a + b, 0) + (subs.length - 1) * K.stackGap : K.subTop + Math.max(...subs);
+      if (x.r.first) x.hMid = K.ebH + K.ebMb + x.st.lines * x.st.fs * 1.05;
+      else {
+        const lh = x.sz + 2 * K.chipPadY;
+        x.hMid = x.wrap ? 2 * lh + 2 * K.rowGap : lh;
+      }
+    }
+    return { rows, nostay };
+  };
+  const heightOf = (rows, pad, z) => rows.reduce((sum, x, i) => {
+    const names = (isHalf ? Math.max(x.hMid, x.hSub) : x.hMid + x.hSub) * z;
+    return sum + Math.max(K.minRow, 2 * pad + Math.max(K.tick, K.tH, names) + (i === 0 ? 0 : x.r.newq ? 3 : 1));
+  }, 0);
+  const tall = (rows, pad, z) => heightOf(rows, pad, z) > listH + SLACK;
+
+  // too tall: shrink the boxes a step at a time before touching the padding;
+  // never squash rows into each other
+  let dec = 0, out = layout(0);
+  while (tall(out.rows, K.rowPad, 1) && dec < 5) { dec += 0.5; out = layout(dec); }
+  let pad = K.rowPad, z = 1;
+  if (tall(out.rows, pad, z)) pad = 3;
+  // still too tall: scale only the names area, never the time column or the tick
+  while (tall(out.rows, pad, z) && z > 0.8) z = Math.round((z - 0.01) * 100) / 100;
+  return { ...out, rw, pad, z };
 }
 
 function labelsFor(plan) {
@@ -160,7 +304,8 @@ function labelsFor(plan) {
 function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minutes) {
   const sh = labelsFor(plan);
   const size = cardSize();
-  const card = el('div', 'card' + (state.ui.cardSize === 'half' ? ' half' : ''));
+  const isHalf = state.ui.cardSize === 'half';
+  const card = el('div', 'card' + (isHalf ? ' half' : ''));
 
   const per = [...new Set(rows.map(r => r.period))];
   /* A period is named as its stint names it: regulation "Q<n>", overtime by
@@ -184,49 +329,79 @@ function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minu
   hd.append(el('span', 'when', whenTxt));
   card.append(hd);
 
-  /* One column until one column stops fitting -- see `columnsFor`. Every
-     measurement below is per column, so a one-column card measures exactly
-     what it always did. */
-  const cols = columnsFor(rows.length);
-  const colPx = columnPx(cols);
-  const perCol = Math.ceil(rows.length / cols);
-  const widthFit = fitSize(rows.map(r => r.onFloor.map(i => sh[i])), colPx, size.minName, size.maxName);
-  const heightFit = bodyHeightPx() / (perCol * stintPx(1));
-  const fiveSize = Math.max(size.minName, Math.min(widthFit, heightFit, size.maxName));
-  const chgRows = rows.map(r => [`Q1 00:00   ` + (r.out.length ? '▼' + r.out.map(i => sh[i]).join(' ') : 'NO SUBS')]);
-  const chgSize = Math.min(fiveSize * CHG_RATIO, fitSize(chgRows, colPx, 8, size.maxName * 0.65));
-
-  const bodies = Array.from({ length: cols }, () => el('div', 'stints'));
-  const first = rows[0].index;
-  for (const [ri, r] of rows.entries()) {
-    const s = el('div', 'stint' + (r.index > first && plan.stints[r.index - 1].period !== r.period ? ' newper' : ''));
-    const top = el('div', 'chg');
-    top.style.fontSize = chgSize + 'px';
-    const newPeriod = r.index === first || plan.stints[r.index - 1].period !== r.period;
-    top.append(el('span', 'clk', (newPeriod ? `${r.periodName || 'Q' + r.period} ` : '') + fmtClock(r.startSec)));
-    top.append(r.out.length
-      ? el('span', 'io', '▼' + r.out.map(i => sh[i]).join(' '))
-      : el('span', 'io start', r.index === first ? 'START' : 'NO SUBS'));
-    s.append(top);
-
-    const five = el('div', 'five');
-    five.style.fontSize = fiveSize + 'px';
-    for (const id of r.onFloor) five.append(el('span', 'nm' + (r.in.includes(id) ? ' fresh' : ''), sh[id]));
-    s.append(five);
-    bodies[Math.floor(ri / perCol)].append(s);
+  const ids = Object.keys(plan.minutes);
+  const names = list => list.map(i => sh[i]);
+  const specs = rows.map((r, i) => ({
+    first: r.index === 0,
+    newq: i > 0 && rows[i - 1].period !== r.period,
+    ins: names(r.in), outs: names(r.out), outAll: r.out.length === 5,
+    stays: names(r.onFloor.filter(id => !r.in.includes(id))),
+    bench: names(ids.filter(id => !r.onFloor.includes(id))),
+    lineup: names(r.onFloor),
+  }));
+  const minsText = state.ui.showMinutes
+    ? Object.entries(minutes).sort((a, b) => b[1] - a[1]).map(([id, m]) => `${sh[id]} ${fmtMinutes(m)}`).join('   ') : '';
+  let stripH = 0;
+  if (minsText) {
+    // the strip wraps like text: reserve the lines it will really take
+    const words = minsText.split(/\s{3}/);
+    let lines = 1, cur = 0;
+    for (const w of words) {
+      const ww = textW(w, size.stripPx, 600) + 3;
+      if (cur && cur + ww > contentPx()) { lines++; cur = ww; } else cur += ww;
+    }
+    stripH = Math.max(size.strip, lines * size.stripLh + 3);
   }
-  if (cols > 1) {
-    const wrap = el('div', 'stintcols');
-    for (const b of bodies) wrap.append(b);
-    card.append(wrap);
-  } else card.append(bodies[0]);
+  const fit = fitCard(specs, size, isHalf, stripH);
 
-  if (state.ui.showMinutes) {
-    const ft = el('div', 'card-ft');
-    ft.textContent = Object.entries(minutes).sort((a, b) => b[1] - a[1])
-      .map(([id, m]) => `${sh[id]} ${fmtMinutes(m)}`).join('   ');
-    card.append(ft);
+  const list = el('div', 'list');
+  if (fit.nostay) card.classList.add('nostay');
+  if (isHalf) card.style.setProperty('--rw', fit.rw + 'px');
+  const grpEl = (g, spec) => {
+    const e = el('div', 'grp ' + (g.kind === 'stay' ? 'g-stay' : g.kind === 'out' ? 'g-out' : 'g-bench') + (g.wrap ? ' cwrap' : ''));
+    e.append(el('span', 'ctag', g.label));
+    const t = el('span', g.kind === 'out' ? 'o' : 's', g.kind === 'bench' ? spec.bench.join(' ')
+      : g.kind === 'stay' ? spec.stays.join(' ') : spec.outAll ? 'ALL 5' : spec.outs.join(' '));
+    if (g.kind === 'out' && spec.outAll) t.classList.add('all');
+    t.style.fontSize = g.fs + 'px';
+    e.append(t);
+    return e;
+  };
+  for (const [i, x] of fit.rows.entries()) {
+    const r = rows[i], spec = specs[i];
+    const row = el('div', 'crow' + (spec.newq ? ' newq' : ''));
+    if (fit.pad !== size.rowPad) row.style.paddingBlock = fit.pad + 'px';
+    row.append(el('div', 'tick'));
+    const t = el('div', 'ctime');
+    t.append(el('span', 'cq', r.periodName || 'Q' + r.period), el('span', 'cclk', fmtClock(r.startSec)));
+    row.append(t);
+    const mid = el('div', isHalf ? 'mid' : 'b');
+    if (spec.first) {
+      mid.append(el('div', 'eb', 'STARTING FIVE'));
+      const st = el('div', 'lineup' + (x.st.wrap ? ' cwrap' : ''), spec.lineup.join(' '));
+      st.style.fontSize = x.st.fs + 'px';
+      mid.append(st);
+    } else {
+      const chips = el('div', 'cchips ' + (spec.ins.length >= 4 ? 'big' : 'few') + (x.wrap ? ' cwrap' : ''));
+      chips.style.fontSize = x.sz + 'px';
+      spec.ins.forEach((n, k) => {
+        chips.append(el('span', 'cchip', n));
+        if (x.wrap && k === Math.ceil(spec.ins.length / 2) - 1) chips.append(el('span', 'br'));
+      });
+      mid.append(chips);
+    }
+    const sub = el('div', 'sub');
+    for (const g of x.grps) sub.append(grpEl(g, spec));
+    if (isHalf) { row.append(mid, sub); if (fit.z < 1) mid.style.zoom = sub.style.zoom = fit.z; }
+    else { mid.append(sub); row.append(mid); if (fit.z < 1) mid.style.zoom = fit.z; }
+    list.append(row);
   }
+  card.append(list);
+
+  const ft = el('div', 'card-ft');
+  ft.append(el('div', 'key', KEY_LINE));
+  if (minsText) ft.append(el('div', 'mins', minsText));
+  card.append(ft);
   return card;
 }
 
@@ -376,7 +551,7 @@ export function renderCards() {
          off `p.minutes` so the ids and their order are exactly what the
          unswapped card prints. */
       const mins = effectiveMinutes(g, p);
-      const pages = paginate(stints);
+      const pages = paginate(printable(stints));
       const many = pages.length > 1 || which.length > 1;
       const title = many ? gameLabel(g, i).toUpperCase()
         : g.label ? 'VS ' + g.label.toUpperCase()

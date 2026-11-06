@@ -1,0 +1,248 @@
+{
+ "title": "VS HAWKS",
+ "when": "Sat 9:00 AM",
+ "format": "mixed swaps: 1 to 5 kids change at each sub",
+ "clock_note": "clock is seconds LEFT in the quarter, counting down: 480 = 8:00 (start of quarter), 240 = 4:00",
+ "players": [
+  {
+   "short": "MASON",
+   "full": "Maya Webb",
+   "number": "12"
+  },
+  {
+   "short": "ELIAS",
+   "full": "Eli Tran",
+   "number": "4"
+  },
+  {
+   "short": "DEVON",
+   "full": "Devon Ellis",
+   "number": "7"
+  },
+  {
+   "short": "NAOMI",
+   "full": "Nia Bell",
+   "number": "3"
+  },
+  {
+   "short": "CALEB",
+   "full": "Caleb Ruiz",
+   "number": "15"
+  },
+  {
+   "short": "HAZEL",
+   "full": "Harper Pratt",
+   "number": "9"
+  },
+  {
+   "short": "JONAH",
+   "full": "Jonah Reed",
+   "number": "5"
+  },
+  {
+   "short": "RUBEN",
+   "full": "Ruby Marsh",
+   "number": "11"
+  },
+  {
+   "short": "BRODY",
+   "full": "Brody",
+   "number": null
+  },
+  {
+   "short": "KADEN",
+   "full": "Kade",
+   "number": null
+  }
+ ],
+ "stints": [
+  {
+   "period": 1,
+   "clock": 480,
+   "onFloor": [
+    "JONAH",
+    "KADEN",
+    "MASON",
+    "NAOMI",
+    "RUBEN"
+   ],
+   "in": [],
+   "out": []
+  },
+  {
+   "period": 1,
+   "clock": 240,
+   "onFloor": [
+    "DEVON",
+    "ELIAS",
+    "HAZEL",
+    "BRODY",
+    "CALEB"
+   ],
+   "in": [
+    "DEVON",
+    "ELIAS",
+    "HAZEL",
+    "BRODY",
+    "CALEB"
+   ],
+   "out": [
+    "JONAH",
+    "KADEN",
+    "MASON",
+    "NAOMI",
+    "RUBEN"
+   ]
+  },
+  {
+   "period": 2,
+   "clock": 480,
+   "onFloor": [
+    "DEVON",
+    "ELIAS",
+    "HAZEL",
+    "JONAH",
+    "KADEN"
+   ],
+   "in": [
+    "JONAH",
+    "KADEN"
+   ],
+   "out": [
+    "BRODY",
+    "CALEB"
+   ]
+  },
+  {
+   "period": 2,
+   "clock": 240,
+   "onFloor": [
+    "MASON",
+    "NAOMI",
+    "RUBEN",
+    "BRODY",
+    "KADEN"
+   ],
+   "in": [
+    "MASON",
+    "NAOMI",
+    "RUBEN",
+    "BRODY"
+   ],
+   "out": [
+    "DEVON",
+    "ELIAS",
+    "HAZEL",
+    "JONAH"
+   ]
+  },
+  {
+   "period": 3,
+   "clock": 480,
+   "onFloor": [
+    "MASON",
+    "NAOMI",
+    "RUBEN",
+    "BRODY",
+    "CALEB"
+   ],
+   "in": [
+    "CALEB"
+   ],
+   "out": [
+    "KADEN"
+   ]
+  },
+  {
+   "period": 3,
+   "clock": 240,
+   "onFloor": [
+    "BRODY",
+    "CALEB",
+    "DEVON",
+    "ELIAS",
+    "HAZEL"
+   ],
+   "in": [
+    "DEVON",
+    "ELIAS",
+    "HAZEL"
+   ],
+   "out": [
+    "MASON",
+    "NAOMI",
+    "RUBEN"
+   ]
+  },
+  {
+   "period": 4,
+   "clock": 480,
+   "onFloor": [
+    "JONAH",
+    "KADEN",
+    "MASON",
+    "NAOMI",
+    "CALEB"
+   ],
+   "in": [
+    "JONAH",
+    "KADEN",
+    "MASON",
+    "NAOMI"
+   ],
+   "out": [
+    "BRODY",
+    "DEVON",
+    "ELIAS",
+    "HAZEL"
+   ]
+  },
+  {
+   "period": 4,
+   "clock": 240,
+   "onFloor": [
+    "JONAH",
+    "RUBEN",
+    "DEVON",
+    "ELIAS",
+    "HAZEL"
+   ],
+   "in": [
+    "RUBEN",
+    "DEVON",
+    "ELIAS",
+    "HAZEL"
+   ],
+   "out": [
+    "KADEN",
+    "MASON",
+    "NAOMI",
+    "CALEB"
+   ]
+  }
+ ],
+ "minutes": {
+  "MAYA": 16,
+  "ELI": 16,
+  "DEVO": 16,
+  "NIA": 16,
+  "CALE": 16,
+  "HARP": 16,
+  "JONA": 16,
+  "RUBY": 16,
+  "BROD": 16,
+  "KADE": 16
+ },
+ "_minutes": {
+  "JONA": 16,
+  "KADE": 16,
+  "MAYA": 16,
+  "NIA": 16,
+  "RUBY": 16,
+  "DEVO": 16,
+  "ELI": 16,
+  "HARP": 16,
+  "BROD": 16,
+  "CALE": 16
+ }
+}

@@ -61,7 +61,7 @@ const FOLD_WIDTH = 320;
 const FOLD_HEIGHT = 568;
 const FOLD_PROBE = `(() => {
   window.scrollTo(0, 0);
-  const e = document.querySelector('.card .stint');
+  const e = document.querySelector('.card .crow');
   return JSON.stringify({ found: !!e, scrollY: window.scrollY,
     bottom: e ? Math.round(e.getBoundingClientRect().bottom * 10) / 10 : null });
 })()`;
@@ -213,12 +213,12 @@ export async function staticPass(c, source, origin, rec) {
     }
   }
 
-  /* #433 item 3, the fold: the chart's first stint is on screen on a small
+  /* #433 item 3, the fold: the chart's first row is on screen on a small
      phone before any scrolling, because the Try button now sits right under the
      chart and a coach who cannot see the card has no reason to press it. 320x568
      (an iPhone SE 1st gen), the 16px root text, light, scrolled to the top: the
-     bottom of the first `.card .stint` is at or above FOLD_PX. Every chart page,
-     read from CHARTS. A page with no `.card .stint` FAILS: nothing was measured
+     bottom of the first `.card .crow` is at or above FOLD_PX. Every chart page,
+     read from CHARTS. A page with no `.card .crow` FAILS: nothing was measured
      (rule 2a). Today the size pages sit at 555-557 and the halves page at 525, so
      this is a ceiling on growth, not a number to widen. */
   for (const chart of CHARTS) {
@@ -227,9 +227,9 @@ export async function staticPass(c, source, origin, rec) {
       await land(c, origin, { page: `/${chart.slug}`, record: 'kept', width: FOLD_WIDTH, height: FOLD_HEIGHT,
         media: [{ name: 'prefers-color-scheme', value: 'light' }], ready: 'true' });
       const f = JSON.parse(await evalIn(c, FOLD_PROBE));
-      if (!rec.check(f.found, `${where}: no .card .stint on the page, so nothing was measured`)) continue;
+      if (!rec.check(f.found, `${where}: no .card .crow on the page, so nothing was measured`)) continue;
       rec.check(f.scrollY === 0, `${where}: page is scrolled to ${f.scrollY}px, not the top`);
-      rec.check(f.bottom <= FOLD_HEIGHT, `${where}: the first stint's bottom is at ${f.bottom}px, want at most ${FOLD_HEIGHT}px`);
+      rec.check(f.bottom <= FOLD_HEIGHT, `${where}: the first row's bottom is at ${f.bottom}px, want at most ${FOLD_HEIGHT}px`);
     } catch (e) {
       rec.fail(`${where}: ${firstLine(e)}`);
     }
@@ -238,7 +238,7 @@ export async function staticPass(c, source, origin, rec) {
   rec.ok(`${visited.length} pages × ${STATIC_WIDTHS.join('/')}px + ${LARGE_TEXT_WIDTHS.join('/')}px@${LARGE_TEXT_PX}px text, `
     + `${images} image(s) with alt, no overflow`
     + (allowed ? ` (${allowed} recorded residue)` : '')
-    + `, ids and lang clean, ${TOUCH_CHECK}, first stint above the ${FOLD_HEIGHT}px fold on ${CHARTS.length} charts`);
+    + `, ids and lang clean, ${TOUCH_CHECK}, first row above the ${FOLD_HEIGHT}px fold on ${CHARTS.length} charts`);
 }
 
 /* Not `A11Y`: that set carries the dialog check, which has no dialogs to find

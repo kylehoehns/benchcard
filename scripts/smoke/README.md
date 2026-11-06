@@ -59,6 +59,7 @@ not counted: only the `.js` files `app/` serves are.
 | `document lang, title, tab order` | `scripts/smoke-checks.js` | SEED |
 | `first contentful paint (informational)` | `scripts/smoke-checks.js` | SEED |
 | `card font loads before the card is fitted` | `scripts/smoke/card-font.mjs` | RICH |
+| `card layout: four reference games, both sizes, 16px and 32px` | `scripts/smoke/card-layout.mjs` | RICH |
 | `rich fixture is live` | `scripts/smoke/rich-fixture.mjs` | RICH |
 | `text draws in DejaVu Sans` | `scripts/smoke/font-draws.mjs` | RICH |
 | `season: minutes so far, filed games, the day chart` | `scripts/smoke/season.mjs` | RICH |

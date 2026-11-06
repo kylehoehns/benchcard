@@ -868,7 +868,7 @@ export function showWelcomeDemo() {
      drawn from exactly that. `scripts/og.mjs --welcard` takes it through the
      app's own `?try=N` path, so the cast cannot drift from this file's. */
   demoFigure('#welPanePaper', './wel-card.png',
-    'A printed Benchcard rotation card for the sample team: the clock down the left, who is coming off after a triangle, and the five players on the floor underneath in bold capitals.',
+    'A printed Benchcard rotation card for the sample team: a tick box and the clock down the left, the players going in as black boxes with white names, and OUT and STAY lists under them.',
     './wel-card.png 1x, ./wel-card@2x.png 2x');
   benchFigure('#welPaneScreen');
   showStage('plan');   // draws the plan rows and caption (renderDemo)
