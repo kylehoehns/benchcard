@@ -456,9 +456,9 @@ test('the sitemap lists the 6-player page before the 7 and the halves page after
   const at = loc => entries.findIndex(e => e[0] === `https://benchcard.app/${loc}`);
   assert.equal(at(slug(6)) + 1, at(slug(7)));
   assert.equal(at('basketball-rotation-chart-two-halves'), at(slug(12)) + 1);
-  // every chart page moved with the #608 line-break and footer-email fixes
-  assert.deepEqual(entries[at(slug(6))].slice(1), ['2026-11-04', '0.7'], slug(6));
-  assert.deepEqual(entries[at('basketball-rotation-chart-two-halves')].slice(1), ['2026-11-04', '0.7']);
+  // every chart page moved with the #622 card redesign
+  assert.deepEqual(entries[at(slug(6))].slice(1), ['2026-11-06', '0.7'], slug(6));
+  assert.deepEqual(entries[at('basketball-rotation-chart-two-halves')].slice(1), ['2026-11-06', '0.7']);
 });
 
 /* ---------------- 6. try first, chart above the fold, Print, Hardwood (#433) ---------------- */
