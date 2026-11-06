@@ -3,8 +3,10 @@
 # Usage: ci-local.sh [worktree]   (default: current directory)
 #
 # - Refuses unless the branch already contains origin/main (the up-to-date rule).
-# - Runs the same parts CI runs, two smoke parts at a time: smoke suite (this is `node --test`,
-#   so it also stands in for the "node 24" job), smoke 1/3 2/3 3/3, evals,
+# - Runs the same parts CI runs, two Chrome-heavy parts at a time: smoke suite
+#   (the unit files with coverage), scenarios (the Coach scenario files, which
+#   stand in for the "node 24" job; CI deals them to three runners, here they
+#   run in one process), smoke 1/3 2/3 3/3, evals,
 #   redirect-check, and the three history checks (What's new since #529) against origin/main.
 #   Then merges the smoke parts the way the `smoke` job does.
 # - The slot pool is one fixed path, /tmp/benchcard-ci-slots, so every lane on the
@@ -59,6 +61,7 @@ run() { local name=$1; shift; ( local t=$SECONDS; "$@" > "$OUT/$name.log" 2>&1; 
 # a 10-core machine at load 15-22 and page loads timed out in tests no diff
 # touched (2026-11-01: one lane needed five runs on the same sha).
 run smoke-suite node scripts/smoke.mjs --shard suite --out "$OUT/parts/suite.json"
+run scenarios   node scripts/scenarios.mjs
 run smoke-1     node scripts/smoke.mjs --shard 1/3 --out "$OUT/parts/1-3.json"
 run evals       node scripts/evals.mjs
 run history     zsh -c 'node scripts/check-about-date.mjs origin/main; a=$?; node scripts/check-sitemap-lastmod.mjs origin/main; b=$?; node scripts/check-whats-new.mjs origin/main; c=$?; exit $((a||b||c))'
@@ -72,7 +75,7 @@ run smoke-merge node scripts/smoke.mjs --merge "$OUT/parts"
 wait
 
 FAIL=0
-for n in smoke-suite smoke-1 smoke-2 smoke-3 smoke-merge evals redirects history; do
+for n in smoke-suite scenarios smoke-1 smoke-2 smoke-3 smoke-merge evals redirects history; do
   read rc secs < "$OUT/$n.rc"
   if [ "$rc" = 0 ]; then s=pass; else s=FAIL; FAIL=1; fi
   printf "  %-12s %-4s %4ss\n" $n $s $secs

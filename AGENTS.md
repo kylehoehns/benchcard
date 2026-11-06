@@ -250,8 +250,9 @@ for the file you touched and `--only "<check>"` for the check it covers, never
 the full suite. Before handing work to someone else, `npm test` once — it is
 the half that catches a markup move breaking a test three files away — and
 not smoke. **The proof pair runs once per commit, by whoever commits**, and
-nowhere else: one full `npm run smoke`, which runs the unit suite inside it, so
-the suite runs once, not twice. It cannot be split: the coverage floor (below)
+nowhere else: one full `npm run smoke`, which runs every test file inside it
+(the unit files with coverage, the Coach scenario files beside them without),
+so the suite runs once, not twice. It cannot be split: the coverage floor (below)
 needs both halves in one run, and the commit's handoff has to cover the tree it
 names. On #22 every agent ran the pair before handing back
 and the committer ran it again on the same bytes — about twelve pairs for one
@@ -286,10 +287,14 @@ navigation with no coverage taken first fails the row, naming it. `--only` and
 The CI job is named `smoke` (the ruleset requires it by that name). CI splits
 the one run into parts that run at once, the suite (`--shard suite`) and the
 browser rows across three Chromes (`--shard k/3`), and `smoke` judges them
-together with `--merge` (#459; `scripts/smoke/shard.mjs`). A local run with no
-flag still runs everything in one process, the suite beside the browser rows,
-and prints one table. A row that flakes only with coverage on
-is a finding to report, not a retry.
+together with `--merge` (#459; `scripts/smoke/shard.mjs`). The suite part is
+the unit files only. The Coach scenario files, the ones named
+`*-scenarios.test.js`, take no coverage and run in their own three CI parts
+(`node scripts/scenarios.mjs --shard k/3`), which the `node 24` check judges
+(#628); `scripts/suite-files.mjs` is the one place that says which file is
+which. A local run with no flag still runs everything in one process, the
+suite and the scenarios beside the browser rows, and prints one table. A row
+that flakes only with coverage on is a finding to report, not a retry.
 
 The payload budget is a **recorded** baseline. `requests` comes from
 `scripts/budgets.json`; `bytes` and `nodes` are hand-pinned as

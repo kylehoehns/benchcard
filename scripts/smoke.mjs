@@ -19,11 +19,18 @@
        node scripts/smoke.mjs --timing         # after the table: each rich row's seconds, slowest first, and the executed sleep
        node scripts/smoke.mjs --timeout <min>  # end the run and exit 1 if it hangs (default 60)
        node scripts/smoke.mjs --shard 2/3 --out p/2.json   # CI: one part of the run
-       node scripts/smoke.mjs --shard suite --out p/s.json # CI: the unit suite alone
+       node scripts/smoke.mjs --shard suite --out p/s.json # CI: the unit files alone (scenarios: scripts/scenarios.mjs)
        node scripts/smoke.mjs --merge p        # CI: judge every part in p/ as one run
 
    #459: CI runs the parts as separate jobs and the `smoke` job merges them;
    `scripts/smoke/shard.mjs` says how. No flag still runs everything here.
+
+   #628: the Coach scenario files run apart from the coverage-counted suite.
+   `--shard suite` runs the unit files only; CI runs the scenarios as their own
+   `scenario part` jobs (`scripts/scenarios.mjs`, the file list in
+   `scripts/suite-files.mjs`) and `node 24` judges them. A run with no flag
+   runs both beside each other and its one `node --test` row fails if either
+   half does.
 
    #178: BENCHCARD_SMOKE_HANG=<check name> makes that one row hang for real
    (a CDP call that never resolves) instead of running its own check — for
@@ -65,6 +72,7 @@ import { serve } from './serve.mjs';
 import { folder, linesOf, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
 import { parseShard, inShard, consoleRow, mergePartials, shardPartial } from './smoke/shard.mjs';
 import { failuresOf, failureLines } from './smoke/suite-failures.mjs';
+import { unitFiles, scenarioFiles } from './suite-files.mjs';
 
 import { launch, cdp, closeChrome, isOurs, listen } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER, DESCRIBE_EL } from './smoke/dom.mjs';
@@ -87,7 +95,7 @@ const JSON_OUT = has('--json');
    it is not. */
 let current = 'launching Chrome';
 let liveChrome = null; // { proc, dir, c } once Chrome is up
-let liveTests = null;  // the `node --test` child while the suite runs
+const liveTests = new Set();  // the `node --test` children while the suite runs
 
 /* #241: `--timing`. runCheck records each rich row's wall-clock here; the
    sleep total comes from `sleepTally` in dom.mjs. Printed after the table,
@@ -319,28 +327,46 @@ async function browserChecks(origin, only, folded, shard) {
   }
 }
 
-/* #259: the suite runs with NODE_V8_COVERAGE, node's own V8 coverage, written
-   as one JSON file per process into a temp dir that is read and removed here.
-   Its entries have the shape Chrome's `takePreciseCoverage` gives, so the one
-   converter in coverage.mjs serves both. */
-async function runTests() {
+/* One `node --test` child over `files`, resolved (never rejected) with its
+   counts and failures. Registered in `liveTests` so a hang or a signal kills it. */
+function nodeTest(files, env) {
+  return new Promise(ok => {
+    const child = execFile(process.execPath, ['--test', ...files], { cwd: ROOT, env, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+      liveTests.delete(child);
+      // node --test prints `ℹ tests 157` (spec reporter) or `# tests 157` (tap)
+      const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
+      ok({ ok: !err, pass: count('pass'), total: count('tests'), failures: err ? failuresOf(stdout) : [] });
+    });
+    liveTests.add(child);
+  });
+}
+
+const killTests = () => { for (const t of liveTests) { try { t.kill('SIGKILL'); } catch { /* already gone */ } } };
+const countText = r => r.total ? `${r.pass}/${r.total} passing` : (r.ok ? 'passed' : 'suite failed to run');
+
+/* #259: the unit files run with NODE_V8_COVERAGE, node's own V8 coverage,
+   written as one JSON file per process into a temp dir that is read and
+   removed here. Its entries have the shape Chrome's `takePreciseCoverage`
+   gives, so the one converter in coverage.mjs serves both.
+   #628: the Coach scenarios (`suite-files.mjs`) take no coverage, so a full run
+   starts them beside the units without it, and `node --test` is one row that
+   fails if either half does. `--shard suite` passes `scenarios: false`: CI runs
+   the scenarios as their own parts. */
+async function runTests({ scenarios }) {
   const covDir = await mkdtemp(join(tmpdir(), 'benchcard-cov-'));
   try {
-    const row = await new Promise(ok => {
-      liveTests = execFile(process.execPath, ['--test'], { cwd: ROOT, env: { ...process.env, NODE_V8_COVERAGE: covDir }, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
-        // node --test prints `ℹ tests 157` (spec reporter) or `# tests 157` (tap)
-        const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
-        const pass = count('pass'), total = count('tests');
-        const failures = err ? failuresOf(stdout) : [];
-        ok({
-          name: nameOf('nodetest'),
-          pass: !err,
-          detail: total ? `${pass}/${total} passing` : (err ? 'suite failed to run' : 'passed'),
-          ...(failures.length && { failures }),
-        });
-      });
-    });
-    liveTests = null;
+    const plain = { ...process.env };
+    delete plain.NODE_V8_COVERAGE;
+    const [units, scen] = await Promise.all([
+      nodeTest(unitFiles(), { ...process.env, NODE_V8_COVERAGE: covDir }),
+      scenarios ? nodeTest(scenarioFiles(), plain) : null,
+    ]);
+    const row = {
+      name: nameOf('nodetest'),
+      pass: units.ok && (scen?.ok ?? true),
+      detail: scen ? `units ${countText(units)}, scenarios ${countText(scen)}` : countText(units),
+      ...((units.failures.length || scen?.failures.length) && { failures: [...units.failures, ...(scen?.failures || [])] }),
+    };
     /* Only app/ scripts are kept: a node process reports every module it
        loaded, tests and node's own included. */
     const names = (await readdir(covDir)).filter(f => f.endsWith('.json'));
@@ -507,7 +533,7 @@ let watchdogTimer = null;
 
 async function shutdown(code) {
   clearTimeout(watchdogTimer);
-  try { liveTests?.kill('SIGKILL'); } catch { /* already gone */ }
+  killTests();
   try { liveChrome?.c?.close(); } catch { /* already closed */ }
   if (liveChrome) await closeChrome(liveChrome.proc, liveChrome.dir);
   try { server?.close(); } catch { /* already closed */ }
@@ -536,7 +562,7 @@ if (SHARD?.suite) {
   const sources = await appSources();
   const f = folder({ appDir: APP, read: file => sources[file] });
   current = 'node --test';
-  const { row, nodeCoverage } = await runTests();
+  const { row, nodeCoverage } = await runTests({ scenarios: false });
   f.add(nodeCoverage);
   await writePartial({ shard: SHARD, nodeRow: row, lines: linesOf(f.result()) });
   printRow(row.name.length, row);
@@ -570,7 +596,7 @@ if (HAS_MERGE) {
      minutes of CI's smoke job. Awaited where its row is pushed, below. The
      no-op catch only keeps a suite that dies while Chrome is still walking
      from becoming an unhandled rejection; the real await still sees it. */
-  tests = has('--no-tests') || HAS_ONLY || SHARD ? null : runTests();
+  tests = has('--no-tests') || HAS_ONLY || SHARD ? null : runTests({ scenarios: true });
   tests?.catch(() => {});
   try {
     /* Read once, up front: Chrome's takes are folded into lines as they arrive,
@@ -582,7 +608,7 @@ if (HAS_MERGE) {
     result.folded = folded;
   } catch (e) {
     // A browser half that threw ends the run; do not leave the suite behind.
-    try { liveTests?.kill('SIGKILL'); } catch { /* already gone */ }
+    killTests();
     throw e;
   } finally {
     server.close();

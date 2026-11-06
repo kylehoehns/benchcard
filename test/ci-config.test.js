@@ -76,9 +76,11 @@ test('every job branch protection requires still exists under that exact name', 
 
 /* Jobs that are deliberately NOT required, each with the required job that
    judges it. #459: the smoke parts run the run; `smoke` merges and judges
-   them, with `if: always()` so a failed part cannot skip it into a pass. */
+   them, with `if: always()` so a failed part cannot skip it into a pass.
+   #628: `node 24` is the same shape over the `scenario-parts` matrix. */
 const ADVISORY = {
   'smoke part ${{ matrix.part }}': 'smoke',
+  'scenario part ${{ matrix.part }}': 'node 24',
 };
 
 test('the workflow declares no more required-looking jobs than are pinned here', () => {
@@ -113,6 +115,38 @@ test('the required smoke job runs even when a part fails, and merges the parts',
   assert.doesNotMatch(job + parts, /continue-on-error/, 'continue-on-error would let a failed part or merge report green');
   assert.match(parts, /fail-fast: false/, 'one failed part must not cancel the others mid-upload');
   assert.match(parts, /- if: always\(\)\n\s+uses: actions\/upload-artifact/, 'a failed part must still upload its partial');
+});
+
+/* #628: the Coach scenario files run as three parts and `node 24` judges
+   them, so a part that fails or never reports must turn `node 24` red, and the
+   rule for what a scenario is must stay in scripts/suite-files.mjs. */
+test('the required node 24 job runs even when a scenario part fails, and judges the parts', () => {
+  const job = tests.slice(tests.indexOf('\n  test:\n'), tests.indexOf('\n  scenario-parts:\n'));
+  assert.ok(job.length > 100 && job.includes('name: node 24'), 'could not find the node 24 job ahead of scenario-parts');
+  assert.match(job, /^    needs: scenario-parts$/m);
+  assert.match(job, /^    if: always\(\)$/m,
+    'without if: always(), a failed part skips the required node 24 check, and skipped counts as passing');
+  assert.match(job, /needs\.scenario-parts\.result/, 'node 24 must read the parts\' result');
+  assert.match(job, /needs\.scenario-parts\.result\s*\}\}"?\s*=\s*"?success|needs\.scenario-parts\.result\s*==\s*'success'/,
+    'node 24 must fail unless the result is exactly success');
+
+  const parts = tests.slice(tests.indexOf('\n  scenario-parts:\n'), tests.indexOf('\n  smoke:\n'));
+  assert.ok(parts.length > 100, 'could not find the scenario-parts job');
+  const list = /part: \[([^\]]*)\]/.exec(parts)?.[1].split(',').map(x => x.trim());
+  assert.ok(list?.length, 'could not find the scenario-parts matrix list');
+  const ks = list.map(x => x.split('/').map(Number));
+  const n = ks[0][1];
+  assert.ok(n >= 2 && ks.every(([, m]) => m === n), `every part must share one n >= 2: ${list}`);
+  assert.deepEqual(ks.map(([k]) => k).sort((a, b) => a - b), Array.from({ length: n }, (_, i) => i + 1),
+    `the parts must be every k/n for k = 1..n, each once: ${list}`);
+  assert.match(parts, /run: node scripts\/scenarios\.mjs --shard \$\{\{ matrix\.part \}\}$/m, 'each part must run its own shard of the scenarios');
+  assert.match(parts, /fail-fast: false/, 'one failed part must not cancel the others');
+  assert.doesNotMatch(job + parts, /continue-on-error/, 'continue-on-error would let a failed part report green');
+});
+
+test('test.yml never spells the scenario rule; scripts/suite-files.mjs owns it', () => {
+  assert.doesNotMatch(tests, /-scenarios/, 'the scenario file rule belongs in scripts/suite-files.mjs only');
+  assert.doesNotMatch(read('scripts/lanes/ci-local.sh'), /-scenarios/, 'ci-local.sh must call scripts/scenarios.mjs, not glob');
 });
 
 /* The rule is not "no path filters". It is "no path filter on a REQUIRED
