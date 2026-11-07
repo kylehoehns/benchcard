@@ -35,7 +35,7 @@ import { edit } from './edit.js';
 import { DAMAGED_LINK } from './live.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         chooseStrategy, dueToFile, dayIsPast, fileIfPast, carryUnplayedDay, moveGame, setTipoff, hasGames, plans, notePrinted } from './state.js';
+         chooseStrategy, dueToFile, dayIsPast, fileIfPast, moveGame, setTipoff, hasGames, plans, notePrinted } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -504,12 +504,6 @@ if (state.onboarded) track('plan_generated', { strategy: game()?.strategy });
    navigating closes open sheets, which would drop a half-typed edit for
    nothing. */
 function fileOverdueDay(today = new Date()) {
-  /* #379: a day with nothing started carries to today instead of filing. No
-     toast and no undo -- nothing the coach can see moved but the date. */
-  if (carryUnplayedDay(today)) {
-    save();
-    if (!dueToFile(today)) { render(); return; }
-  }
   if (!dueToFile(today)) return;
   let message = null;
   const t = team();
@@ -547,8 +541,6 @@ initShortcuts(setView);
    off the address bar at once so a reload does not import it twice. A link
    that does not decode writes nothing: the app opens as it was. */
 let handoffNote = '', handoffUndo = null;
-// #379: before a link lands, so it joins the day the coach set up last night
-if (carryUnplayedDay()) save();
 if (location.hash.startsWith('#p=')) {
   const hash = location.hash;
   history.replaceState(null, '', location.pathname + location.search);

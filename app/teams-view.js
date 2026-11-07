@@ -27,7 +27,7 @@ import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
-         initials, setMakeUp, newGameMakeUp, openGame, dayHeading, addGame, removeGame,
+         initials, setMakeUp, newGameMakeUp, openGame, dayHeading, addGame, removeGame, weekdayLabel, playedUnplayed, dropUnplayed, moveUnplayedToday,
          hasGames, bestPlayersOffered, teamRun, setTeamRun, applyToOpenDay, leagueLiveLine, minUnitLabel, benchFootnote } from './state.js';
 import { runStepperRow, runTop, RUN_START } from './game-setup.js';
 import { tipoffLabel, RUN_KEYS } from './storage.js';
@@ -667,6 +667,35 @@ export function renderResumeBar() {
   }
 }
 
+/* #632: the question card. One row per game that was planned for a day that
+   ended without being started, oldest first, each with its own three answers. */
+function renderUnplayed(box) {
+  box.textContent = '';
+  const waiting = team().unplayed || [];
+  if (!waiting.length) return;
+  const card = el('section', 'unplayed');
+  card.append(el('h2', 'unplayed-title', waiting.length === 1 ? 'Did you play this game?' : 'Did you play these?'));
+  card.append(el('p', 'unplayed-note', 'They were planned but never started in the app. Played games count toward minutes.'));
+  waiting.forEach((u, i) => {
+    const row = el('div', 'unplayed-row');
+    row.append(el('div', 'unplayed-what', `${weekdayLabel(u.date)} · ${u.label}`));
+    const acts = el('div', 'unplayed-acts');
+    const answers = [
+      ['Played', () => undoable(`${u.label} is in the season.`, () => playedUnplayed(i))],
+      ['Move to today', () => undoable(`${u.label} moved to today.`, () => moveUnplayedToday(i))],
+      ["Didn't play", () => undoable(`${u.label} removed.`, () => dropUnplayed(i))],
+    ];
+    for (const [name, act] of answers) {
+      const b = el('button', 'btn press unplayed-btn', name);
+      b.addEventListener('click', act);
+      acts.append(b);
+    }
+    row.append(acts);
+    card.append(row);
+  });
+  box.append(card);
+}
+
 export function renderTabs() {
   // The Game screen's own header title, kept live while the coach edits the
   // opponent field -- `setView` only sets it on a view CHANGE, and typing in
@@ -734,6 +763,9 @@ export function renderTabs() {
       box.append(group);
     });
   }
+
+  const ask = $('#todayUnplayed');
+  if (ask && todayPaneShowing(state.view)) renderUnplayed(ask);
 
   // #126: one gray line, "Add a game" stays the one prominent action beside
   // it (not duplicated inside the note) -- P2/W3.

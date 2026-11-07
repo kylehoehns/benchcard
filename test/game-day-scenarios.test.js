@@ -224,14 +224,16 @@ describe('a coach runs a game', { skip }, () => {
     assert.equal(await coach.isDisabled('Shuffle'), true, 'the minutes are played, so there is nothing to shuffle');
   });
 
-  test('the next day, the finished game is filed to the season and the unstarted one left out', async () => {
+  test('the next day, the finished game is filed to the season and the unstarted one is asked about', async () => {
     await startHawks();
     for (let i = 0; i < 7; i++) await coach.tap('Next');
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1);
 
-    assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season. Ravens was never started, so it was left out.');
+    assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season.');
+    assert.deepEqual((await coach.unplayedCard()).rows, ['Sat, Sep 12 · Ravens']);
+    await coach.comeBackDaysLater(1); // the toast is gone, so it no longer covers the button
     await coach.tap('Season 1 game filed ›');
 
     const minutes = await coach.seasonMinutes();

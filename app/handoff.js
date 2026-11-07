@@ -7,7 +7,7 @@ import { callNames } from './roster.js';
 import { DAMAGED_LINK, handStints, playedStints, finishedGame, gameStarted, writeOverrides, satIds } from './live.js';
 import { sanitizeTeam, seasonDate, sortDay, validDayDate } from './storage.js';
 import { state, team, computeAll, effectiveStints, availIds, plans, openGame, dayFor,
-         hueSlots, emptyConstraints, newGame, carryUnplayedDay } from './state.js';
+         hueSlots, emptyConstraints, newGame } from './state.js';
 
 const VERSION = '1';
 const PREFIX = '#p=' + VERSION;
@@ -213,10 +213,8 @@ export function receive({ team: incoming, stints, played: playedOn }) {
     openGame(0, 0);
   } else {
     const known = state.teams[have];
-    // a filed game changes nothing, so it returns before carryUnplayedDay can move a day
     if (known.season.games.some(g => g.id === game.id)) return { teamName: known.name, outcome: 'filed' };
     state.activeTeam = have;
-    carryUnplayedDay();   // #379: this team's night-before day becomes today before the link's game joins it
     const mine = team();
     const own = findGame(mine, game.id);
     if (own && furtherAlong(mine.days[own[0]].games[own[1]].live, game.live)) {

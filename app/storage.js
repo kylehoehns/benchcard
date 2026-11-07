@@ -127,24 +127,31 @@ const overtimeField = v => {
 // and still bounded, and the newest are the ones carryover cares about
 const SEASON_MAX = 200;
 
+/* One game's `{ playerId: minutes }`, kept only where the minutes are real
+   numbers -- and, when `validId` is handed, only for ids on that roster. */
+const cleanMinutes = (raw, validId) => {
+  const minutes = {};
+  for (const [id, n] of Object.entries(isObj(raw) ? raw : {})) {
+    /* Stricter than `idMap` elsewhere in this file, and deliberately:
+       `Number(null)` and `Number('')` are both 0, so the loose test would
+       turn a corrupt entry into a player who was at the game and played
+       none of it. In a ledger a coach reads, that is a different claim
+       from "this entry is junk". */
+    const v = typeof n === 'number' || (typeof n === 'string' && n.trim() !== '') ? Number(n) : NaN;
+    // to the cent of a minute, the same rounding effectiveMinutes uses --
+    // stint lengths divide unevenly and floats accumulate visible noise
+    if (id && Number.isFinite(v) && (!validId || validId.has(id))) minutes[id] = Math.round(num(v, 0, 0, 999) * 100) / 100;
+  }
+  return minutes;
+};
+
 const sanitizeSeason = raw => {
   const s = isObj(raw) ? raw : {};
   const seen = new Set();
   const games = (Array.isArray(s.games) ? s.games : [])
     .filter(isObj)
     .map(g => {
-      const minutes = {};
-      for (const [id, n] of Object.entries(isObj(g.minutes) ? g.minutes : {})) {
-        /* Stricter than `idMap` elsewhere in this file, and deliberately:
-           `Number(null)` and `Number('')` are both 0, so the loose test would
-           turn a corrupt entry into a player who was at the game and played
-           none of it. In a ledger a coach reads, that is a different claim
-           from "this entry is junk". */
-        const v = typeof n === 'number' || (typeof n === 'string' && n.trim() !== '') ? Number(n) : NaN;
-        // to the cent of a minute, the same rounding effectiveMinutes uses --
-        // stint lengths divide unevenly and floats accumulate visible noise
-        if (id && Number.isFinite(v)) minutes[id] = Math.round(num(v, 0, 0, 999) * 100) / 100;
-      }
+      const minutes = cleanMinutes(g.minutes);
       return {
         id: typeof g.id === 'string' && g.id ? g.id : 's' + Math.random().toString(36).slice(2, 8),
         // the coach's local day, not UTC: a Saturday game archived at 8pm
@@ -701,6 +708,26 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
 
   const activeDay = num(raw.activeDay, 0, 0, days.length - 1);
 
+  /* #632: games planned for a day that ended without being started, waiting
+     for the coach's answer. An entry is the game, its day's date and name, the
+     label it had there, and the minutes snapshotted when it was set aside --
+     kept only for players still on the roster. A game with no id of its own or
+     an entry with no real date is dropped, and a game id is held once. */
+  const waiting = new Set();
+  const unplayed = (Array.isArray(raw.unplayed) ? raw.unplayed : [])
+    .filter(e => isObj(e) && isObj(e.game) && typeof e.game.id === 'string' && e.game.id && validDayDate(e.date))
+    .map(e => ({
+      game: sanitizeGames([e.game])[0],
+      date: e.date,
+      dayName: typeof e.dayName === 'string' ? e.dayName : '',
+      label: typeof e.label === 'string' ? e.label : '',
+      minutes: cleanMinutes(e.minutes, validId),
+    }))
+    .filter(e => !waiting.has(e.game.id) && waiting.add(e.game.id))
+    .slice(-SEASON_MAX);
+  // the game filing built to fill an empty day; kept only while that game is still in a day
+  const filler = typeof raw.filler === 'string' && days.some(d => d.games.some(g => g.id === raw.filler)) ? raw.filler : '';
+
   return {
     id: typeof raw.id === 'string' && raw.id ? raw.id : 't' + Math.random().toString(36).slice(2, 8),
     // `name` here, `teamName` in v3 -- read both so a migrated record keeps it
@@ -712,6 +739,8 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
     // v4 has no season. An absent one is not a broken one -- it is a coach who
     // has not finished a game yet, which is also every brand new team.
     season: sanitizeSeason(raw.season),
+    unplayed,
+    ...(filler ? { filler } : {}),
     // v5 has no settings, and an absent block is not a broken one either -- it
     // is a coach who has never opened the page, so it means the defaults.
     settings,

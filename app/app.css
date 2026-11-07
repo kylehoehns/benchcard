@@ -404,6 +404,17 @@ a { color: inherit; }
    sentence-case footnote/muted convention above rather than a second one. */
 .day-group { display: flex; flex-direction: column; gap: .75rem; }
 .day-heading { font-size: var(--fs-footnote); color: var(--muted); font-weight: 700; }
+/* #632: the question card above the day list -- an inset surface like a pass,
+   one row per waiting game, answers that wrap rather than clip. */
+#todayUnplayed:not(:empty) { margin: 1.1rem 0 0; }
+.unplayed { display: flex; flex-direction: column; gap: .75rem; padding: 1rem 1.125rem;
+  border-radius: var(--r-lg); background: var(--surface); }
+.unplayed-title { font-size: var(--fs-large); font-weight: 700; letter-spacing: -.03em; }
+.unplayed-note { color: var(--muted); font-size: var(--fs-secondary); }
+.unplayed-row { display: flex; flex-direction: column; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--line-2); }
+.unplayed-what { font-weight: 600; overflow-wrap: anywhere; }
+.unplayed-acts { display: flex; flex-wrap: wrap; gap: .5rem; }
+.unplayed-btn { flex: 1 1 auto; min-height: 48px; white-space: normal; text-align: center; }
 .today-game { display: flex; flex-direction: column; align-items: stretch; gap: .3rem;
   width: 100%; min-height: 48px; padding: 1rem 1.125rem; border-radius: var(--r-lg);
   border: 0; background: var(--surface); font: inherit; text-align: left; }

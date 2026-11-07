@@ -2028,3 +2028,56 @@ test('#449 a malformed basis is dropped, and a game with none stays without', ()
   assert.equal('basis' in withBasis({ key: 5, lineups: [['a', 'b', 'c', 'd', 'e']] }), false, 'key is not a string');
   assert.equal('basis' in withBasis('lineups'), false, 'not an object');
 });
+
+/* #632: games waiting for "Did you play this game?" are saved with the team,
+   gated like everything else on it. */
+const waitingEntry = (over = {}) => ({
+  game: { ...newGame(), id: 'gk', label: 'Kingsway' }, date: '2026-09-26', dayName: 'Sat', label: 'Kingsway',
+  minutes: { a: 16, b: 12.5 }, ...over,
+});
+const withWaiting = (unplayed, extra = {}) => sanitize({ ...good(), ...extra, unplayed }, H).teams[0];
+
+test('a waiting game survives a save and load, with its minutes and its day', () => {
+  const t = withWaiting([waitingEntry()]);
+  assert.equal(t.unplayed.length, 1);
+  assert.equal(t.unplayed[0].game.id, 'gk');
+  assert.equal(t.unplayed[0].date, '2026-09-26');
+  assert.equal(t.unplayed[0].dayName, 'Sat');
+  assert.equal(t.unplayed[0].label, 'Kingsway');
+  assert.deepEqual(t.unplayed[0].minutes, { a: 16, b: 12.5 });
+  assert.deepEqual(sanitize(JSON.parse(JSON.stringify({ teams: [t], onboarded: true })), H).teams[0].unplayed, t.unplayed);
+});
+
+test('a team with no waiting list loads with an empty one', () => {
+  assert.deepEqual(sanitize(good(), H).teams[0].unplayed, []);
+});
+
+test('a waiting entry that is not a game, has no game id, or has no real date is dropped', () => {
+  const t = withWaiting([
+    waitingEntry(), null, 'x', waitingEntry({ game: null }), waitingEntry({ game: { label: 'no id' } }),
+    waitingEntry({ date: '' }), waitingEntry({ date: '2026-13-45' }), waitingEntry({ date: 'Sat' }),
+  ]);
+  assert.deepEqual(t.unplayed.map(u => u.game.id), ['gk']);
+});
+
+test('a waiting game is held once, however many entries name it', () => {
+  assert.equal(withWaiting([waitingEntry(), waitingEntry({ label: 'again' })]).unplayed.length, 1);
+});
+
+test("a waiting game's minutes keep only players on the roster, and only real numbers", () => {
+  const t = withWaiting([waitingEntry({ minutes: { a: 16, gone: 9, b: '', c: null } })]);
+  assert.deepEqual(t.unplayed[0].minutes, { a: 16 });
+});
+
+test('the waiting list is capped at 200, the oldest dropped first', () => {
+  const many = Array.from({ length: 205 }, (_, i) => waitingEntry({ game: { ...newGame(), id: `w${i}` } }));
+  const t = withWaiting(many);
+  assert.equal(t.unplayed.length, 200);
+  assert.equal(t.unplayed[0].game.id, 'w5');
+});
+
+test('the filler id is kept only while that game is in a day', () => {
+  assert.equal(withWaiting([], { filler: 'g1' }).filler, 'g1');
+  assert.equal(withWaiting([], { filler: 'nope' }).filler, undefined);
+  assert.equal(withWaiting([], { filler: 7 }).filler, undefined);
+});

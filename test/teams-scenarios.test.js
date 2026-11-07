@@ -73,6 +73,7 @@ describe('a coach with more than one Team', { skip }, () => {
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1);
+    await coach.comeBackDaysLater(1); // the Filing toast is gone
     await coach.tap('Season 1 game filed ›');
     assert.equal(Object.keys(await coach.seasonMinutes()).length, 11);
     await coach.tap('Back to Smoke Test');

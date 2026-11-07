@@ -6,11 +6,11 @@ import { land } from './page-state.mjs';
    `#todayNewDay` no longer exists anywhere on Today -- and a day dated
    before today files itself on boot, no tap required. `PAST_DAY` is RICH
    with its date pinned to 2024-01-06, a Saturday safely in the past (so this
-   stays true no matter what day the harness actually runs on). #133 item 9:
-   of the day's two games (`GAMES` below), only Hawks is started, so only
-   Hawks files. Everything else about the day is RICH's own fixture,
-   unmodified. The toast's exact wording ("Sat, Jan 6: 1 game filed to the
-   season. Ravens was never started, so it was left out.") is hand-computed
+   stays true no matter what day the harness actually runs on). #632: of the
+   day's two games (`GAMES` below), only Hawks is started, so only Hawks
+   files; Ravens is asked about on Today, not left out. Everything else about
+   the day is RICH's own fixture, unmodified. The toast's exact wording
+   ("Sat, Jan 6: 1 game filed to the season.") is hand-computed
    from that same fixed date, the way `en-US` renders `{ weekday: 'short',
    month: 'short', day: 'numeric' }` -- not read back from the app's own
    formatter. */
@@ -58,6 +58,7 @@ export async function datedDayPass(c, origin, rec) {
     hasNewDayBtn: !!document.getElementById('todayNewDay'),
     gamesOnToday: document.querySelectorAll('.today-game').length,
     toastText: document.querySelector('#toasts .toast[data-undo] .tmsg')?.textContent.trim() ?? null,
+    askRows: [...document.querySelectorAll('#todayUnplayed .unplayed-what')].map(n => n.textContent),
     record: JSON.parse(localStorage.getItem('benchcard.v7')),
   })`));
 
@@ -67,15 +68,17 @@ export async function datedDayPass(c, origin, rec) {
   const t0 = after.record?.teams?.[0];
   const seasonCount = t0?.season?.games?.length ?? -1;
   // RICH ships with 3 filed games already; the past day's Hawks (finished)
-  // joins them, but never-started Ravens is left out (#133).
+  // joins them, but never-started Ravens waits for an answer (#632).
   rec.check(seasonCount === 4, `the record's season has ${seasonCount} filed game(s) after boot, want 4 (RICH's 3 plus the 1 the past day filed)`);
   rec.check(!t0 || t0.season.games.some(g => g.date === '2024-01-06' && g.opponent === 'Hawks'), 'the filed Hawks game is not dated 2024-01-06 (the day it was played on)');
-  rec.check(!t0 || !t0.season.games.some(g => g.opponent === 'Ravens'), 'Ravens was never started and should not be in the season at all');
+  rec.check(!t0 || !t0.season.games.some(g => g.opponent === 'Ravens'), 'Ravens was never started and should not be in the season until the coach says it was played');
+  rec.check(!t0 || (t0.unplayed || []).map(u => u.label).join() === 'Ravens', `the record's waiting list reads "${(t0?.unplayed || []).map(u => u.label).join()}", want "Ravens"`);
+  rec.check(after.askRows.join('|') === 'Sat, Jan 6 · Ravens', `Today asks about "${after.askRows.join('|')}", want "Sat, Jan 6 · Ravens"`);
   rec.check(!t0 || t0.days[0].date !== '2024-01-06', 'the day on screen is still dated 2024-01-06 -- filing did not replace it');
   rec.check(!t0 || /^\d{4}-\d{2}-\d{2}$/.test(t0.days[0].date || ''), `the fresh day's date reads "${t0 && t0.days[0].date}", want a real YYYY-MM-DD`);
   rec.check(after.gamesOnToday === 1, `Today shows ${after.gamesOnToday} game(s) after filing, want 1 (the fresh day)`);
 
-  const wantToast = 'Sat, Jan 6: 1 game filed to the season. Ravens was never started, so it was left out.';
+  const wantToast = 'Sat, Jan 6: 1 game filed to the season.';
   if (!after.toastText) {
     rec.fail('no Undo toast was shown after a past day filed');
   } else {
