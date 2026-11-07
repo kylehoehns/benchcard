@@ -546,3 +546,20 @@ test('round trip: a sit for the rest comes through, and a link without `sat` dec
   receive(await decode(await repack(doc)));
   assert.equal('sat' in S.game().live, false, 'an older link has no sit');
 });
+
+test('a link for a game that is waiting to be asked about takes it out of the waiting list', async () => {
+  const { team, g, p } = sender();
+  const hash = await encode(team, g, floorOf(g, p));
+  const mine = structuredClone(team);
+  mine.days = [{ name: '', date: '2000-01-01', games: [bareGame({ id: 'gNight' })] }];
+  mine.unplayed = [
+    { game: bareGame({ id: g.id }), date: '2000-01-01', dayName: '', label: 'Game 1', minutes: {} },
+    { game: bareGame({ id: 'gOther' }), date: '2000-01-01', dayName: '', label: 'Game 2', minutes: {} },
+  ];
+  S.state.teams = [S.newTeam('Other'), mine]; S.state.activeTeam = 0; S.state.onboarded = true;
+  S.computeAll();
+
+  receive(await decode(hash));
+
+  assert.deepEqual(mine.unplayed.map(u => u.game.id), ['gOther']);
+});

@@ -216,6 +216,7 @@ export function receive({ team: incoming, stints, played: playedOn }) {
     if (known.season.games.some(g => g.id === game.id)) return { teamName: known.name, outcome: 'filed' };
     state.activeTeam = have;
     const mine = team();
+    if (Array.isArray(mine.unplayed)) mine.unplayed = mine.unplayed.filter(u => u.game.id !== game.id);   // #632: the link brings it back to a day
     const own = findGame(mine, game.id);
     if (own && furtherAlong(mine.days[own[0]].games[own[1]].live, game.live)) {
       kept = true;

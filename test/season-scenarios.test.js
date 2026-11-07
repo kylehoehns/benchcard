@@ -29,7 +29,7 @@ describe('a coach reads the season', { skip }, () => {
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1);
-    await coach.comeBackDaysLater(1); // the Filing toast is gone; Ravens' question sits above the Season button
+    await coach.tap('Dismiss'); // the Filing toast no longer covers the button
     await coach.tap('Season 1 game filed ›');
   }
 

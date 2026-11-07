@@ -85,9 +85,9 @@ the visible label.
 must not be filed out from under the coach mid-stint. `fileIfPast` checks that
 bench mode is not open before filing; when it closes, the app immediately runs
 it again in case the day is now due. This keeps games from disappearing into the
-season while a coach is actively using them. The carry to today (#379) waits
-for the same guard. Games that were never started are left out of the season
-when their day files; only games that were at least partially played file (#133).
+season while a coach is actively using them. Games that were never started do
+not file by themselves: they wait on Today to be answered (#632). Only games
+that were at least partially played file on their own.
 
 **A part-played game says so in two places.** A reload closes bench mode —
 on iOS, switching to the clock or the scorebook app and coming back is often

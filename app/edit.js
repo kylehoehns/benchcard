@@ -17,7 +17,7 @@
  * by render.js without closing the graph into a cycle (render.js already
  * imports fifteen view modules; nothing may import it back).
  * ================================================================== */
-import { state, save, editHappened, takeFirstRunPending } from './state.js';
+import { state, save, editHappened, takeFirstRunPending, team } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 
 /* Moved from render.js, which no longer names them: the whole repaint
@@ -108,6 +108,8 @@ export function edit(kind) {
   doRetireUndo();
   if (!spec.pref) {
     editHappened();
+    const t = team();
+    if (t) delete t.filler;   // #632: an edited fallback game is the coach's own now
     if (takeFirstRunPending()) track('first_run_complete', { roster: bucketRoster(state.players.length) });
   }
 

@@ -4,9 +4,12 @@
 active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games (each day's games shown in tip-off order, #102), then Team and Season as two entries underneath, and Add a game. When the team has no games (#126), the games section shows a note instead of any days, with Add a game still present.
 A day files itself into the season once it has passed (#100), but only when
 the coach has set up a team (#252) — there is no "New day" button any more.
-A day that passed with no game started is not filed: when today has no day
-yet, it moves to today with its games, rotation and tip-off unchanged, and no
-toast says so (#379). Only the latest past day is moved this way.
+A game that was planned for a day that passed without being started is not
+filed by itself. It waits at the top of Today under "Did you play these?", one
+row per game, until the coach taps Played (it files with its planned minutes),
+Move to today (it joins today's day with its roster and rotation), or Didn't
+play (it is removed). Each answer has an Undo (#632). Started games file as
+before.
 When the app reopens on a later day and the Day the coach was on files, it
 lands on Today with the Filing toast rather than the last screen (#306); Undo
 goes back to that screen. A same-day reopen still restores the last screen.

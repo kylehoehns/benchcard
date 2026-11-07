@@ -51,6 +51,20 @@ describe('a game set up the night before', { skip }, () => {
     assert.deepEqual(await printedFives(), fives);
   });
 
+  test('Undo on Move to today brings the fallback game and the question back', async () => {
+    await sampleOnTheNight();
+    await coach.comeBackAt(MORNING);
+    const row = 'Fri, Oct 30 · Game 1';
+
+    await coach.answer(row, 'Move to today');
+    await coach.tap('Undo');
+
+    assert.deepEqual((await coach.unplayedCard()).rows, [row]);
+    assert.deepEqual(await coach.todayGames(), ['Game 1, planned'], 'the fallback game is back');
+    await coach.answer(row, 'Move to today');
+    assert.deepEqual(await coach.todayGames(), ['Game 1, planned'], 'and it is still the fallback, so moving replaces it again');
+  });
+
   test('a game with its first stint played is filed as before, and today gets a new game', async () => {
     await sampleOnTheNight();
     await coach.tap('Start game');

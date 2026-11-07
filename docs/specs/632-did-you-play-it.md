@@ -140,10 +140,12 @@ started. Any answer, or any game added, clears `t.filler`. Otherwise
 
 **The card.** At the top of Today, above the day list, only when the active
 team's `unplayed` is non-empty. Title: `Did you play these?` (one row:
-`Did you play this game?`). One line under it: `They were planned but never
-started in the app. Played games count toward minutes.` Then one row per
+`Did you play this game?`). One line under it: `It was planned but never
+started in the app. Played games count toward minutes.` (several rows: `They
+were planned but never started ...`). Then one row per
 entry, oldest first: `<weekdayLabel(date)> · <label>`, and three buttons:
-`Played`, `Move to today`, `Didn't play`.
+`Played`, `Move to today`, `Didn't play`, each with an aria-label that starts
+with its visible words and then names the row (`Played, Sat, Sep 26 · Kingsway`).
 
 ## Proof
 

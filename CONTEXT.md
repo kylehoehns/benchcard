@@ -62,10 +62,21 @@ optional.
 _Avoid_: session, tournament (a tournament is one kind of day)
 
 **Filing** (decided 2026-09-22, #64):
-What happens to a day once its date has passed: its games go into the season on
-that date. Games that were never started are left out; only games that were at least
-partially played are filed (#133). It happens on its own; there is no button.
-_Avoid_: New day (the old manual action this replaced), archiving
+What happens to a day once its date has passed: its started games go into the
+season on that date. A game that was never started is not filed; it becomes a
+**Waiting game** and is asked about (#632). It happens on its own; there is no
+button.
+_Avoid_: New day (the old manual action this replaced), archiving, left out
+_In code_: `archiveDay`, `fileIfPast`
+
+**Waiting game** (decided 2026-11-06, #632):
+A game planned for a day that passed without being started. It waits at the top of
+Today, under "Did you play these?", until the coach says it was played (it joins the
+season on its day's date), moves it to today, or says it did not happen (it is
+removed). Until it is played it is not in the season and does not count toward
+minutes.
+_Avoid_: unplayed game, skipped game, left out, pending game
+_In code_: `team.unplayed`, `playedUnplayed`, `moveUnplayedToday`, `dropUnplayed`
 
 **Format**:
 How long a game is: a number of periods of a number of minutes each ("4 × 8").

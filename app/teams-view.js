@@ -675,10 +675,11 @@ function renderUnplayed(box) {
   if (!waiting.length) return;
   const card = el('section', 'unplayed');
   card.append(el('h2', 'unplayed-title', waiting.length === 1 ? 'Did you play this game?' : 'Did you play these?'));
-  card.append(el('p', 'unplayed-note', 'They were planned but never started in the app. Played games count toward minutes.'));
+  card.append(el('p', 'unplayed-note', `${waiting.length === 1 ? 'It was' : 'They were'} planned but never started in the app. Played games count toward minutes.`));
   waiting.forEach((u, i) => {
     const row = el('div', 'unplayed-row');
-    row.append(el('div', 'unplayed-what', `${weekdayLabel(u.date)} · ${u.label}`));
+    const what = `${weekdayLabel(u.date)} · ${u.label}`;
+    row.append(el('div', 'unplayed-what', what));
     const acts = el('div', 'unplayed-acts');
     const answers = [
       ['Played', () => undoable(`${u.label} is in the season.`, () => playedUnplayed(i))],
@@ -687,6 +688,7 @@ function renderUnplayed(box) {
     ];
     for (const [name, act] of answers) {
       const b = el('button', 'btn press unplayed-btn', name);
+      b.setAttribute('aria-label', `${name}, ${what}`);   // starts with the visible words, then says which game
       b.addEventListener('click', act);
       acts.append(b);
     }

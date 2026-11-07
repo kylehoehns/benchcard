@@ -594,11 +594,10 @@ text left open, and a future reader needs them to read the plan.
     anything else imports the link's game.
   - **The link's game replaces the phone's.** It gets an Undo toast reading
     `<team> game updated.`. If the game has started (finished, or with a stint
-    played), it takes the link's date: the day it was played. The night-before
-    carry (#379) can move an unstarted game onto today, so without this a
-    started game could sit on the wrong day. A passed day then files under the
-    played date, so both phones show the game in the same place. An unstarted
-    game keeps the phone's day.
+    played), it takes the link's date: the day it was played, even when the
+    phone has it on another day. A passed day then files under the played
+    date, so both phones show the game in the same place. An unstarted game
+    keeps the phone's day.
 
   A game the phone did not have imports with no Undo, as before.
 - **New link fields do not bump the link's version.** The day date, label and

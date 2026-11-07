@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, player, withDays, finishGame } from './state-fixture.js';
 import { seasonShare } from '../app/storage.js';
+import { edit } from '../app/edit.js';
 
 /* #101: a team's day of games has become a list of days
  * (docs/specs/101-plan-another-date.md). This file holds the state-layer
@@ -561,19 +562,99 @@ test('moving to today adds beside the fallback game when it is not alone, was st
   ]);
 });
 
+/* the fallback game is filing's only until the coach touches the record */
+function afterNightBefore(mutate, after = () => {}) {
+  const waiting = S.newGame(0, null, FORMAT);
+  waiting.label = 'Waiting';
+  withDays(SIX, [dayOn('2026-10-30', waiting)], FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(NIGHT_TODAY);
+    mutate();
+    S.computeAll();
+    after();
+  });
+}
+
+test('a fallback game the coach edited is kept beside the moved game', () => {
+  afterNightBefore(() => edit('opponent'), () => {
+    assert.equal(S.team().filler, undefined, 'a record edit ends the fallback');
+    S.moveUnplayedToday(0, NIGHT_TODAY);
+    assert.deepEqual(S.team().days.map(d => [d.date, d.games.length]), [['2026-10-31', 2]]);
+  });
+});
+
+test('a preference change does not end the fallback, and an unsolved fallback is still replaced', () => {
+  afterNightBefore(() => { edit('theme'); S.team().days[0].games[0].out = SIX.map(p => p.id); }, () => {
+    assert.equal(S.dayPlans[0][0].ok, false, 'fixture check: the fallback does not solve');
+    S.moveUnplayedToday(0, NIGHT_TODAY);
+    assert.deepEqual(S.team().days.map(d => [d.date, d.games.length]), [['2026-10-31', 1]]);
+    assert.equal(S.team().days[0].games[0].label, 'Waiting');
+  });
+});
+
+test('an untouched fallback game that sits through a later filing is not asked about', () => {
+  afterNightBefore(() => {}, () => {
+    S.fileIfPast(new Date(2026, 10, 2, 9));
+    assert.deepEqual(S.team().unplayed.map(u => u.label), ['Waiting'], 'only the game the coach planned is waiting');
+  });
+});
+
+test('a fallback game that was printed unchanged is still asked about', () => {
+  afterNightBefore(() => {
+    edit('printed');   // printing is a preference edit, so it leaves the fallback in place
+    S.team().days[0].games[0].printed = true;
+    assert.ok(S.team().filler, 'fixture check: the fallback is still the filler');
+  }, () => {
+    S.fileIfPast(new Date(2026, 10, 2, 9));
+    assert.equal(S.team().unplayed.length, 2, 'the printed fallback is waiting beside the planned game');
+  });
+});
+
+test('Played files only minutes of players still on the roster', () => {
+  withDays(SIX, [dayOn('2026-09-26'), dayOn('2026-09-29')], FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(new Date(2026, 8, 28));
+    assert.ok('f' in S.team().unplayed[0].minutes, 'fixture check: f was in the plan');
+    S.team().players = S.team().players.filter(p => p.id !== 'f');
+
+    S.playedUnplayed(0);
+
+    assert.deepEqual(Object.keys(S.team().season.games[0].minutes).sort(), ['a', 'b', 'c', 'd', 'e']);
+  });
+});
+
+test('a game that is already waiting is replaced by the newer copy, not dropped', () => {
+  const first = S.newGame(0, null, FORMAT);
+  first.label = 'Old';
+  withDays(SIX, [dayOn('2026-09-26', first), dayOn('2026-09-29')], FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(new Date(2026, 8, 28));
+    assert.equal(S.team().unplayed[0].game.label, 'Old');
+    // the coach brings the same game back to a later day, renames it, and again never starts it
+    const back = JSON.parse(JSON.stringify(first));
+    back.label = 'New';
+    S.team().days.push(dayOn('2026-09-27', back));
+    S.computeAll();
+    S.fileIfPast(new Date(2026, 8, 28));
+    assert.deepEqual(S.team().unplayed.map(u => [u.game.label, u.date]), [['New', '2026-09-27']]);
+  });
+});
+
 test('Played files the game with the minutes it was set aside with, Undo-safe by id', () => {
   const TODAY = new Date(2026, 8, 28);
   withDays(SIX, [{ name: 'Sat', date: '2026-09-26', games: [S.newGame(0, null, FORMAT)] }, dayOn('2026-09-29')], FORMAT, () => {
     S.computeAll();
     S.fileIfPast(TODAY);
-    const [u] = S.team().unplayed;
-    const minutes = { ...u.minutes };
 
     S.playedUnplayed(0);
 
     assert.deepEqual(S.team().unplayed, []);
     assert.equal(S.team().season.games.length, 1);
-    assert.deepEqual(S.team().season.games[0].minutes, minutes);
+    // a 32-minute game with five on the floor: 160 player-minutes among the six
+    const filed = S.team().season.games[0].minutes;
+    assert.deepEqual(Object.keys(filed).sort(), ['a', 'b', 'c', 'd', 'e', 'f']);
+    assert.ok(Math.abs(Object.values(filed).reduce((a, b) => a + b, 0) - 160) < 0.1, 'five kids on the floor for 32 minutes');
+    for (const m of Object.values(filed)) assert.ok(m > 20 && m < 32, `each of six plays most of it (${m})`);
     assert.equal(S.team().season.games[0].date, '2026-09-26');
     assert.equal(S.team().season.games[0].day, 'Sat');
   });

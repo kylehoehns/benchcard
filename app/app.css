@@ -409,7 +409,7 @@ a { color: inherit; }
 #todayUnplayed:not(:empty) { margin: 1.1rem 0 0; }
 .unplayed { display: flex; flex-direction: column; gap: .75rem; padding: 1rem 1.125rem;
   border-radius: var(--r-lg); background: var(--surface); }
-.unplayed-title { font-size: var(--fs-large); font-weight: 700; letter-spacing: -.03em; }
+.unplayed-title { font-size: var(--fs-title); font-weight: 700; letter-spacing: -.03em; }
 .unplayed-note { color: var(--muted); font-size: var(--fs-secondary); }
 .unplayed-row { display: flex; flex-direction: column; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--line-2); }
 .unplayed-what { font-weight: 600; overflow-wrap: anywhere; }

@@ -233,7 +233,7 @@ describe('a coach runs a game', { skip }, () => {
 
     assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season.');
     assert.deepEqual((await coach.unplayedCard()).rows, ['Sat, Sep 12 · Ravens']);
-    await coach.comeBackDaysLater(1); // the toast is gone, so it no longer covers the button
+    await coach.tap('Dismiss'); // the Filing toast no longer covers the button
     await coach.tap('Season 1 game filed ›');
 
     const minutes = await coach.seasonMinutes();

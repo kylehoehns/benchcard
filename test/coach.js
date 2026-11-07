@@ -283,14 +283,15 @@ export class Coach {
     })()`);
   }
 
-  /** The buttons of the question card's row `row` ("Sat, Sep 26 · Kingsway"), top to bottom. */
+  /** The buttons of the question card's row `row` ("Sat, Sep 26 · Kingsway"), top to bottom, by the name a
+      screen reader gives each: its visible words, then the row ("Played, Sat, Sep 26 · Kingsway"). */
   async unplayedButtons(row) {
     return (await this.#controls(this.#unplayedRow(row))).map(x => x.name);
   }
 
-  /** Answer the question card's row `row` by tapping its button `button`. */
+  /** Answer the question card's row `row` by tapping its button `button` (its visible words, "Played"). */
   async answer(row, button) {
-    const found = (await this.#controls(this.#unplayedRow(row))).filter(x => x.name === button);
+    const found = (await this.#controls(this.#unplayedRow(row))).filter(x => x.name === `${button}, ${row}`);
     if (found.length !== 1) throw new Error(`answer ${JSON.stringify(row)}: ${JSON.stringify(button)} matches ${found.length} controls`);
     const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: found[0].node });
     await this.#tapObject(object.objectId, JSON.stringify(button));

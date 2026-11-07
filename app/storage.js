@@ -129,7 +129,7 @@ const SEASON_MAX = 200;
 
 /* One game's `{ playerId: minutes }`, kept only where the minutes are real
    numbers -- and, when `validId` is handed, only for ids on that roster. */
-const cleanMinutes = (raw, validId) => {
+export const cleanMinutes = (raw, validId) => {
   const minutes = {};
   for (const [id, n] of Object.entries(isObj(raw) ? raw : {})) {
     /* Stricter than `idMap` elsewhere in this file, and deliberately:

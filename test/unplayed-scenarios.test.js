@@ -28,8 +28,8 @@ describe('a game that was planned and never started', { skip }, () => {
     const card = await coach.unplayedCard();
     assert.deepEqual(card.rows, [KINGSWAY]);
     assert.equal(card.title, 'Did you play this game?');
-    assert.equal(card.note, 'They were planned but never started in the app. Played games count toward minutes.');
-    assert.deepEqual(await coach.unplayedButtons(KINGSWAY), BUTTONS);
+    assert.equal(card.note, 'It was planned but never started in the app. Played games count toward minutes.');
+    assert.deepEqual(await coach.unplayedButtons(KINGSWAY), BUTTONS.map(b => `${b}, ${KINGSWAY}`), 'each name starts with the words on the button');
   });
 
   /* every kid's season minutes, added up: 5 on the floor for 4 x 8 minutes is 160 */
@@ -119,6 +119,7 @@ describe('a game that was planned and never started', { skip }, () => {
     const card = await coach.unplayedCard();
     assert.deepEqual(card.rows, rows);
     assert.equal(card.title, 'Did you play these?');
+    assert.equal(card.note, 'They were planned but never started in the app. Played games count toward minutes.');
 
     await coach.answer(rows[1], "Didn't play");
 

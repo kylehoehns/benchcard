@@ -19,7 +19,7 @@ import { isAlways, generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
-         validTipoff, tipoffLabel, RUN_KEYS, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS } from './storage.js';
+         validTipoff, tipoffLabel, RUN_KEYS, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS, cleanMinutes } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 import { emptyConstraints, removePlayer as removeFrom, setAvailable, removeTeam } from './team-ops.js';
@@ -3220,12 +3220,14 @@ export function archiveDay(d = state.activeDay) {
   day.games.forEach((g, i) => {
     const p = dp[i];
     const st = stage(p, g.live);
+    if (g.id === t.filler && !gameStarted(g.live) && !g.printed) return;   // #632: the fallback game nobody edited or printed was never a plan
     if (st === 'part-played' || st === 'finished') {
       filed.push(seasonGame(g, effectiveMinutes(g, p), { dayName: day.name, date: day.date }));
-    } else if (st === 'not-started' && !t.unplayed.some(u => u.game.id === g.id)) {
+    } else if (st === 'not-started') {
       /* #632: planned and never started. Not the season's and not dropped: it
          waits for the coach to say whether it was played. The minutes are the
          plan's now, because no day will hold it to solve again. */
+      t.unplayed = t.unplayed.filter(u => u.game.id !== g.id);   // the same game set aside twice: the newest copy waits
       t.unplayed.push({ game: clone(g), date: day.date, dayName: day.name, label: gameLabel(g, i), minutes: effectiveMinutes(g, p) });
     }
   });
@@ -3246,7 +3248,7 @@ export function playedUnplayed(i) {
   const t = team();
   const u = takeUnplayed(i);
   if (!u) return;
-  addSeasonGames(t.season, [seasonGame(u.game, u.minutes, { dayName: u.dayName, date: u.date })]);
+  addSeasonGames(t.season, [seasonGame(u.game, cleanMinutes(u.minutes, new Set(t.players.map(p => p.id))), { dayName: u.dayName, date: u.date })]);
   delete t.filler;
 }
 
@@ -3263,7 +3265,7 @@ export function moveUnplayedToday(i, today = new Date()) {
   const iso = seasonDate(today);
   const [only] = t.days;
   const stands = t.days.length === 1 && only.date === iso && only.games.length === 1
-    && only.games[0].id === t.filler && stage(dayPlans[0]?.[0], only.games[0].live) === 'not-started';
+    && only.games[0].id === t.filler && !gameStarted(only.games[0].live);
   if (stands) only.games = [];
   addGame(u.game, iso);
 }
