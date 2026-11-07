@@ -45,7 +45,39 @@ jobs:
     # a whole minute however fast it runs, so the second leg cost as much as the
     # first. If a syntax or stdlib call that 22 lacks ever matters, this is the
     # line that stopped catching it -- put the matrix back.
+    #
+    # #628: THIS JOB NO LONGER RUNS TESTS; IT JUDGES THEM. The Coach scenario
+    # files (the slow Chrome ones) run in `scenario-parts` below, three at once,
+    # and this required check is red unless all three succeeded. The other test
+    # files run once, inside the `smoke part suite` job, where the coverage
+    # floor counts them. Between them every `test/*.test.js` runs once.
+    # The name stays because the branch protection ruleset requires it.
+    #
+    # `if: always()` IS LOAD-BEARING, the same as for `smoke`: a required check
+    # whose job is skipped (because a part it needs failed) counts as passing.
+    # This job runs anyway and fails unless every part succeeded, a part that
+    # was cancelled or never reported included.
+    needs: scenario-parts
+    if: always()
     name: node 24
+    steps:
+      - run: test "${{ needs.scenario-parts.result }}" = "success"
+
+  scenario-parts:
+    # Not a required check: `node 24` above is, and it judges these.
+    # #628: the Coach scenarios, dealt across three runners by
+    # `node --test --test-shard`. `scripts/scenarios.mjs` reads the list of
+    # scenario files from `scripts/suite-files.mjs`, the one place that says
+    # what a scenario is; no glob is spelled here. They take no coverage (they
+    # drive Chrome through test/coach.js), so they stay out of the smoke suite
+    # part that does.
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1/3, 2/3, 3/3]
+    runs-on: ubuntu-24.04
+    name: scenario part ${{ matrix.part }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -54,7 +86,7 @@ jobs:
       # No `npm ci`: package.json is `{"type":"module"}` and nothing else, and
       # keeping it that way is deliberate. If this ever needs an install step,
       # that is a decision to make on purpose, not a line to add quietly.
-      - run: node --test
+      - run: node scripts/scenarios.mjs --shard ${{ matrix.part }}
 
   smoke:
     # The browser checks every polish iteration used to re-do by hand — no
@@ -70,6 +102,8 @@ jobs:
     #
     # Not `--no-tests`: the run counts which lines of app/ the browser rows
     # and the unit suite together ran, so the suite is one of its parts (#259).
+    # #628: "the suite" there is the unit files; the Coach scenarios take no
+    # coverage and run in `scenario-parts`, judged by `node 24`.
     # That is the line-coverage floor in scripts/coverage.json; AGENTS.md
     # § Layout has the rule.
     #
