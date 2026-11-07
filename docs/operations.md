@@ -136,10 +136,10 @@ newest run that failed on each name. It needs `gh` logged in and only reads: it
 never reruns a job. `/ship-feature` uses it to tell a known flake from a new
 break after a merge.
 
-Beyond the example-based tests, `fuzz.test.js` generates 400 random scenarios
+Beyond the example-based tests, `test/fuzz-*.test.js` generate 400 random scenarios
 (roster size, availability, format, granularity, and a random mix of every
 constraint type; some games get overtime periods, and some get stint lengths
-that do not divide the period) and asserts invariants that must always hold:
+that do not divide the period) and assert invariants that must always hold:
 
 - no input throws, and a refusal always carries a usable error message
 - every stint fields exactly five distinct, available players

@@ -22,7 +22,7 @@ balance was a tie-break on the minutes by accident: eleven players over eight
 4-minute stints means seven play 16 and four play 12, the minutes term is
 exactly flat across every choice of which seven, and the tiers were left
 holding the casting vote -- marking a child developing quietly cost them four
-minutes a game, about a game and a half across a season. `test/fuzz.test.js`
+minutes a game, about a game and a half across a season. `test/fuzz-levels.test.js`
 now holds the property directly: hold every input still, change only the
 levels, and every total comes back identical. The one way a level can reach a
 total is the coach asking for it out loud -- `settings.tieBreak: 'levels'`,
@@ -45,7 +45,7 @@ Amplitude is `bestFive - base`, so `start` genuinely aims the top five at the
 first stint rather than nudging vaguely upward.
 
 Inert by default: with every player on tier 3 every five is worth the same and
-the term is identically zero. `test/fuzz.test.js` asserts a flat roster plans
+the term is identically zero. `test/fuzz-flat-roster.test.js` asserts a flat roster plans
 byte-identically under all four shapes, and that no shape ever widens the
 minutes spread.
 
