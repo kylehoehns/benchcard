@@ -14,7 +14,7 @@ export function printProblems({ found, prints, views }) {
   return out;
 }
 
-/* The Home Screen app: Print shares one PNG and never calls `window.print()`.
+/* The Home Screen app: Print shares one PDF (#630) and never calls `window.print()`.
  * `where` names the button's place for the message. */
 export function homeScreenProblems({ where, found, shares, prints }) {
   if (!found) return [`${where}: no .today-print / #print button was found, so nothing was pressed`];
@@ -22,8 +22,8 @@ export function homeScreenProblems({ where, found, shares, prints }) {
   if (shares.length !== 1) out.push(`${where}: shared ${plural(shares.length, 'image')}, want 1`);
   else {
     const [s] = shares;
-    if (JSON.stringify(s.files) !== '["benchcard-ravens.png"]') out.push(`${where}: shared ${JSON.stringify(s.files)}, want ["benchcard-ravens.png"]`);
-    if (JSON.stringify(s.types) !== '["image/png"]') out.push(`${where}: shared type ${JSON.stringify(s.types)}, want ["image/png"]`);
+    if (JSON.stringify(s.files) !== '["benchcard-ravens.pdf"]') out.push(`${where}: shared ${JSON.stringify(s.files)}, want ["benchcard-ravens.pdf"]`);
+    if (JSON.stringify(s.types) !== '["application/pdf"]') out.push(`${where}: shared type ${JSON.stringify(s.types)}, want ["application/pdf"]`);
   }
   if (prints.length) out.push(`${where}: called window.print() ${plural(prints.length, 'time')}, want 0 (it does nothing in the Home Screen app)`);
   return out;

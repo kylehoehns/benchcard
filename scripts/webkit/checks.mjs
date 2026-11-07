@@ -87,7 +87,7 @@ async function homeScreenPrint(wk, origin) {
     problems.push(...homeScreenProblems({ where: 'the game screen', found: foundGame, ...await evalJSON(c, SHARES_AND_PRINTS) }));
 
     return rowOf('home-screen print', problems,
-      'Today and the game screen each shared one image/png named benchcard-ravens.png and called window.print() 0 times (Home Screen app emulated)');
+      'Today and the game screen each shared one application/pdf named benchcard-ravens.pdf and called window.print() 0 times (Home Screen app emulated)');
   });
 }
 

@@ -14,7 +14,7 @@
 import { icon } from './icons.js';
 import { $, on, set, clone, initFit } from './dom.js';
 import { refreshCardSheetPreview, CARD_FONT } from './card.js';
-import { shareCards, isHomeScreenApp, SHARE_TO_PRINT } from './share.js';
+import { shareCards, shareForPrint, isHomeScreenApp, SHARE_TO_PRINT } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
 import { initTimeline } from './timeline.js';
 import { initGameMode, openGameMode, renderGameMode, clearOverrides, gmFocusFirstFloor } from './gamemode.js';
@@ -174,10 +174,11 @@ function printCard() {
      `instant` only skips the scroll to the top. */
   if (state.view !== 'games') setView('games', true);
   /* #500: `window.print()` does nothing in the iOS Home Screen app, so there
-     the same tap shares the card image, whose share sheet has Print in it.
+     the same tap shares the card as a true-size letter PDF (#630), whose
+     share sheet has Print in it; it falls back to the PNG if the PDF is refused.
      Called inside the click so the tap's activation reaches the share. It
      counts itself (`card_shared`), not as a print. */
-  if (isHomeScreenApp()) { shareCardImage(); return; }
+  if (isHomeScreenApp()) { shareCardForPrint(); return; }
   track('card_printed', { size: state.ui.cardSize === 'half' ? 'half' : 'pocket' });
   recordPrinted(game(), plans[state.activeGame]);
   window.print();
@@ -251,12 +252,24 @@ on('#seasonExport', 'onclick', exportSeason);
    named top-level function -- an inline arrow would not be discoverable. */
 // Not true in the Home Screen app, where Print is the share (#500).
 const printStillWorks = () => isHomeScreenApp() ? '' : ' Print still works.';
-function shareCardImage() {
+/* What a share is called and what it is titled, from the game on screen: one
+   place for the PNG and the PDF. */
+function shareNames() {
+  const g = game();
+  const slug = (g.label || teamName() || 'rotation').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'rotation';
+  return { slug, title: g.label ? `Rotation vs ${g.label}` : `${teamName() || 'Benchcard'} rotation` };
+}
+
+/* Everything after a share starts, for the PNG and the PDF alike: the toasts,
+   `card_shared` and the printed stamp. `make` paints and starts the share
+   synchronously (so the tap's activation stands) and returns its promise;
+   `noun` is what a failure calls it ("image", "card"). */
+function runShare(make, noun) {
   const cards = [...document.querySelectorAll('#sheet .card:not(.card-copy)')];
   if (!cards.length) return;
   const g = game(), p = plans[state.activeGame];
-  const slug = (g.label || teamName() || 'rotation').toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'rotation';
+  const { slug, title } = shareNames();
   /* Deliberately not disabled while this runs. The paint is synchronous and
      takes ~10ms, so there is no window to double-tap in, and the share sheet
      is modal on the platforms that have one -- whereas a `finally` that never
@@ -264,13 +277,10 @@ function shareCardImage() {
      behavior) would leave a coach with a dead button and no way back. */
   let how;
   try {
-    how = shareCards(cards, {
-      filename: `benchcard-${slug}.png`,
-      title: g.label ? `Rotation vs ${g.label}` : `${teamName() || 'Benchcard'} rotation`,
-    });
+    how = make(cards, slug, title);
   } catch (err) {
     console.warn('share failed', err);
-    flash(`Could not make the image.${printStillWorks()}`);
+    flash(`Could not make the ${noun}.${printStillWorks()}`);
     return;
   }
   // A share sheet is its own confirmation; the quiet fallbacks are not.
@@ -280,8 +290,17 @@ function shareCardImage() {
     if (r !== 'cancelled') { track('card_shared', { how: r }); recordPrinted(g, p); }
   }).catch(err => {
     console.warn('share failed', err);
-    flash(`Could not share the image.${printStillWorks()}`);
+    flash(`Could not share the ${noun}.${printStillWorks()}`);
   });
+}
+function shareCardImage() {
+  runShare((cards, slug, title) => shareCards(cards, { filename: `benchcard-${slug}.png`, title }), 'image');
+}
+/* #630: Share to print in the Home Screen app shares a US Letter PDF, the card
+   at its real size. Same rule as above: no await before the share. */
+function shareCardForPrint() {
+  runShare((cards, slug, title) =>
+    shareForPrint(cards, { copies: state.ui.copies, filename: `benchcard-${slug}.pdf`, title }), 'card');
 }
 on('#shareCard', 'onclick', shareCardImage);
 
@@ -292,9 +311,9 @@ on('#frPrint', 'onclick', printCard);
 on('#frShare', 'onclick', shareCardImage);
 
 /* #500: in the iOS Home Screen app, Print and Share image would do the same
-   thing (`printCard` shares the image there), so one button stays, relabeled
-   to say what happens, and the other goes. Copies goes too: the image always
-   carries one. The labels are the text node after each button's icon, so the
+   thing (`printCard` shares the card there), so one button stays, relabeled
+   to say what happens, and the other goes. The Copies row stays hidden, but
+   the PDF (#630) still honors the saved copies setting. The labels are the text node after each button's icon, so the
    icon span stays, and the accessible name still contains the visible text. */
 if (isHomeScreenApp()) {
   const relabel = (sel, text, name) => {

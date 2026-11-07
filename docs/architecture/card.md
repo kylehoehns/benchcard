@@ -89,8 +89,8 @@ still fits a phone.
 The card also leaves as a PNG. Printing needs a printer; "text me your
 rotation" is how a card actually reaches another coach, and that is the whole
 word-of-mouth story for an app nobody advertises. In the iOS Home Screen app,
-where `window.print()` does nothing, this PNG is also how the card gets printed
-(see [interface.md](interface.md)). `share.js` clones the card into an offscreen
+where `window.print()` does nothing, the card is printed from a PDF instead
+(see below and [interface.md](interface.md)). `share.js` clones the card into an offscreen
 host (outside `#sheet`, so the preview's `--cardzoom` is unset and every rect is
 a real 96dpi print pixel), walks it, and paints each leaf's text, and each box's
 background fill, borders and outline, onto a 3x canvas. The tick boxes, the
@@ -101,3 +101,25 @@ does not, a download where neither does. The whole path from tap to `share()` is
 synchronous, including a hand-rolled `toDataURL` decode instead of `toBlob`:
 `navigator.share` needs transient activation, and an `await` in front of it
 loses that on iOS, the platform the feature exists for.
+
+The Home Screen app's Share to print sends a US Letter PDF instead of this
+PNG (#630). iOS scales a shared PNG to fill the page, so the card would print
+at the wrong size. `shareForPrint` in `share.js` paints each distinct card
+alone onto a white canvas at the same 3x, inside print's own edge: the 1px
+dashed `#ccc` line with its 4px radius from `@media print .card` in
+`card.css`. It encodes that as a JPEG (quality .95) through the same
+hand-rolled `toDataURL` decode as the PNG. Nothing else is painted: no gray
+ground, no band and no padding, because the page around the card is the
+paper's.
+
+`app/pdf.js` lays the cards out the way `window.print()` does. Each card's
+size comes from `CARD_SIZES` in inches x 72. `printLayout` fills each row
+left to right inside the .25in margin. A new row starts .15in lower, and a
+row that would pass the bottom margin starts a new page. `letterPdf` writes
+the file by hand. Each distinct card is one image object, and a copy repeats
+that image rather than embedding it again. `pdf.js` holds the page margin and
+the gap in points. `test/pdf.test.js` reads `card.css`'s `@page` size and
+margin and the print `.stage` gap, and fails if they differ from `pdf.js`.
+
+The path from tap to `navigator.share` is still synchronous. If
+`navigator.canShare` refuses the PDF, the same tap shares the PNG instead.
