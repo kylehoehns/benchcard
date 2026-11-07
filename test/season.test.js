@@ -127,8 +127,8 @@ test('a game that never produced a rotation is not a game that was played', () =
   assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
 });
 
-test('archiveDay: a game that was never started is left out and named', () => {
-  // #133 item 1's planning half: Northgate part-played (live.at 2), Kingsway
+test('archiveDay: a game that was never started is set aside to ask about, not filed', () => {
+  // #632 (was #133 item 1): Northgate part-played (live.at 2), Kingsway
   // never started (setup()'s default: no live at all).
   const t = setup({ games: 2 });
   const northgate = t.days[0].games[0];
@@ -138,7 +138,8 @@ test('archiveDay: a game that was never started is left out and named', () => {
   const r = S.archiveDay();
   assert.equal(r.kept, 1, 'only Northgate, part-played, files');
   assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
-  assert.deepEqual(r.skipped, ['Kingsway'], 'Kingsway, never started, is reported by name');
+  assert.deepEqual(t.unplayed.map(u => [u.game.id, u.label, u.date]), [['g1', 'Kingsway', '2026-11-08']],
+    'Kingsway, never started, is waiting for an answer');
 });
 
 test('archiving twice cannot double a kid\'s season', () => {
@@ -375,10 +376,10 @@ test('fileIfPast: one game files with singular copy', () => {
   assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season.');
 });
 
-/* ---- #133: a game that was never started is left out of the season ---- */
+/* ---- #632: a game that was never started is asked about, not filed ---- */
 
-test('fileIfPast: a never-started game is skipped and named in the toast', () => {
-  // item 1: Northgate part-played (live.at 2), Kingsway never started.
+test('fileIfPast: a never-started game waits for an answer and the toast says only what filed', () => {
+  // Northgate part-played (live.at 2), Kingsway never started.
   const t = setup({ games: 2, date: '2026-09-26' });
   const northgate = t.days[0].games[0];
   northgate.live = { at: 2, overrides: {} };
@@ -389,23 +390,21 @@ test('fileIfPast: a never-started game is skipped and named in the toast', () =>
 
   assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
   assert.deepEqual(t.season.games[0].minutes, eff);
-  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season. Kingsway was never started, so it was left out.');
+  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season.');
+  assert.deepEqual(t.unplayed.map(u => [u.game.id, u.label]), [['g1', 'Kingsway']]);
 });
 
-test('fileIfPast: an unnamed skipped game reads "Game N"', () => {
-  // item 2: same as item 1, Kingsway's label is '' instead of a name.
+test('fileIfPast: an unnamed waiting game reads "Game N"', () => {
   const t = setup({ games: 2, date: '2026-09-26' });
   t.days[0].games[0].live = { at: 2, overrides: {} };
   t.days[0].games[1].label = '';
   S.computeAll();
 
-  const msg = S.fileIfPast(TODAY);
-  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season. Game 2 was never started, so it was left out.');
+  S.fileIfPast(TODAY);
+  assert.deepEqual(t.unplayed.map(u => u.label), ['Game 2']);
 });
 
-test('fileIfPast: two or more skipped games are counted, not named', () => {
-  // item 3: Northgate finished, Kingsway and an unnamed third game never
-  // started -- setup()'s own default already leaves a third game unnamed.
+test('fileIfPast: two or more waiting games each get a row, in day order', () => {
   const t = setup({ games: 3, date: '2026-09-26' });
   const northgate = t.days[0].games[0];
   finishGame(northgate, S.plans[0]);
@@ -413,21 +412,23 @@ test('fileIfPast: two or more skipped games are counted, not named', () => {
 
   const msg = S.fileIfPast(TODAY);
   assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
-  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season. 2 games were never started, so they were left out.');
+  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season.');
+  assert.deepEqual(t.unplayed.map(u => u.game.id), ['g1', 'g2']);
 });
 
-test('fileIfPast: everything skipped still starts a new day, with an empty season', () => {
-  // item 4: Northgate, solved and never started, is the day's only game.
+test('fileIfPast: only waiting games still starts a new day, with an empty season', () => {
+  // Northgate, solved and never started, is the day's only game.
   const t = setup({ games: 1, date: '2026-09-26' });
   const msg = S.fileIfPast(TODAY);
   assert.equal(t.season.games.length, 0);
   assert.equal(t.days[0].date, '2026-09-28', 'the fresh day is dated today');
-  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. A new game is ready for today.');
+  assert.equal(msg, 'Sat, Sep 26 is over. A new game is ready for today.');
+  assert.deepEqual(t.unplayed.map(u => u.label), ['Northgate']);
 });
 
-test('fileIfPast: an unsolved game is not counted as skipped', () => {
-  // item 5: Northgate finished, Kingsway with 4 of 10 available -- its plan
-  // does not solve at all, so it was never playable and is silent, as today.
+test('fileIfPast: an unsolved game is dropped silently, not asked about', () => {
+  // Northgate finished, Kingsway with 4 of 10 available -- its plan
+  // does not solve at all, so it was never playable.
   const t = setup({ games: 2, date: '2026-09-26' });
   const northgate = t.days[0].games[0];
   t.days[0].games[1].out = S.state.players.slice(4).map(p => p.id);
@@ -438,12 +439,12 @@ test('fileIfPast: an unsolved game is not counted as skipped', () => {
 
   const msg = S.fileIfPast(TODAY);
   assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season.');
+  assert.deepEqual(t.unplayed, []);
 });
 
-test('fileIfPast: bench mode opened but still on stint 0 is left out, not counted as played', () => {
-  // item 7: pins the note at the top of the spec -- a game the coach opened
-  // in bench mode but closed without a Next or Finish game never advanced
-  // past stint 0, and one override there does not change that.
+test('fileIfPast: bench mode opened but still on stint 0 is asked about, not counted as played', () => {
+  // a game the coach opened in bench mode but closed without a Next or Finish
+  // game never advanced past stint 0, and one override there does not change that.
   const t = setup({ games: 1, date: '2026-09-26' });
   const g = t.days[0].games[0];
   const p = S.plans[0];
@@ -454,7 +455,8 @@ test('fileIfPast: bench mode opened but still on stint 0 is left out, not counte
 
   const msg = S.fileIfPast(TODAY);
   assert.equal(t.season.games.length, 0);
-  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. A new game is ready for today.');
+  assert.equal(msg, 'Sat, Sep 26 is over. A new game is ready for today.');
+  assert.deepEqual(t.unplayed.map(u => u.label), ['Northgate']);
 });
 
 test('fileIfPast: the season used for carryover math counts only the filed game, not the skipped one', () => {

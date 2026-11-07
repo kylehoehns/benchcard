@@ -28,7 +28,7 @@ import { evalIn, quiet, setVisibility, screenReadyExpr, FAST_PLAYBACK_RATE, TIME
 import { land, RELOAD_FLAG } from '../scripts/smoke/page-state.mjs';
 import { buildClockScript, SMOKE_CLOCK } from '../scripts/smoke/clock.mjs';
 import { RICH, TODAY_GAME_READY, GAMES_VIEW_READY, WELCOME_LANDING } from '../scripts/smoke/fixtures.mjs';
-import { SAMPLE_PLAYERS, withSecondTeam } from '../scripts/smoke/fixtures.mjs';
+import { SAMPLE_PLAYERS, SAMPLE_TEAM, withSecondTeam } from '../scripts/smoke/fixtures.mjs';
 import { WAITING_WORKER, TAKEOVER } from '../scripts/smoke/waiting-worker.mjs';
 import { PRINT_SPY, HOME_SCREEN_APP } from '../scripts/smoke/page-spies.mjs';
 
@@ -244,6 +244,62 @@ export class Coach {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     await land(this.c, this.origin, { record: midSeason(), ready: TODAY_GAME_READY });
+  }
+
+  /** Open the app on the sample team with these past days saved (and, with `otherTeamDays`, a
+      second team holding those), at the phone's clock `pin` ({ y, m, d, h }). A day is `{ date, games: [{ label, started }] }`; a game that is
+      `started` has its first stints played, any other was only planned. Lands on Today. */
+  async onPastDays(pin, days, { otherTeamDays } = {}) {
+    const record = JSON.parse(JSON.stringify(SAMPLE_TEAM));
+    const day = (d, n) => ({
+      name: '', date: d.date,
+      games: d.games.map((g, i) => ({
+        id: `g${n}${i}`, label: g.label, tipoff: '', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
+        out: [], strategy: 'balanced', seed: 100 + n * 10 + i,
+        ...(g.started ? { live: { at: 2, overrides: {} } } : {}),
+      })),
+    });
+    record.teams[0].days = days.map(day);
+    record.teams[0].activeDay = 0;
+    if (otherTeamDays) {
+      const other = withSecondTeam(record).teams[1];
+      other.days = otherTeamDays.map(day);
+      record.teams.push(other);
+    }
+    this.errors.length = 0;
+    await this.#setClock(pin);
+    await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
+  }
+
+  /** The question card at the top of Today, as `{ title, note, rows }` (a row reads
+      "Sat, Sep 26 · Kingsway"), or null when it is not there. */
+  unplayedCard() {
+    return evalIn(this.c, `(() => {
+      const c = document.querySelector('#todayUnplayed .unplayed');
+      if (!c || !c.getClientRects().length) return null;
+      return { title: c.querySelector('.unplayed-title').textContent,
+        note: c.querySelector('.unplayed-note').textContent,
+        rows: [...c.querySelectorAll('.unplayed-row')].map(r => r.querySelector('.unplayed-what').textContent) };
+    })()`);
+  }
+
+  /** The buttons of the question card's row `row` ("Sat, Sep 26 · Kingsway"), top to bottom, by the name a
+      screen reader gives each: its visible words, then the row ("Played, Sat, Sep 26 · Kingsway"). */
+  async unplayedButtons(row) {
+    return (await this.#controls(this.#unplayedRow(row))).map(x => x.name);
+  }
+
+  /** Answer the question card's row `row` by tapping its button `button` (its visible words, "Played"). */
+  async answer(row, button) {
+    const found = (await this.#controls(this.#unplayedRow(row))).filter(x => x.name === `${button}, ${row}`);
+    if (found.length !== 1) throw new Error(`answer ${JSON.stringify(row)}: ${JSON.stringify(button)} matches ${found.length} controls`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: found[0].node });
+    await this.#tapObject(object.objectId, JSON.stringify(button));
+  }
+
+  #unplayedRow(row) {
+    return `[...document.querySelectorAll('#todayUnplayed .unplayed-row')]
+      .filter(r => r.querySelector('.unplayed-what').textContent === ${JSON.stringify(row)})`;
   }
 
   /** Open the app for the first time on a device with nothing saved: the welcome screen. */

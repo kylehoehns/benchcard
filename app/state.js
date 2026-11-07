@@ -19,7 +19,7 @@ import { isAlways, generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
-         validTipoff, tipoffLabel, RUN_KEYS, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS } from './storage.js';
+         validTipoff, tipoffLabel, RUN_KEYS, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS, cleanMinutes } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 import { emptyConstraints, removePlayer as removeFrom, setAvailable, removeTeam } from './team-ops.js';
@@ -288,6 +288,8 @@ export const newTeam = (name, players, settings, today = new Date()) => {
     days: [{ name: '', date: seasonDate(today), games: [newGame(0, null, s)] }],
     activeDay: 0,
     season: { games: [] },
+    // #632: games planned for a day that ended unstarted, waiting to be asked about
+    unplayed: [],
     /* Copy on create, not a cascade (v6): two squads are usually in one league,
        and an inheritance link would be a second thing to explain and to get
        wrong when a team is removed. Independent from then on. `sanitizeSettings`
@@ -986,6 +988,7 @@ function reopenSorted(dayIndex, games, g) {
  * 2, #102 item 3).
  */
 export function addGame(g, date) {
+  delete team().filler;   // #632: a game the coach added is no longer filing's filler
   const i = dayFor(date);
   const day = team().days[i];
   day.games.push(g);
@@ -3190,13 +3193,13 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
  * game is kept when it is in the day at the moment "New day" fires *and*
  * it was actually started -- `stage(p, g.live)` (`live.js`) is the one
  * honest signal, read once and never re-derived: `'not-started'` means
- * nothing from the plan was ever played, and #133 leaves that game out
- * rather than filing its planned minutes. A plan that never solved
+ * nothing from the plan was ever played, and #632 sets that game aside to ask
+ * the coach whether it was played rather than filing its planned minutes
+ * unasked. A plan that never solved
  * (`p.ok` false) was never playable either way and stays out silently, as
  * it always has. Deleting a game before then is the coach saying it did
  * not happen, and deleting already takes it out of the day, so it never
- * reaches here. (`carryUnplayedDay` reads the plan-free equivalent --
- * `gameStarted` -- because it runs before plans are solved.)
+ * reaches here.
  *
  * The minutes are `effectiveMinutes`, never `plan.minutes`: a coach who
  * swapped Ben on for Devon in the third stint changed who played, and
@@ -3210,20 +3213,67 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
 export function archiveDay(d = state.activeDay) {
   const t = team();
   if (!t.season || !Array.isArray(t.season.games)) t.season = { games: [] };
+  if (!Array.isArray(t.unplayed)) t.unplayed = [];
   const day = t.days[d];
   const dp = dayPlans[d] || [];
   const filed = [];
-  const skipped = [];
   day.games.forEach((g, i) => {
     const p = dp[i];
     const st = stage(p, g.live);
+    if (g.id === t.filler && !gameStarted(g.live) && !g.printed) return;   // #632: the fallback game nobody edited or printed was never a plan
     if (st === 'part-played' || st === 'finished') {
       filed.push(seasonGame(g, effectiveMinutes(g, p), { dayName: day.name, date: day.date }));
     } else if (st === 'not-started') {
-      skipped.push(gameLabel(g, i));
+      /* #632: planned and never started. Not the season's and not dropped: it
+         waits for the coach to say whether it was played. The minutes are the
+         plan's now, because no day will hold it to solve again. */
+      t.unplayed = t.unplayed.filter(u => u.game.id !== g.id);   // the same game set aside twice: the newest copy waits
+      t.unplayed.push({ game: clone(g), date: day.date, dayName: day.name, label: gameLabel(g, i), minutes: effectiveMinutes(g, p) });
     }
   });
-  return { kept: addSeasonGames(t.season, filed), skipped };
+  return { kept: addSeasonGames(t.season, filed) };
+}
+
+/* #632: the three answers to "Did you play this game?", one function each,
+   called from the card on Today. Each takes the waiting entry's index, takes it
+   off `team().unplayed`, and clears `filler` -- an answer means the coach has
+   looked at the day. The caller wraps each in `undoable`.
+
+   Played files the game through `seasonGame` and `addSeasonGames`, with the
+   minutes snapshotted when it was set aside: it is in no day, so there is no
+   plan to solve again. */
+const takeUnplayed = i => team().unplayed.splice(i, 1)[0];
+
+export function playedUnplayed(i) {
+  const t = team();
+  const u = takeUnplayed(i);
+  if (!u) return;
+  addSeasonGames(t.season, [seasonGame(u.game, cleanMinutes(u.minutes, new Set(t.players.map(p => p.id))), { dayName: u.dayName, date: u.date })]);
+  delete t.filler;
+}
+
+/* Move to today: the game, its roster, who is here, format and rotation as they
+   were, joins today's day through `addGame` like any added game. The one
+   exception is the empty game filing built to fill an empty day (`t.filler`):
+   when it is still the only game of the only day, today's, and was never
+   started, it would sit beside the moved game as a game nobody planned, so the
+   moved game takes its place. */
+export function moveUnplayedToday(i, today = new Date()) {
+  const t = team();
+  const u = takeUnplayed(i);
+  if (!u) return;
+  const iso = seasonDate(today);
+  const [only] = t.days;
+  const stands = t.days.length === 1 && only.date === iso && only.games.length === 1
+    && only.games[0].id === t.filler && !gameStarted(only.games[0].live);
+  if (stands) only.games = [];
+  addGame(u.game, iso);
+}
+
+/* Didn't play: the game did not happen, so it is nowhere. */
+export function dropUnplayed(i) {
+  if (!takeUnplayed(i)) return;
+  delete team().filler;
 }
 
 /* #123: whether bench mode is open, in one place. Every module that asked
@@ -3289,27 +3339,6 @@ export function dayHeading(day, today = new Date()) {
 }
 
 /**
- * #379: a game set up the night before is still the coach's game the next
- * morning. When filing is due (`dueToFile`), today has no day, and the latest
- * past day has no started game (none part-played or finished -- `live.js`'s
- * own readers), that day is dated today instead of filed. Nothing else about
- * it changes, so there is nothing to announce or undo. Older past days stay
- * for `fileIfPast`. Returns whether a day moved. "Today" is injectable.
- */
-export function carryUnplayedDay(today = new Date()) {
-  if (!dueToFile(today)) return false;
-  const iso = seasonDate(today);
-  const days = team().days;
-  if (days.some(d => d.date === iso)) return false;
-  const past = days.filter(d => dayIsPast(d, today));
-  // `past` is non-empty: dueToFile held, and reduce has no initial value
-  const latest = past.reduce((a, b) => (b.date > a.date ? b : a));
-  if (latest.games.some(g => gameStarted(g.live))) return false;
-  latest.date = iso;
-  return true;
-}
-
-/**
  * #100: the filing entry point. When `state.day` is due (`dueToFile`), files
  * its solved games into the season under its own date and replaces it with
  * one fresh game dated `today` -- exactly what "New day" used to build
@@ -3338,15 +3367,11 @@ export function fileIfPast(today = new Date()) {
   const activeDayRef = t.days[t.activeDay];
 
   let kept = 0;
-  const skipped = [];
-  for (const i of idxs) {
-    const r = archiveDay(i);
-    kept += r.kept;
-    skipped.push(...r.skipped);
-  }
+  for (const i of idxs) kept += archiveDay(i).kept;
 
   const removed = new Set(idxs);
   t.days = t.days.filter((_, i) => !removed.has(i));
+  delete t.filler;
 
   // "No empty days" (Decisions): when filing leaves none, one day dated
   // today with one new game replaces them -- the fresh-day shape #100 built.
@@ -3359,6 +3384,7 @@ export function fileIfPast(today = new Date()) {
     t.days = [{ name: '', date: seasonDate(today), games: [g] }];
     t.activeDay = 0;
     state.activeGame = 0;
+    t.filler = g.id;   // #632: Move to today replaces this game instead of sitting beside it
   } else {
     const newIdx = t.days.indexOf(activeDayRef);
     if (newIdx < 0) { t.activeDay = 0; state.activeGame = 0; } else { t.activeDay = newIdx; }
@@ -3373,13 +3399,5 @@ export function fileIfPast(today = new Date()) {
       ? `${n} past days: ${kept} game${kept === 1 ? '' : 's'} filed to the season.`
       : `${n} past days are over.`);
 
-  // #133: a game that was never started is left out of the count above and
-  // named here instead -- one sentence, added only when the day(s) that
-  // filed actually skipped one. Two or more are counted, not named: a
-  // tournament day could skip five, and five names do not fit one toast.
-  const skipMsg = skipped.length === 1 ? ` ${skipped[0]} was never started, so it was left out.`
-    : skipped.length > 1 ? ` ${skipped.length} games were never started, so they were left out.`
-    : '';
-  const full = msg + skipMsg;
-  return fellBack && kept === 0 ? `${full} A new game is ready for today.` : full;
+  return fellBack && kept === 0 ? `${msg} A new game is ready for today.` : msg;
 }

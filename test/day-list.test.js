@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, player, withDays, finishGame } from './state-fixture.js';
+import { seasonShare } from '../app/storage.js';
+import { edit } from '../app/edit.js';
 
 /* #101: a team's day of games has become a list of days
  * (docs/specs/101-plan-another-date.md). This file holds the state-layer
@@ -413,7 +415,7 @@ test('fileIfPast files every past day under its own date, in one toast, and keep
 
 /* ---------------------------- #133 item 6: several past days, mixed ---------------------------- */
 
-test('fileIfPast: several past days report their never-started games in one count, across all of them', () => {
+test('fileIfPast: several past days file what was started and set the never-started games aside to ask about, oldest first', () => {
   // game A (2026-09-26) finishes; game B (2026-09-26) and game C (2026-09-27)
   // stay never-started; 2026-09-29 is not past and stays put.
   const TODAY = new Date(2026, 8, 28);
@@ -425,9 +427,39 @@ test('fileIfPast: several past days report their never-started games in one coun
 
     const msg = S.fileIfPast(TODAY);
 
-    assert.equal(msg, '2 past days: 1 game filed to the season. 2 games were never started, so they were left out.');
+    assert.equal(msg, '2 past days: 1 game filed to the season.');
     assert.equal(S.team().days.length, 1, 'only the 29th is left in days');
     assert.equal(S.team().days[0].date, '2026-09-29');
+    assert.deepEqual(S.team().unplayed.map(u => [u.date, u.label]), [['2026-09-26', 'Game 2'], ['2026-09-27', 'Game 1']]);
+    assert.equal(S.team().season.games.length, 1, 'the waiting games are not in the season');
+  });
+});
+
+test('a waiting game is not in the season, so the minutes the plan is measured against ignore it', () => {
+  const TODAY = new Date(2026, 8, 28);
+  withDays(SIX, THREE_DAYS(), FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(TODAY);
+
+    assert.equal(S.team().unplayed.length, 3);
+    assert.deepEqual(S.team().season.games, []);
+    assert.deepEqual(seasonShare(S.team().season.games), seasonShare([]), 'nobody has a minute from a waiting game');
+
+    S.playedUnplayed(0);
+    assert.notDeepEqual(seasonShare(S.team().season.games), seasonShare([]), 'answered Played, it counts');
+  });
+});
+
+test('a game whose plan never solved is dropped silently, not asked about', () => {
+  const TODAY = new Date(2026, 8, 28);
+  const broken = S.newGame(0, null, FORMAT);
+  broken.out = SIX.map(p => p.id); // nobody is here
+  withDays(SIX, [{ name: '', date: '2026-09-26', games: [broken] }, { name: '', date: '2026-09-29', games: [S.newGame(0, null, FORMAT)] }], FORMAT, () => {
+    S.computeAll();
+    assert.equal(S.dayPlans[0][0].ok, false, 'fixture check: the plan does not solve');
+    S.fileIfPast(TODAY);
+    assert.deepEqual(S.team().unplayed, []);
+    assert.deepEqual(S.team().season.games, []);
   });
 });
 
@@ -478,66 +510,169 @@ test('removeGame drops the team\'s only day when it removes the team\'s only gam
   });
 });
 
-/* ---------------------------- #379: an unplayed day carries forward ---------------------------- */
+/* ---------------------------- #632: the answers to "Did you play this game?" ---------------------------- */
 
 const NIGHT_TODAY = new Date(2026, 9, 31, 9); // the morning of the 31st
 const dayOn = (date, g = S.newGame(0, null, FORMAT)) => ({ name: '', date, games: [g] });
 
-test('carryUnplayedDay: the latest past day with nothing started is dated today, game untouched', () => {
+test('the night before: the game is asked about, today gets the fallback game, and moving it replaces that game', () => {
   const g = S.newGame(0, null, FORMAT);
   g.seed = 777; g.label = 'vs Hawks'; g.tipoff = '09:30';
   withDays(SIX, [dayOn('2026-10-30', g)], FORMAT, () => {
-    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), true);
+    S.computeAll();
+    S.fileIfPast(NIGHT_TODAY);
     assert.equal(S.team().days.length, 1);
-    assert.equal(S.team().days[0].date, '2026-10-31');
-    assert.equal(S.team().days[0].games[0], g, 'the same game, not a copy');
-    assert.equal(S.team().season.games.length, 0, 'nothing filed');
+    const fallback = S.team().days[0].games[0];
+    assert.equal(S.team().filler, fallback.id, 'the fallback game is recorded as filing\'s');
+    assert.equal(S.team().unplayed.length, 1);
+
+    S.computeAll();
+    S.moveUnplayedToday(0, NIGHT_TODAY);
+
+    assert.deepEqual(S.team().days.map(d => [d.date, d.games.map(x => x.id)]), [['2026-10-31', [g.id]]]);
+    assert.deepEqual(S.team().days[0].games[0], g, 'the game as it was, id included');
+    assert.deepEqual(S.team().unplayed, []);
+    assert.equal(S.team().filler, undefined);
   });
 });
 
-test('carryUnplayedDay: no past day, or a day already dated today, carries nothing', () => {
-  withDays(SIX, [dayOn('2026-10-31')], FORMAT, () => {
-    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
-    assert.equal(S.team().days[0].date, '2026-10-31');
+test('moving to today adds beside the fallback game when it is not alone, was started, is not filing\'s, or is on a second day', () => {
+  const days = [];
+  const run = mutate => {
+    const waiting = S.newGame(0, null, FORMAT);
+    waiting.label = 'Waiting';
+    withDays(SIX, [dayOn('2026-10-30', waiting)], FORMAT, () => {
+      S.computeAll();
+      S.fileIfPast(NIGHT_TODAY);
+      mutate();
+      S.computeAll();
+      S.moveUnplayedToday(0, NIGHT_TODAY);
+      days.push(S.team().days.map(d => [d.date, d.games.length]));
+    });
+  };
+  run(() => { S.team().days[0].games[0].live = { at: 2, overrides: {} }; });
+  run(() => { S.team().days[0].games.push(S.newGame(1, S.team().days[0].games[0], FORMAT)); });
+  run(() => { S.team().days.push(dayOn('2026-11-02')); });
+  run(() => { delete S.team().filler; });
+  assert.deepEqual(days, [
+    [['2026-10-31', 2]],
+    [['2026-10-31', 3]],
+    [['2026-10-31', 2], ['2026-11-02', 1]],
+    [['2026-10-31', 2]],
+  ]);
+});
+
+/* the fallback game is filing's only until the coach touches the record */
+function afterNightBefore(mutate, after = () => {}) {
+  const waiting = S.newGame(0, null, FORMAT);
+  waiting.label = 'Waiting';
+  withDays(SIX, [dayOn('2026-10-30', waiting)], FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(NIGHT_TODAY);
+    mutate();
+    S.computeAll();
+    after();
   });
-  withDays(SIX, [dayOn('2026-10-30'), dayOn('2026-10-31')], FORMAT, () => {
-    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false, 'today already has a day');
-    assert.deepEqual(S.team().days.map(d => d.date), ['2026-10-30', '2026-10-31']);
+}
+
+test('a fallback game the coach edited is kept beside the moved game', () => {
+  afterNightBefore(() => edit('opponent'), () => {
+    assert.equal(S.team().filler, undefined, 'a record edit ends the fallback');
+    S.moveUnplayedToday(0, NIGHT_TODAY);
+    assert.deepEqual(S.team().days.map(d => [d.date, d.games.length]), [['2026-10-31', 2]]);
   });
 });
 
-test('carryUnplayedDay: a past day with a game part-played or finished is not carried', () => {
-  const partPlayed = S.newGame(0, null, FORMAT);
-  partPlayed.live = { at: 2, overrides: {} };
-  withDays(SIX, [dayOn('2026-10-30', partPlayed)], FORMAT, () => {
-    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
-    assert.equal(S.team().days[0].date, '2026-10-30');
-  });
-  const done = S.newGame(0, null, FORMAT);
-  done.live = { at: 0, overrides: {}, finished: true };
-  withDays(SIX, [dayOn('2026-10-30', done)], FORMAT, () => {
-    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
-    assert.equal(S.team().days[0].date, '2026-10-30');
+test('a preference change does not end the fallback, and an unsolved fallback is still replaced', () => {
+  afterNightBefore(() => { edit('theme'); S.team().days[0].games[0].out = SIX.map(p => p.id); }, () => {
+    assert.equal(S.dayPlans[0][0].ok, false, 'fixture check: the fallback does not solve');
+    S.moveUnplayedToday(0, NIGHT_TODAY);
+    assert.deepEqual(S.team().days.map(d => [d.date, d.games.length]), [['2026-10-31', 1]]);
+    assert.equal(S.team().days[0].games[0].label, 'Waiting');
   });
 });
 
-test('carryUnplayedDay: only the latest past day moves; older days stay for filing, and a future day stays', () => {
-  withDays(SIX, [dayOn('2026-10-25'), dayOn('2026-10-30'), dayOn('2026-11-02')], FORMAT, () => {
-    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), true);
-    assert.deepEqual(S.team().days.map(d => d.date), ['2026-10-25', '2026-10-31', '2026-11-02']);
+test('an untouched fallback game that sits through a later filing is not asked about', () => {
+  afterNightBefore(() => {}, () => {
+    S.fileIfPast(new Date(2026, 10, 2, 9));
+    assert.deepEqual(S.team().unplayed.map(u => u.label), ['Waiting'], 'only the game the coach planned is waiting');
   });
 });
 
-test('carryUnplayedDay: not while bench mode is open, and not before onboarding', () => {
+test('a fallback game that was printed unchanged is still asked about', () => {
+  afterNightBefore(() => {
+    edit('printed');   // printing is a preference edit, so it leaves the fallback in place
+    S.team().days[0].games[0].printed = true;
+    assert.ok(S.team().filler, 'fixture check: the fallback is still the filler');
+  }, () => {
+    S.fileIfPast(new Date(2026, 10, 2, 9));
+    assert.equal(S.team().unplayed.length, 2, 'the printed fallback is waiting beside the planned game');
+  });
+});
+
+test('Played files only minutes of players still on the roster', () => {
+  withDays(SIX, [dayOn('2026-09-26'), dayOn('2026-09-29')], FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(new Date(2026, 8, 28));
+    assert.ok('f' in S.team().unplayed[0].minutes, 'fixture check: f was in the plan');
+    S.team().players = S.team().players.filter(p => p.id !== 'f');
+
+    S.playedUnplayed(0);
+
+    assert.deepEqual(Object.keys(S.team().season.games[0].minutes).sort(), ['a', 'b', 'c', 'd', 'e']);
+  });
+});
+
+test('a game that is already waiting is replaced by the newer copy, not dropped', () => {
+  const first = S.newGame(0, null, FORMAT);
+  first.label = 'Old';
+  withDays(SIX, [dayOn('2026-09-26', first), dayOn('2026-09-29')], FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(new Date(2026, 8, 28));
+    assert.equal(S.team().unplayed[0].game.label, 'Old');
+    // the coach brings the same game back to a later day, renames it, and again never starts it
+    const back = JSON.parse(JSON.stringify(first));
+    back.label = 'New';
+    S.team().days.push(dayOn('2026-09-27', back));
+    S.computeAll();
+    S.fileIfPast(new Date(2026, 8, 28));
+    assert.deepEqual(S.team().unplayed.map(u => [u.game.label, u.date]), [['New', '2026-09-27']]);
+  });
+});
+
+test('Played files the game with the minutes it was set aside with, Undo-safe by id', () => {
+  const TODAY = new Date(2026, 8, 28);
+  withDays(SIX, [{ name: 'Sat', date: '2026-09-26', games: [S.newGame(0, null, FORMAT)] }, dayOn('2026-09-29')], FORMAT, () => {
+    S.computeAll();
+    S.fileIfPast(TODAY);
+
+    S.playedUnplayed(0);
+
+    assert.deepEqual(S.team().unplayed, []);
+    assert.equal(S.team().season.games.length, 1);
+    // a 32-minute game with five on the floor: 160 player-minutes among the six
+    const filed = S.team().season.games[0].minutes;
+    assert.deepEqual(Object.keys(filed).sort(), ['a', 'b', 'c', 'd', 'e', 'f']);
+    assert.ok(Math.abs(Object.values(filed).reduce((a, b) => a + b, 0) - 160) < 0.1, 'five kids on the floor for 32 minutes');
+    for (const m of Object.values(filed)) assert.ok(m > 20 && m < 32, `each of six plays most of it (${m})`);
+    assert.equal(S.team().season.games[0].date, '2026-09-26');
+    assert.equal(S.team().season.games[0].day, 'Sat');
+  });
+});
+
+
+test('filing sets nothing aside while bench mode is open, and not before onboarding', () => {
   withDays(SIX, [dayOn('2026-10-30')], FORMAT, () => {
+    S.computeAll();
     S.setBenchOpen(true);
     try {
-      assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
+      assert.equal(S.fileIfPast(NIGHT_TODAY), null);
     } finally { S.setBenchOpen(false); }
     assert.equal(S.team().days[0].date, '2026-10-30');
     S.state.onboarded = false;
-    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
+    assert.equal(S.fileIfPast(NIGHT_TODAY), null);
     assert.equal(S.team().days[0].date, '2026-10-30');
+    assert.deepEqual(S.team().unplayed ?? [], []);
   });
 });
 

@@ -204,8 +204,9 @@ export async function gamePassesPass(c, origin, rec) {
   })()`));
   rec.check(order.passCount === 4, `#todayGames has ${order.passCount} .today-game buttons, want 4`);
   // #101 item 2 put the team switcher's popover (`#teamMenu`) right after
-  // the large title it hangs off of, ahead of `#todayGames`.
-  const wantKids = ['h1', '#teamMenu', '#todayGames', 'today-acts', '#todayTeam', '#todaySeason'];
+  // the large title it hangs off of, ahead of `#todayGames`. #632 put the
+  // "Did you play this game?" slot (`#todayUnplayed`) above the day's games.
+  const wantKids = ['h1', '#teamMenu', '#todayUnplayed', '#todayGames', 'today-acts', '#todayTeam', '#todaySeason'];
   rec.check(JSON.stringify(order.kids) === JSON.stringify(wantKids), `#view-today's children are ${JSON.stringify(order.kids)}, want ${JSON.stringify(wantKids)}`);
   rec.check(order.newDayGone, '#todayNewDay is still in the markup; "New day" was supposed to be removed');
 

@@ -235,7 +235,7 @@ test('existing team: a game it does not have is added to today', async () => {
   const today = t.days.find(d => d.games.some(x => x.id === 'gHawks1'));
   assert.ok(today, 'the handed-off game is in a day');
   assert.notEqual(today.date, '2026-09-12', 'it is not put into the sender\'s old day');
-  assert.equal(today.games.length, 2, 'joins the phone\'s own unplayed game, carried to today (#379)');
+  assert.equal(today.games.length, 1, 'alone in today: the phone\'s own game stays on its own day (#632)');
   assert.ok(t.days.some(d => d.games.some(x => x.id === 'gSomethingElse')), 'the phone\'s own game stays');
   assert.equal(S.game().id, 'gHawks1', 'and it is the open game');
 });
@@ -461,7 +461,7 @@ test('the day: a sender whose game is on a later day dates it that day on the re
   assert.equal(got.team.days[0].date, '2999-11-01');
 });
 
-test('the night before: a link for a team that was not active carries that team\'s unplayed day first, then joins it', async () => {
+test('the night before: a link joins today, and the phone\'s own past day is asked about on the next filing', async () => {
   const { team, g, p } = sender();
   const hash = await encode(team, g, floorOf(g, p));
   const mine = structuredClone(team);
@@ -472,10 +472,15 @@ test('the night before: a link for a team that was not active carries that team\
   receive(await decode(hash));
 
   assert.equal(S.state.activeTeam, 1);
-  assert.ok(!mine.season.games.some(x => x.id === 'gNight'), 'the night-before game was not filed');
-  assert.equal(mine.days.length, 1, 'one day, not a left-out day beside today');
-  assert.equal(mine.days[0].date, todayIso());
-  assert.deepEqual(mine.days[0].games.map(x => x.id).sort(), ['gHawks1', 'gNight']);
+  assert.deepEqual(mine.days.map(d => d.date), ['2000-01-01', todayIso()], 'the past day is left as it was, today gets the link\'s game');
+  assert.deepEqual(mine.days[1].games.map(x => x.id), ['gHawks1']);
+
+  S.computeAll();
+  S.fileIfPast(new Date());
+
+  assert.ok(!mine.season.games.some(x => x.id === 'gNight'), 'the night-before game is not filed unasked');
+  assert.deepEqual(mine.unplayed.map(u => u.game.id), ['gNight'], 'it is asked about');
+  assert.deepEqual(mine.days.map(d => d.date), [todayIso()]);
 });
 
 test('encode caps the label at 40 characters', async () => {
@@ -540,4 +545,21 @@ test('round trip: a sit for the rest comes through, and a link without `sat` dec
   freshDevice();
   receive(await decode(await repack(doc)));
   assert.equal('sat' in S.game().live, false, 'an older link has no sit');
+});
+
+test('a link for a game that is waiting to be asked about takes it out of the waiting list', async () => {
+  const { team, g, p } = sender();
+  const hash = await encode(team, g, floorOf(g, p));
+  const mine = structuredClone(team);
+  mine.days = [{ name: '', date: '2000-01-01', games: [bareGame({ id: 'gNight' })] }];
+  mine.unplayed = [
+    { game: bareGame({ id: g.id }), date: '2000-01-01', dayName: '', label: 'Game 1', minutes: {} },
+    { game: bareGame({ id: 'gOther' }), date: '2000-01-01', dayName: '', label: 'Game 2', minutes: {} },
+  ];
+  S.state.teams = [S.newTeam('Other'), mine]; S.state.activeTeam = 0; S.state.onboarded = true;
+  S.computeAll();
+
+  receive(await decode(hash));
+
+  assert.deepEqual(mine.unplayed.map(u => u.game.id), ['gOther']);
 });

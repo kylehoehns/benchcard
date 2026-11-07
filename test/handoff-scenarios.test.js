@@ -102,6 +102,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
     assert.equal(await coach.lastToast(), 'You already filed this game.');
     assert.ok(await coach.sees('Season 1 game filed ›'), 'Today should still say one game filed');
     assert.ok(!(await coach.todayGames()).some(n => n.startsWith('Hawks')), 'Hawks is back on Today');
+    await coach.comeBackAt({ y: 2026, m: 9, d: 13, h: 9 }); // the toast is gone, so it no longer covers the button
     await coach.tap('Season 1 game filed ›');
     assert.deepEqual(await coach.seasonFiled(), ['Sep 12 · 1 game', 'vs Hawks']);
   });
@@ -114,7 +115,9 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
     await coach.openLinkAgain(link, toastShown);
 
     assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season.');
-    assert.deepEqual(await coach.todayGames(), ['Ravens, 11:30 AM, planned']);
+    assert.deepEqual((await coach.unplayedCard()).rows, ['Sat, Sep 12 · Ravens'], 'Ravens was never started, so it is asked about, not carried');
+    assert.deepEqual(await coach.todayGames(), ['Game 1, planned']);
+    await coach.comeBackAt({ y: 2026, m: 9, d: 13, h: 9 });
     await coach.tap('Season 1 game filed ›');
     assert.deepEqual(await coach.seasonFiled(), ['Sep 12 · 1 game', 'vs Hawks']);
   });

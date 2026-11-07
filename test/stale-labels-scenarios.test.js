@@ -96,6 +96,7 @@ describe('labels that were stale (#420)', { skip }, () => {
     assert.match(await coach.text('.today-game .pass-summary'), /^9 players · /);
     assert.equal(await coach.count('.today-game[aria-label^="Hawks"] .pass-row'), 9, 'the card draws a mini-rotation row for each player it counts');
     await coach.comeBackDaysLater(1);
+    await coach.tap('Dismiss'); // the Filing toast no longer covers the button
     await coach.tap('Season 1 game filed ›');
     assert.match(await coach.text('.sn-game .sn-gm'), /^9 played/);
   });

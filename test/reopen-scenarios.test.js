@@ -39,10 +39,11 @@ describe('a coach reopens the app', { skip }, () => {
     assert.ok(await coach.showing('game'), 'the coach left the app on the Game screen');
     await coach.comeBackDaysLater(1, FILED_TOAST_READY);
 
-    assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season. Ravens was never started, so it was left out.');
+    assert.equal(await coach.lastToast(), 'Sat, Sep 12: 1 game filed to the season.');
     assert.ok(await coach.showing('today'), 'Today is showing');
     assert.equal(await coach.showing('game'), false, 'the Game screen is not');
     assert.ok(await coach.sees('Season 1 game filed ›'));
+    assert.deepEqual((await coach.unplayedCard()).rows, ['Sat, Sep 12 · Ravens'], 'Ravens was never started, so it is asked about');
   });
 
   test('reopened the same day on the Game screen, the coach is still on it with no Filing toast', async () => {

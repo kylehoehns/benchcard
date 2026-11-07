@@ -14,15 +14,19 @@ The same rule applies: a decision is kept with its alternative.
   something reproduces it for the coach who is busiest.
   `plan.ok` is the one honest signal available with no UI — a game that never
   produced a rotation was never played — and deleting a game beforehand already
-  takes it out of the day. Games that were never started, when nothing from the
-  plan was ever played, are left out entirely rather than filing their planned
-  minutes (#133). A day set up the night before and never started is not
-  left out in the morning: while it is the latest past day and today has no day
-  yet, it moves to today (`carryUnplayedDay`, #379), so the coach who set up and
-  printed on Friday night gets the same game on Saturday. It carries with no
-  toast and no Undo, because the plan does not change, and the only thing that
-  moves is the date. Once any game in it is started, it files as above. The
-  minutes come from `effectiveMinutes`, never
+  takes it out of the day. A game that was planned but never started is not
+  filed with its planned minutes, and it is not dropped either (this replaces
+  #133's "left out" rule). It waits on Today under "Did you play these?" until
+  the coach answers (#632). We chose to ask rather than file it on its own, or
+  carry it to today with no word, because a game the coach never ran should not
+  count toward minutes without them saying so. The three answers are Played
+  (files it with its planned minutes), Move to today, and Didn't play (removes
+  it). Waiting games are not in the season, so they do not count toward minutes
+  until answered. This also removes the night-before carry (#379): a game set up
+  Friday night is asked about on Saturday like any other, and Move to today is
+  how the coach keeps it. When filing builds a fresh day for an empty one, that
+  one empty game is replaced by Move to today rather than sitting beside the
+  moved game. The minutes come from `effectiveMinutes`, never
   `plan.minutes`, so a hand swap in bench mode is counted as what happened.
   Archiving runs inside `undoable`'s mutation, after the snapshot, so Undo
   un-archives with no second code path, and it is idempotent by game id so

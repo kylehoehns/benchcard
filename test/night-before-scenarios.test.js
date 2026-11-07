@@ -36,7 +36,7 @@ describe('a game set up the night before', { skip }, () => {
     return coach.cardFives();
   }
 
-  test('a sample team set up at 9 PM has the same card the next morning, with nothing left out', async () => {
+  test('a sample team set up at 9 PM is asked about the next morning, and Move to today keeps its card', async () => {
     await sampleOnTheNight();
     const fives = await printedFives();
     assert.ok(fives.length > 0, 'the card has stints');
@@ -44,7 +44,25 @@ describe('a game set up the night before', { skip }, () => {
     await coach.comeBackAt(MORNING);
 
     assert.ok(!/left out/.test(await coach.lastToast()), `toast: ${await coach.lastToast()}`);
+    assert.deepEqual((await coach.unplayedCard()).rows, ['Fri, Oct 30 · Game 1']);
+    await coach.answer('Fri, Oct 30 · Game 1', 'Move to today');
+    assert.deepEqual(await coach.todayGames(), ['Game 1, planned'], 'today holds that one game, not that and an empty one');
+    await coach.tap('Game 1, planned');
     assert.deepEqual(await printedFives(), fives);
+  });
+
+  test('Undo on Move to today brings the fallback game and the question back', async () => {
+    await sampleOnTheNight();
+    await coach.comeBackAt(MORNING);
+    const row = 'Fri, Oct 30 · Game 1';
+
+    await coach.answer(row, 'Move to today');
+    await coach.tap('Undo');
+
+    assert.deepEqual((await coach.unplayedCard()).rows, [row]);
+    assert.deepEqual(await coach.todayGames(), ['Game 1, planned'], 'the fallback game is back');
+    await coach.answer(row, 'Move to today');
+    assert.deepEqual(await coach.todayGames(), ['Game 1, planned'], 'and it is still the fallback, so moving replaces it again');
   });
 
   test('a game with its first stint played is filed as before, and today gets a new game', async () => {
@@ -71,17 +89,19 @@ describe('a game set up the night before', { skip }, () => {
     return { link: await coach.shareLink(), fives };
   }
 
-  test('a link made and opened on the 30th keeps its label, tipoff and stints on the 31st', async () => {
+  test('a link made and opened on the 30th is asked about on the 31st, and moved to today keeps its label, tipoff and stints', async () => {
     const { link, fives } = await hawksLink(NIGHT);
     await coach.pinClock(NIGHT);
     await coach.openLink(link);
 
     await coach.comeBackAt(MORNING);
-    await coach.tap('Back to Sample team');
 
+    assert.ok(!/left out/.test(await coach.lastToast()), await coach.lastToast());
+    const [row] = (await coach.unplayedCard()).rows.filter(r => /vs Hawks$/.test(r));
+    assert.equal(row, 'Fri, Oct 30 · vs Hawks');
+    await coach.answer(row, 'Move to today');
     const games = await coach.todayGames();
     assert.ok(games.some(n => /^vs Hawks, 9:30 AM/.test(n)), JSON.stringify(games));
-    assert.ok(!/left out/.test(await coach.toast()), await coach.toast());
     await coach.tap(games.find(n => /^vs Hawks/.test(n)));
     await coach.tap('Card');
     assert.deepEqual(await coach.cardFives(), fives);
