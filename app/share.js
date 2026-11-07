@@ -1,4 +1,8 @@
-/* Share the card as an image.
+/* Share the card as an image, or as the print PDF.
+
+   shareForPrint also builds the letter-size PDF (JPEG per card, laid out by
+   pdf.js) and shares that, falling back to the image when files of that type
+   cannot be shared.
 
    The card is the artefact a coach hands to another coach, and "text me your
    rotation" is how that actually happens. Printing needs a printer; a PNG
@@ -296,8 +300,9 @@ const pngBlob = canvas => new Blob([imageBytes(canvas, 'image/png')], { type: 'i
    1px dashed #ccc edge with its 4px radius (`@media print .card` in card.css).
    No gray ground, no band and no PAD -- the page around the card is the
    paper's. Painted by the same `paint` walk as the PNG. */
-const PRINT_EDGE = '#ccc';
-const PRINT_RADIUS = 4;
+export const PRINT_EDGE = '#ccc';   // card.css `@media print .card` border color
+export const PRINT_EDGE_WIDTH = 1;  // ...its width in px (drawn dashed)
+export const PRINT_RADIUS = 4;      // card.css `.card` border-radius in px
 const PRINT_JPEG_QUALITY = .95;
 function printJpeg(card) {
   const host = offscreen([card]);
@@ -312,7 +317,7 @@ function printJpeg(card) {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, width, height);
     ctx.strokeStyle = PRINT_EDGE;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = PRINT_EDGE_WIDTH;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(.5, .5, width - 1, height - 1, PRINT_RADIUS - .5);
@@ -373,6 +378,11 @@ export function shareCards(cards, { filename = 'benchcard.png', title = 'Benchca
  * Resolves as `shareCards` does.
  */
 export function shareForPrint(cards, { copies = 1, filename = 'benchcard.pdf', title = 'Benchcard' } = {}) {
+  // Ask with a tiny stand-in first: painting every JPEG is the expensive part.
+  const probe = new File(['%PDF'], filename, { type: 'application/pdf' });
+  if (!navigator.canShare?.({ files: [probe] })) {
+    return shareCards(cards, { filename: filename.replace(/\.pdf$/, '.png'), title });
+  }
   const images = cards.map(printJpeg);
   const cardSize = card => CARD_SIZES[card.classList.contains('half') ? 'half' : 'pocket'];
   const sizes = Array.from({ length: copies }, () => cards.map(card => {
@@ -381,9 +391,6 @@ export function shareForPrint(cards, { copies = 1, filename = 'benchcard.pdf', t
   })).flat();
   const pages = printLayout(sizes).map(page => page.map(p => ({ ...p, img: p.i % cards.length })));
   const file = new File([letterPdf(pages, images)], filename, { type: 'application/pdf' });
-  if (!navigator.canShare?.({ files: [file] })) {
-    return shareCards(cards, { filename: filename.replace(/\.pdf$/, '.png'), title });
-  }
   return shareFile(file, title);
 }
 

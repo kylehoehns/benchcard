@@ -37,11 +37,17 @@ Everything below is relative to `app/`.
 - `share.js` — the same card as a PNG, painted from the laid-out DOM onto a
   canvas, for `navigator.share` with a clipboard/download fallback. It also
   exports `isHomeScreenApp()`, the one test for the iOS Home Screen app (#500).
+  In that app, Share to print sends a US Letter PDF instead (`shareForPrint`,
+  #630; see [card.md](card.md)).
   The image
   keeps a taller bottom margin than its other three, with `benchcard.app`
   centered in it: the in-card mark is 7px, which is about five device pixels
   once a phone scales the picture into a message bubble. A URL and nothing
   else — the band is outside the card rect, so it costs the card no space.
+- `pdf.js` (#630) — the US Letter PDF of the printed card, for the Home Screen
+  app's Share to print. Pure: no DOM and no imports. `printLayout` places the
+  cards as print does and `letterPdf` writes the bytes; `share.js` paints the
+  cards and calls it. How it is built is in [card.md](card.md) § Shared PNG.
 - `backup.js` — the whole record out to a JSON file and back. Deliberately
   small: export is `JSON.stringify(state)` and import is `storage.js`'s
   `sanitize`, so there is neither a second serializer nor a second parser to

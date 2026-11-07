@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { printLayout, letterPdf, PT_PER_IN, LETTER, MARGIN, GAP } from '../app/pdf.js';
 import { CARD_SIZES } from '../app/card-spec.js';
+import { PRINT_EDGE, PRINT_EDGE_WIDTH, PRINT_RADIUS } from '../app/share.js';
 
 const pts = k => ({ w: CARD_SIZES[k].w * PT_PER_IN, h: CARD_SIZES[k].h * PT_PER_IN });
 const same = (n, k) => Array.from({ length: n }, () => pts(k));
@@ -104,4 +105,15 @@ test('guard: pdf.js page, margin and gap are card.css\'s @page and print .stage 
   const stage = css.match(/@media print\s*\{[\s\S]*?\.stage\s*\{[^}]*?gap:\s*([\d.]+)in/);
   assert.ok(stage, 'card.css has no `.stage { ... gap: <n>in }` in @media print this guard can read');
   assert.equal(GAP, inches(stage[1]), 'GAP in app/pdf.js differs from the print .stage gap in card.css');
+});
+
+test('guard: share.js print card edge and radius are card.css\'s print .card border and .card radius', () => {
+  const edge = css.match(/@media print\s*\{[\s\S]*?\.card\s*\{[^}]*?border:\s*([\d.]+)px\s+(\w+)\s+(#[0-9a-fA-F]+)/);
+  assert.ok(edge, 'card.css has no `.card { ... border: <n>px <style> <#color> }` in @media print this guard can read');
+  assert.equal(edge[2], 'dashed', 'share.js draws the print edge dashed; card.css print border style differs');
+  assert.equal(+edge[1], PRINT_EDGE_WIDTH, 'PRINT_EDGE_WIDTH in app/share.js differs from the print .card border width in card.css');
+  assert.equal(edge[3], PRINT_EDGE, 'PRINT_EDGE in app/share.js differs from the print .card border color in card.css');
+  const radius = css.match(/\n\.card\s*\{[^}]*?border-radius:\s*([\d.]+)px/);
+  assert.ok(radius, 'card.css has no `.card { border-radius: <n>px }` this guard can read');
+  assert.equal(+radius[1], PRINT_RADIUS, 'PRINT_RADIUS in app/share.js differs from .card border-radius in card.css');
 });

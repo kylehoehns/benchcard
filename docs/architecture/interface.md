@@ -138,7 +138,7 @@ four. <kbd>P</kbd> stays live everywhere regardless, because `printCard`
 switches to Games before it prints; a key that dies on three views out of four
 would be worse than no key.
 
-**In the iOS Home Screen app, Print shares the card instead (#500).** `window.print()` does nothing there, so `printCard` hands the tap to `shareCardImage`: the same card PNG, through the same synchronous path to `navigator.share`, and the share sheet has its own Print action. A share is not counted as a print. <kbd>P</kbd> takes the same route. The test is `isHomeScreenApp()` in `share.js`, which reads `navigator.standalone === true`; nothing else reads that property for this. The boot-time block beside the share handlers in `app.js` relabels `#print`, `#frPrint` and `#cardPrint` to **Share to print**, hides `#shareCard`, `#frShare` and the Copies row (the image always carries one copy), and the image's failure toasts drop "Print still works." Games to print stays, because the image already draws every card on the page. Android installed apps report no `navigator.standalone`, so they keep `window.print()`.
+**In the iOS Home Screen app, Print shares the card instead (#500, #630).** `window.print()` does nothing there, so `printCard` hands the tap to `shareCardForPrint`: a US Letter PDF of the card, laid out the way `window.print()` lays it out (#630), through the same synchronous path to `navigator.share`. If the share sheet will not take a PDF, the same tap shares the card PNG instead. The share sheet has its own Print action. A share is not counted as a print. <kbd>P</kbd> takes the same route. The test is `isHomeScreenApp()` in `share.js`, which reads `navigator.standalone === true`; nothing else reads that property for this. The boot-time block beside the share handlers in `app.js` relabels `#print`, `#frPrint` and `#cardPrint` to **Share to print**, hides `#shareCard`, `#frShare` and the Copies row (the PDF still honors the saved copies setting, as `window.print()` does), and the failure toasts drop "Print still works.": "Could not share the card." when a share fails, "Could not make the card." when the PDF cannot be built. Games to print stays, because the PDF lays out every card on the page. Android installed apps report no `navigator.standalone`, so they keep `window.print()`.
 
 The tab budget this used to measure is retired along with the tabs: Today's
 header carries the team button, the keys hint and the gear, and every
@@ -523,7 +523,7 @@ Mobile specifics that came out of real use:
   of the pass's own button: it opens that game and prints its card through the same
   `printCard` as the share sheet's Print, with the same print settings. The game screen's
   Card view has the same button under the card (`#cardPrint`). In the iOS Home Screen app
-  both buttons read **Share to print** and share the image instead (the paragraph
+  both buttons read **Share to print** and share a US Letter PDF of the card instead (the paragraph
   on Print in the Home Screen app, under *Print stands on the games view only*, says why).
   Each pass is a card: neutral surface with 20px radius, no border, with 0.75rem
   gap between them (#69). The status color is shown as a dot only, not the text
@@ -591,7 +591,7 @@ The **Share sheet** opens from a tap on the share button and presents two
 segments: **Card** and **Hand off**. Card is selected when the
 sheet opens, showing the card preview, print and share image buttons, and the
 print settings. In the iOS Home Screen app the two buttons become one,
-**Share to print**, and the Copies row is hidden (see Print above). Switching
+**Share to print**, and the Copies row is hidden (see Print above; the PDF still uses the saved copies setting). Switching
 to Hand off swaps the body in place to show the hand-off interface, which builds a link from the game, its roster and its stints (`encode` in
 `handoff.js`), and presents it three ways: a QR code drawn by a lazily loaded
 encoder (fetched on first Hand off tap, not at boot, so first paint does not

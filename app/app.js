@@ -174,7 +174,8 @@ function printCard() {
      `instant` only skips the scroll to the top. */
   if (state.view !== 'games') setView('games', true);
   /* #500: `window.print()` does nothing in the iOS Home Screen app, so there
-     the same tap shares the card image, whose share sheet has Print in it.
+     the same tap shares the card as a true-size letter PDF (#630), whose
+     share sheet has Print in it; it falls back to the PNG if the PDF is refused.
      Called inside the click so the tap's activation reaches the share. It
      counts itself (`card_shared`), not as a print. */
   if (isHomeScreenApp()) { shareCardForPrint(); return; }
@@ -310,9 +311,9 @@ on('#frPrint', 'onclick', printCard);
 on('#frShare', 'onclick', shareCardImage);
 
 /* #500: in the iOS Home Screen app, Print and Share image would do the same
-   thing (`printCard` shares the image there), so one button stays, relabeled
-   to say what happens, and the other goes. Copies goes too: the image always
-   carries one. The labels are the text node after each button's icon, so the
+   thing (`printCard` shares the card there), so one button stays, relabeled
+   to say what happens, and the other goes. The Copies row stays hidden, but
+   the PDF (#630) still honors the saved copies setting. The labels are the text node after each button's icon, so the
    icon span stays, and the accessible name still contains the visible text. */
 if (isHomeScreenApp()) {
   const relabel = (sel, text, name) => {
