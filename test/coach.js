@@ -1214,6 +1214,24 @@ export class Coach {
       the call was still inside the tap's click handler (`window.event` is unset in a timer or after an await, which is how iOS loses activation). */
   async imageShares() { return (await evalIn(this.c, 'window.__sharedImages')) ?? []; }
 
+  /** The bytes of the last file the app handed to the share sheet, as a latin1 string (one char per byte), so a
+      scenario can read a PDF's page count and placements out of what was really shared. Null when nothing was shared. */
+  async sharedFileBytes() {
+    // Carried as base64: a megabyte of raw latin1 through the DevTools protocol is slow enough to stall a run.
+    const b64 = await evalIn(this.c, `(async () => {
+      const f = window.__sharedFiles.at(-1);
+      if (!f) return null;
+      const u8 = new Uint8Array(await f.arrayBuffer());
+      let s = '';
+      for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode(...u8.subarray(i, i + 8192));
+      return btoa(s);
+    })()`);
+    return b64 === null ? null : Buffer.from(b64, 'base64').toString('latin1');
+  }
+
+  /** From now on this page's share sheet takes only images, the way an iOS that cannot share a PDF does. */
+  shareTakesOnlyImages() { return evalIn(this.c, 'window.__imagesOnly = true'); }
+
   /** The product events this page has sent to `/e`, in order, as the bodies
       the endpoint received (`{ e: 'welcome_seen', from: 'try' }`). */
   async sentEvents() {

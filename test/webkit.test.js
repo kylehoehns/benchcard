@@ -211,9 +211,9 @@ test('print: no print, two prints, or a print from the wrong screen fail', () =>
   has(printProblems({ found: true, prints: [['Ravens']], views: ['view-today'] }), /view-today/);
 });
 
-const SHARED = { files: ['benchcard-ravens.png'], types: ['image/png'] };
+const SHARED = { files: ['benchcard-ravens.pdf'], types: ['application/pdf'] };
 
-test('home-screen print: one image/png named benchcard-ravens.png and no window.print() passes', () => {
+test('home-screen print: one application/pdf named benchcard-ravens.pdf and no window.print() passes', () => {
   assert.deepEqual(homeScreenProblems({ where: 'Today', found: true, shares: [SHARED], prints: [] }), []);
 });
 
@@ -226,8 +226,8 @@ test('home-screen print: the Nov 1 bug (window.print() called, nothing shared) f
 test('home-screen print: a missing button, a second share, a wrong name or type each fail', () => {
   has(homeScreenProblems({ where: 'Today', found: false, shares: [], prints: [] }), /\.today-print/);
   has(homeScreenProblems({ where: 'the game screen', found: true, shares: [SHARED, SHARED], prints: [] }), /game screen.*2 image/);
-  has(homeScreenProblems({ where: 'Today', found: true, shares: [{ files: ['card.png'], types: ['image/png'] }], prints: [] }), /card\.png/);
-  has(homeScreenProblems({ where: 'Today', found: true, shares: [{ files: ['benchcard-ravens.png'], types: ['image/jpeg'] }], prints: [] }), /image\/jpeg/);
+  has(homeScreenProblems({ where: 'Today', found: true, shares: [{ files: ['card.pdf'], types: ['application/pdf'] }], prints: [] }), /card\.pdf/);
+  has(homeScreenProblems({ where: 'Today', found: true, shares: [{ files: ['benchcard-ravens.pdf'], types: ['image/png'] }], prints: [] }), /image\/png/);
 });
 
 test('share image: reaching navigator.share, or either fallback toast, passes', () => {

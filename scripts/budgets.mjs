@@ -399,8 +399,12 @@ export const NODES_BASELINE = 1_653;
    the rule for which rows print moved out of card.js into a module with no DOM,
    so scripts/charts.mjs reads the app's own numbers instead of typed copies.
    The cold load at 390x844 measures 46 with it (45 before), so the pin moves
-   44 -> 45, one under the measured 46. */
-export const REQUESTS_BASELINE = 45;
+   44 -> 45, one under the measured 46.
+
+   #630: `app/pdf.js` joins the boot graph (share.js imports it statically, to
+   build the Home Screen app's print PDF). One more module, one more request:
+   the pin moves 45 -> 46. */
+export const REQUESTS_BASELINE = 46;
 
 export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };
 

@@ -65,6 +65,7 @@ const PRECACHE = [
   './edit.js',
   './shortcuts.js',
   './share.js',
+  './pdf.js',
   './handoff.js',
   './handoff-view.js',
   './backup.js',

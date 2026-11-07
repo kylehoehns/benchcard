@@ -19,6 +19,9 @@
    That is why this uses `toDataURL` and converts by hand rather than the
    nicer `toBlob`. */
 
+import { printLayout, letterPdf, PT_PER_IN } from './pdf.js';
+import { CARD_SIZES } from './card-spec.js';
+
 export const SCALE = 3;          // 96dpi CSS px -> 288dpi image
 export const PAD = 14;           // page margin around the cards, in CSS px
 export const GAP = 14;           // between cards when a game needs two
@@ -277,13 +280,50 @@ function drawCards(cards) {
 }
 
 /* `toDataURL` then a hand-rolled decode, rather than `toBlob`, so the whole
-   path from tap to `navigator.share` stays inside the activation window. */
-function pngBlob(canvas) {
-  const b64 = canvas.toDataURL('image/png').split(',')[1];
+   path from tap to `navigator.share` stays inside the activation window. One
+   decoder for every image type the share path makes (PNG, and the PDF's JPEG). */
+function imageBytes(canvas, type, quality) {
+  const b64 = canvas.toDataURL(type, quality).split(',')[1];
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: 'image/png' });
+  return bytes;
+}
+const pngBlob = canvas => new Blob([imageBytes(canvas, 'image/png')], { type: 'image/png' });
+
+/* One card as print draws it, and nothing else: the card on white (a JPEG has
+   no transparency, so unfilled corners would come out black), inside print's
+   1px dashed #ccc edge with its 4px radius (`@media print .card` in card.css).
+   No gray ground, no band and no PAD -- the page around the card is the
+   paper's. Painted by the same `paint` walk as the PNG. */
+const PRINT_EDGE = '#ccc';
+const PRINT_RADIUS = 4;
+const PRINT_JPEG_QUALITY = .95;
+function printJpeg(card) {
+  const host = offscreen([card]);
+  try {
+    const node = host.firstElementChild;
+    const { width, height } = node.getBoundingClientRect();
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * SCALE);
+    canvas.height = Math.round(height * SCALE);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(SCALE, SCALE);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = PRINT_EDGE;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(.5, .5, width - 1, height - 1, PRINT_RADIUS - .5);
+    else ctx.rect(.5, .5, width - 1, height - 1);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    paint(ctx, node, 0, 0);
+    return { jpeg: imageBytes(canvas, 'image/jpeg', PRINT_JPEG_QUALITY), width: canvas.width, height: canvas.height };
+  } finally {
+    host.remove();
+  }
 }
 
 /* The iOS Home Screen app, and nothing else. `navigator.standalone` exists
@@ -296,6 +336,14 @@ export const isHomeScreenApp = () => navigator.standalone === true;
 /* What every Print button says in the Home Screen app, where it shares. */
 export const SHARE_TO_PRINT = 'Share to print';
 
+function shareFile(file, title) {
+  return navigator.share({ files: [file], title })
+    .then(() => 'shared')
+    // A dismissed share sheet rejects with AbortError; that is a coach
+    // changing their mind, not a failure to report.
+    .catch(e => { if (e?.name === 'AbortError') return 'cancelled'; throw e; });
+}
+
 /**
  * Share the given cards as a PNG. Resolves to what actually happened:
  * 'shared' (the system sheet), 'copied' (clipboard), 'saved' (a download),
@@ -305,11 +353,7 @@ export function shareCards(cards, { filename = 'benchcard.png', title = 'Benchca
   const blob = pngBlob(drawCards(cards));
   const file = new File([blob], filename, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
-    return navigator.share({ files: [file], title })
-      .then(() => 'shared')
-      // A dismissed share sheet rejects with AbortError; that is a coach
-      // changing their mind, not a failure to report.
-      .catch(e => { if (e?.name === 'AbortError') return 'cancelled'; throw e; });
+    return shareFile(file, title);
   }
   if (navigator.clipboard?.write && window.ClipboardItem) {
     return navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
@@ -317,6 +361,30 @@ export function shareCards(cards, { filename = 'benchcard.png', title = 'Benchca
       .catch(() => save(blob, filename));
   }
   return Promise.resolve(save(blob, filename));
+}
+
+/**
+ * Share the cards as a US Letter PDF of the printed page (#630): each card at
+ * its real size, `copies` repeats of the list laid out the way `window.print()`
+ * lays them out. `cards` is each distinct card once (no `.card-copy`); a
+ * repeat draws the same image again. Synchronous to `navigator.share`, as
+ * `shareCards` is. When the share sheet will not take a PDF, shares the PNG
+ * the way `shareCards` does, so a phone that cannot print still gets the card.
+ * Resolves as `shareCards` does.
+ */
+export function shareForPrint(cards, { copies = 1, filename = 'benchcard.pdf', title = 'Benchcard' } = {}) {
+  const images = cards.map(printJpeg);
+  const cardSize = card => CARD_SIZES[card.classList.contains('half') ? 'half' : 'pocket'];
+  const sizes = Array.from({ length: copies }, () => cards.map(card => {
+    const { w, h } = cardSize(card);
+    return { w: w * PT_PER_IN, h: h * PT_PER_IN };
+  })).flat();
+  const pages = printLayout(sizes).map(page => page.map(p => ({ ...p, img: p.i % cards.length })));
+  const file = new File([letterPdf(pages, images)], filename, { type: 'application/pdf' });
+  if (!navigator.canShare?.({ files: [file] })) {
+    return shareCards(cards, { filename: filename.replace(/\.pdf$/, '.png'), title });
+  }
+  return shareFile(file, title);
 }
 
 function save(blob, filename) {
