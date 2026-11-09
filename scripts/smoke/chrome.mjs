@@ -154,6 +154,9 @@ export async function launch(port, headful, onSpawn) {
     '--no-first-run', '--no-default-browser-check', '--disable-gpu',
     '--no-sandbox', '--disable-dev-shm-usage',
     '--hide-scrollbars', '--mute-audio',
+    /* #616: on macOS a fresh Chrome reads the login Keychain on its first cookie
+       load, shared machine-wide, and under load that stalled 28-50 s. Ignored on Linux. */
+    '--use-mock-keychain',
     'about:blank',
   ], { stdio: 'ignore', detached: true }); // detached: closeChrome can kill the whole process group
   watchers.set(proc, watch(proc, dir));
