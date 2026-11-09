@@ -364,3 +364,43 @@ test('a smoke run still going is not disturbed by another launch()', { timeout: 
   run.kill('SIGTERM');                                  // the run closes its own Chrome
   await Promise.race([new Promise(ok => run.once('exit', ok)), new Promise(ok => setTimeout(ok, 20_000))]);
 });
+
+/* #606: the share-image and redirect scripts start their Chrome through the same
+   launch(), so they get the same watcher. The real script is SIGKILLed once its
+   Chrome has a page on the script's own 127.0.0.1 origin. The folder is found by
+   any `benchcard-` name, so a script that still makes its own folder is judged on
+   what is left behind, not on a timeout looking for the wrong name. */
+const anyProfileDir = root => readdirSync(root).filter(n => n.startsWith('benchcard-')).map(n => join(root, n))[0];
+const midPageAny = root => waitFor(async () => {
+  const d = anyProfileDir(root);
+  if (!d) return null;
+  try {
+    /* Chrome writes DevToolsActivePort only for port 0, so a fixed port (the old
+       scripts) is read off Chrome's own command line; port 0 (after) from the file. */
+    const flag = chromeOf(d).map(p => /--remote-debugging-port=(\d+)/.exec(p.command)?.[1]).find(Boolean);
+    const port = Number(flag) || Number(readFileSync(join(d, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+    const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+    return list.some(t => t.type === 'page' && t.url.startsWith('http://127.0.0.1:')) ? d : null;
+  } catch { return null; }
+}, 45_000, 'the script\'s page on its http://127.0.0.1 origin');
+
+for (const [name, argv] of [
+  ['scripts/og.mjs', ['scripts/og.mjs', '--out', null]],
+  ['scripts/redirect-check.mjs', ['scripts/redirect-check.mjs']],
+]) {
+  test(`${name} SIGKILLed mid-page leaves no Chrome and no profile dir within 20s (#606)`, { timeout: 120_000, ...NEEDS_CHROME }, async () => {
+    const root = sandbox();
+    const args = argv.map(a => a === null ? join(root, 'og.png') : a);
+    const run = spawn(process.execPath, args, {
+      cwd: CWD, stdio: 'ignore',
+      env: { ...process.env, TMPDIR: root, TMP: root, TEMP: root },
+    });
+    pidsToKill.add(run.pid);
+    const dir = await midPageAny(root);
+    run.kill('SIGKILL');
+    await new Promise(ok => run.once('exit', ok));
+    await waitFor(() => !chromeOf(dir).length && !existsSync(dir), 20_000,
+      'Chrome and its profile dir to be gone after the script was SIGKILLed')
+      .catch(() => assert.fail(`after 20s: processes ${JSON.stringify(chromeOf(dir).map(p => p.command.slice(0, 80)))}, dir exists: ${existsSync(dir)}`));
+  });
+}
