@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer, request } from 'node:http';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 const SERVE = fileURLToPath(new URL('../scripts/serve.mjs', import.meta.url));
 const pids = new Set();
@@ -34,7 +35,14 @@ async function waitFor(fn, ms, what) {
     if (Date.now() > end) throw new Error(`timed out after ${ms}ms waiting for ${what}`);
   }
 }
-const alive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+/* A process that has exited but not been reaped is a zombie, and signal 0
+   still reaches it. The server here is orphaned when its parent is killed, so
+   it is reaped by whatever runs as pid 1, and in Cloudflare's build container
+   that does not reap: the server exited at once (its port refused) and stayed
+   a zombie past 5s, failing the production build. On Linux, read its state;
+   elsewhere (macOS has no /proc, and launchd reaps) signal 0 is the answer. */
+const zombie = pid => { try { return readFileSync(`/proc/${pid}/stat`, 'utf8').replace(/^.*\) /s, '')[0] === 'Z'; } catch { return false; } };
+const alive = pid => { try { process.kill(pid, 0); } catch (e) { return e.code === 'EPERM'; } return !zombie(pid); };
 
 function startServe(args) {
   const p = spawn(process.execPath, [SERVE, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
