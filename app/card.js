@@ -8,7 +8,7 @@
    Split out of app.js as its own seam; it reads state and the plan cache, and
    owns the auto-fit, the pagination and the preview zoom. Nothing else in the
    app measures type this way, so the canvas metrics stay here. */
-import { fmtClock, fmtMinutes, isOvertimeStint } from './engine.js';
+import { fmtClock, fmtMinutes } from './engine.js';
 import { $, el, set, ctx2d } from './dom.js';
 import { icon } from './icons.js';
 import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
@@ -233,14 +233,15 @@ function fitCard(R, K, isHalf, stripH) {
         x.grps.push({ kind: 'bench', label: 'BENCH', ...settle('BENCH', r.bench, 600, K.ws, K.s, K.minB) });
         continue;
       }
-      x.grps.push({ kind: 'out', label: 'OUT', ...settle('OUT', r.outAll ? ['ALL 5'] : r.outs, 800, ws(r), x.o, K.minO) });
+      // #640: on the pocket card five black boxes already say a whole new five; no OUT line
+      if (!(r.outAll && !isHalf)) x.grps.push({ kind: 'out', label: 'OUT', ...settle('OUT', r.outAll ? ['ALL 5'] : r.outs, 800, ws(r), x.o, K.minO) });
       if (r.stays.length && !nostay) x.grps.push({ kind: 'stay', label: 'STAY', ...settle('STAY', r.stays, 600, K.ws, x.s, K.minS) });
     }
     // heights, before padding and zoom
     for (const x of rows) {
       const gh = g => Math.max(K.tagH, g.lines * g.fs * 1.1);
       const subs = x.grps.map(gh);
-      x.hSub = isHalf ? subs.reduce((a, b) => a + b, 0) + (subs.length - 1) * K.stackGap
+      x.hSub = !subs.length ? 0 : isHalf ? subs.reduce((a, b) => a + b, 0) + (subs.length - 1) * K.stackGap
         : K.subTop + (x.stack && !nostay ? subs.reduce((a, b) => a + b, 0) + (subs.length - 1) * SUB_GAP : Math.max(...subs));
       if (x.r.first) x.hMid = K.ebH + K.ebMb + x.st.lines * x.st.fs * 1.05;
       else {
@@ -332,14 +333,8 @@ function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minu
   const card = el('div', 'card' + (isHalf ? ' half' : ''));
 
   const per = [...new Set(rows.map(r => r.period))];
-  /* A period is named as its stint names it: regulation "Q<n>", overtime by
-     the engine's own `periodName` ("OT", "OT2"), so there is one answer.
-     Regulation keeps `Q<n>` on purpose: the title's name for it is unchanged
-     for games without overtime (spec 370 item 4). */
-  const nameOf = period => {
-    const row = rows.find(r => r.period === period);
-    return isOvertimeStint(row) ? row.periodName : `Q${period}`;
-  };
+  // A period is named as its stint names it (Q1, H2, OT), so the title and the rows agree.
+  const nameOf = period => rows.find(r => r.period === period).periodName;
   const scope = pageCount > 1 ? ` ${nameOf(per[0])}${per.length > 1 ? '-' + nameOf(per[per.length - 1]) : ''}` : '';
   const hd = el('div', 'card-hd');
   const whenTxt = (when || '') + (pageCount > 1 ? `  ${page + 1}/${pageCount}` : '');
@@ -393,7 +388,7 @@ function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minu
     const sub = el('div', 'sub' + (x.stack && !fit.nostay ? ' stack' : ''));
     for (const g of x.grps) sub.append(grpEl(g, spec));
     if (isHalf) { row.append(mid, sub); if (fit.z < 1) mid.style.zoom = sub.style.zoom = fit.z; }
-    else { mid.append(sub); row.append(mid); if (fit.z < 1) mid.style.zoom = fit.z; }
+    else { if (x.grps.length) mid.append(sub); row.append(mid); if (fit.z < 1) mid.style.zoom = fit.z; }
     list.append(row);
   }
   card.append(list);
