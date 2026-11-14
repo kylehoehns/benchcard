@@ -155,6 +155,40 @@ describe('a coach prints or hands off a game', { skip }, () => {
     assert.deepEqual(await coach.cardTitles(), ['HAWKS Q1-Q2', 'HAWKS Q3-Q4']);
   });
 
+  /* #639: a halves game's title names its periods as its rows do. */
+  test('a halves game split into two pages titles them H1 and H2; quarters and overtime keep Q and OT', async () => {
+    await cardOf({ periods: 2, periodMinutes: 16, granValue: 2 });
+    assert.deepEqual(await coach.cardTitles(), ['HAWKS H1', 'HAWKS H2']);
+    assert.ok((await coach.cardRows()).every(l => /^H[12] /.test(l)), 'a row does not say H1 or H2');
+
+    await cardOf({ granValue: 2, overtime: [6] });
+    assert.deepEqual(await coach.cardTitles(), ['HAWKS Q1-Q2', 'HAWKS Q3-Q4', 'HAWKS OT']);
+  });
+
+  /* #640: squads (all five swap) on one pocket card. */
+  const squads = ids => ({ periods: 2, periodMinutes: 18, granMode: 'perPeriod', granValue: 4, strategy: 'platoon',
+    constraints: { units: [ids.slice(0, 5), ids.slice(5, 10)] } });
+  const TEN = Array.from({ length: 10 }, (_, i) => `p${i}`);
+
+  test('a squads game with 8 rows prints on one pocket card with no OUT line on its sub rows', async () => {
+    await cardOf(g => ({ ...squads(TEN), constraints: { ...g.constraints, ...squads(TEN).constraints } }), 10);
+    await coach.tap('Share or hand off');
+    await coach.tap('Minutes strip');
+    await coach.tap('Close');
+    assert.equal((await coach.cardTitles()).length, 1);
+    const rows = await coach.cardRows();
+    assert.equal(rows.length, 8);
+    assert.ok(rows.slice(1).every(l => !/OUT/.test(l)), `an OUT printed: ${rows.slice(1)}`);
+  });
+
+  test('the same squads game on the half sheet still says OUT ALL 5', async () => {
+    await cardOf(g => ({ ...squads(TEN), constraints: { ...g.constraints, ...squads(TEN).constraints } }), 10);
+    await halfSheet();
+    const rows = await coach.cardRows();
+    assert.equal(rows.length, 8);
+    assert.ok(rows.slice(1).every(l => /OUT ALL 5/.test(l)), `a row lost OUT ALL 5: ${rows.slice(1)}`);
+  });
+
   test('the note on a split game counts the rows the cards print, not the stints the game has', async () => {
     // stints 2 and 3 repeat stint 1's five, so nobody goes in for them and they are not printed
     const five = ['p0', 'p1', 'p2', 'p3', 'p4'];

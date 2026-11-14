@@ -103,15 +103,21 @@ async function wideClocks(c, origin, rec, size, periodMinutes, granValue, textPx
 }
 
 /* The worst a card can be asked for: ten five-letter names, every row all five
-   in (fixtures.mjs `squeezeGame`). Even at the smallest boxes and the 0.8
-   squeeze the eight rows are taller than one card, so the game has to split
-   into more cards rather than let the rows push the footer off the paper. */
+   in (fixtures.mjs `squeezeGame`). On the half sheet, even at the smallest boxes
+   and the 0.8 squeeze, the eight rows are taller than one card, so the game has
+   to split into more cards rather than let the rows push the footer off the
+   paper. The pocket card prints no OUT line on an all-five row (#640), so the
+   same squads game fits one pocket card, with nothing clipped. */
 async function squeezePass(c, origin, rec, size, textPx) {
   const where = `the all-five five-letter game ${size} at ${textPx ? textPx : 16}px`;
   await land(c, origin, { record: squeezeGame(size, 7), textPx, ready: `document.querySelector('#sheet .card .crow')` });
   const m = JSON.parse(await evalIn(c, MEASURE));
   if (!m) { rec.fail(`${where}: no card on screen`); return; }
-  rec.check(m.cards >= 2, `${where}: ${m.cards} card(s), want the game split into 2 or more`);
+  if (size === 'pocket') {
+    rec.check(m.cards === 1 && m.rows === 8, `${where}: ${m.rows} rows on ${m.cards} card(s), want 8 on 1`);
+    const outs = JSON.parse(await evalIn(c, `JSON.stringify(document.querySelectorAll('#sheet .card:not(.card-copy) .g-out').length)`));
+    rec.check(outs === 0, `${where}: ${outs} OUT line(s), want none on an all-five row`);
+  } else rec.check(m.cards >= 2, `${where}: ${m.cards} card(s), want the game split into 2 or more`);
   for (const p of m.problems) rec.fail(`${where}: ${p}`);
 }
 
@@ -122,7 +128,9 @@ async function squeezePass(c, origin, rec, size, textPx) {
    white on white. */
 async function squeezedShare(c, origin, rec, size) {
   const where = `the squeezed card ${size}, shared as an image`;
-  await land(c, origin, { record: { ...squeezeGame(size, 6), ui: { ...squeezeGame(size, 6).ui, showMinutes: true } }, ready: `document.querySelector('#sheet .card .crow')` });
+  // the pocket card no longer squeezes the all-five game (#640: no OUT line); four in at every sub still does
+  const base = size === 'pocket' ? fourInGame('pocket') : squeezeGame(size, 6);
+  await land(c, origin, { record: { ...base, ui: { ...base.ui, showMinutes: true } }, ready: `document.querySelector('#sheet .card .crow')` });
   const zoom = JSON.parse(await evalIn(c, `JSON.stringify(parseFloat(document.querySelector('#sheet .card [style*=zoom]')?.style.zoom || 1))`));
   rec.check(zoom < 1, `${where}: the card is not squeezed (zoom ${zoom}), so this proves nothing`);
   await capInstall(c);
